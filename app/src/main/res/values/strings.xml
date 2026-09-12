@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">SAYVIS</string>
+    <string name="app_name_fa">سایویس</string>
+    <string name="sayo_tagline">Global Personal AI Platform</string>
+    <string name="uic_title">User Cognitive Model (UIC)</string>
+    <string name="aware_title">AWARE Engine</string>
+    <string name="missions_title">Missions</string>
+    <string name="audit_title">Security &amp; Audit</string>
+</resources>

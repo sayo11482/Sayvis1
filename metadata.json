@@ -1,0 +1,6 @@
+{
+  "name": "SAYVIS",
+  "description": "SAYVIS Personal AI Operating Layer with User Cognitive Model (UIC) and AWARE Context & Opportunity Engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

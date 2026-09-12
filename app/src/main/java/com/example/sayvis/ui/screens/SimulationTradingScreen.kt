@@ -1,0 +1,371 @@
+package com.example.sayvis.ui.screens
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoGraph
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.CandlestickChart
+import androidx.compose.material.icons.filled.HealthAndSafety
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.sayvis.model.LifeScenario
+import com.example.sayvis.model.LitAnalysisSignal
+import com.example.sayvis.model.TradingGateState
+import com.example.sayvis.ui.theme.SayvisAmberWarning
+import com.example.sayvis.ui.theme.SayvisBorder
+import com.example.sayvis.ui.theme.SayvisCyan
+import com.example.sayvis.ui.theme.SayvisGold
+import com.example.sayvis.ui.theme.SayvisGreenSuccess
+import com.example.sayvis.ui.theme.SayvisRedAlert
+import com.example.sayvis.ui.theme.SayvisSilverMuted
+import com.example.sayvis.ui.theme.SayvisSurface
+import com.example.sayvis.ui.theme.SayvisSurfaceVariant
+
+@Composable
+fun SimulationTradingScreen(
+    lifeScenarios: List<LifeScenario>,
+    tradingGate: TradingGateState,
+    litSignals: List<LitAnalysisSignal>,
+    isPersian: Boolean,
+    modifier: Modifier = Modifier
+) {
+    var selectedTab by remember { mutableStateOf(0) } // 0: Life Simulation, 1: LIT Trading Intelligence
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .testTag("simulation_screen")
+    ) {
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.AutoGraph, contentDescription = null, tint = SayvisGold, modifier = Modifier.size(28.dp))
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(
+                    text = if (isPersian) "شبیه‌سازی مسیر زندگی و تحلیل LIT" else "Life Simulation & LIT Intelligence",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    text = if (isPersian) "مدل‌سازی پیامد تصمیمات و پایش نقدینگی بر اساس قوانین ریسک" else "Trajectory forecasting & analysis-first liquidity framework",
+                    fontSize = 11.sp,
+                    color = SayvisSilverMuted
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        TabRow(
+            selectedTabIndex = selectedTab,
+            containerColor = SayvisSurface,
+            contentColor = SayvisGold,
+            divider = {}
+        ) {
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                text = {
+                    Text(
+                        text = if (isPersian) "شبیه‌سازی زندگی" else "Life Trajectory",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            )
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                text = {
+                    Text(
+                        text = if (isPersian) "تحلیل معاملاتی LIT" else "LIT Intelligence",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        if (selectedTab == 0) {
+            // Life Simulation Scenarios
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                item {
+                    // Notice disclaimer banner
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = SayvisCyan.copy(alpha = 0.1f)),
+                        border = BorderStroke(1.dp, SayvisCyan.copy(alpha = 0.3f))
+                    ) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.TrendingUp, contentDescription = null, tint = SayvisCyan, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isPersian) "پیش‌بینی‌های این بخش بر اساس برون‌یابی داده‌های مدل شناختی (UIC) و اهداف شما است و ماهیت سناریوسازی دارد." else "These trajectories are predictive scenario simulations derived from your UIC attributes and strategic constraints.",
+                                fontSize = 11.sp,
+                                color = SayvisCyan
+                            )
+                        }
+                    }
+                }
+
+                items(lifeScenarios, key = { it.id }) { scenario ->
+                    LifeScenarioCard(scenario = scenario, isPersian = isPersian)
+                }
+
+                item { Spacer(modifier = Modifier.height(30.dp)) }
+            }
+        } else {
+            // LIT Trading Intelligence
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Safety Gate Card (Strictly Enforced)
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = SayvisSurfaceVariant),
+                        border = BorderStroke(1.dp, SayvisRedAlert.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Lock, contentDescription = null, tint = SayvisRedAlert, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (isPersian) "دروازه ایمنی معاملات زنده: مسدود" else "Live Trading Gate: BLOCKED",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = SayvisRedAlert
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .background(SayvisGreenSuccess.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = if (isPersian) "معاملات مجازی (Paper Mode)" else "PAPER SIMULATION ONLY",
+                                        color = SayvisGreenSuccess,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = if (isPersian) "اجرای مالی زنده بر اساس اصول معماری سایویس غیرفعال است. کلید قطع اضطراری (Kill Switch) فعال است و سقف افت روزانه روی ۵۰ دلار محدود شده است." else "Live financial execution is strictly disabled. Kill-switch engaged. Daily drawdown ceiling fixed at \$50. All output is purely educational and backtested signal analysis.",
+                                fontSize = 11.sp,
+                                color = SayvisSilverMuted
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Text(
+                        text = if (isPersian) "سیگنال‌های تحلیلی ساختار نقدینگی (LIT Signals)" else "LIT Liquidity Inversion Analysis Signals",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+
+                items(litSignals, key = { it.id }) { sig ->
+                    LitSignalCard(signal = sig, isPersian = isPersian)
+                }
+
+                item { Spacer(modifier = Modifier.height(30.dp)) }
+            }
+        }
+    }
+}
+
+@Composable
+fun LifeScenarioCard(scenario: LifeScenario, isPersian: Boolean) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = SayvisSurfaceVariant),
+        border = BorderStroke(1.dp, SayvisBorder),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isPersian) scenario.domain.labelFa else scenario.domain.labelEn,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = SayvisGold
+                )
+                Text(
+                    text = "${(scenario.confidenceScore * 100).toInt()}% ${if (isPersian) "قابلیت تحقق" else "Model Confidence"}",
+                    fontSize = 11.sp,
+                    color = SayvisCyan
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "${if (isPersian) "فرضیه تصمیم: " else "Hypothesis: "} ${scenario.decisionHypothesis}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "${if (isPersian) "مسیر پیش‌بینی‌شده: " else "Projected Trajectory: "} ${scenario.projectedTrajectory}",
+                fontSize = 12.sp,
+                color = SayvisSilverMuted
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Risks & Opportunities
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = if (isPersian) "ریسک‌های شناسایی‌شده:" else "Detected Risks:", fontSize = 10.sp, color = SayvisAmberWarning, fontWeight = FontWeight.Bold)
+                    scenario.detectedRisks.forEach { r ->
+                        Text(text = "• $r", fontSize = 10.sp, color = SayvisSilverMuted)
+                    }
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = if (isPersian) "فرصت‌های رشد:" else "Opportunities:", fontSize = 10.sp, color = SayvisGreenSuccess, fontWeight = FontWeight.Bold)
+                    scenario.projectedOpportunities.forEach { o ->
+                        Text(text = "• $o", fontSize = 10.sp, color = SayvisSilverMuted)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LitSignalCard(signal: LitAnalysisSignal, isPersian: Boolean) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = SayvisSurfaceVariant.copy(alpha = 0.8f)),
+        border = BorderStroke(1.dp, SayvisBorder),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CandlestickChart, contentDescription = null, tint = SayvisCyan, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "${signal.assetSymbol} (${signal.timeframe})", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                }
+
+                Box(
+                    modifier = Modifier
+                        .background(SayvisCyan.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = if (isPersian) signal.signalType.labelFa else signal.signalType.labelEn,
+                        fontSize = 10.sp,
+                        color = SayvisCyan,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(text = if (isPersian) "ورود فرضی" else "Entry", fontSize = 10.sp, color = SayvisSilverMuted)
+                    Text(text = "$${signal.entryPrice}", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 12.sp)
+                }
+                Column {
+                    Text(text = if (isPersian) "حد ابطال" else "Stop", fontSize = 10.sp, color = SayvisSilverMuted)
+                    Text(text = "$${signal.invalidationStop}", fontWeight = FontWeight.Bold, color = SayvisRedAlert, fontSize = 12.sp)
+                }
+                Column {
+                    Text(text = if (isPersian) "هدف نقدینگی" else "Target", fontSize = 10.sp, color = SayvisSilverMuted)
+                    Text(text = "$${signal.takeProfitTarget}", fontWeight = FontWeight.Bold, color = SayvisGreenSuccess, fontSize = 12.sp)
+                }
+                Column {
+                    Text(text = "R:R", fontSize = 10.sp, color = SayvisSilverMuted)
+                    Text(text = "1:${signal.riskRewardRatio}", fontWeight = FontWeight.Bold, color = SayvisGold, fontSize = 12.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = signal.notes,
+                fontSize = 11.sp,
+                color = SayvisSilverMuted
+            )
+        }
+    }
+}
