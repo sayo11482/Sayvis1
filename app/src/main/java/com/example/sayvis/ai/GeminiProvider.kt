@@ -13,6 +13,19 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
+ * Reads the build-time key injected by the secrets plugin / AI Studio, if present.
+ * Top-level function so it is usable from constructor default parameter expressions.
+ */
+private fun buildConfigGeminiKey(): String {
+    return try {
+        val field = BuildConfig::class.java.getField("GEMINI_API_KEY")
+        (field.get(null) as? String)?.trim() ?: ""
+    } catch (_: Throwable) {
+        ""
+    }
+}
+
+/**
  * Google Gemini provider (generativelanguage REST API).
  *
  * Key resolution order:
@@ -20,7 +33,7 @@ import java.util.concurrent.TimeUnit
  * 2. Build-time key injected by the secrets plugin / AI Studio (BuildConfig.GEMINI_API_KEY).
  */
 class GeminiProvider(
-    private val keyProvider: () -> String = { SettingsStore.geminiKey.ifBlank { buildConfigKey() } },
+    private val keyProvider: () -> String = { SettingsStore.geminiKey.ifBlank { buildConfigGeminiKey() } },
     private val modelProvider: () -> String = { SettingsStore.geminiModel }
 ) : AIProvider {
 
@@ -30,15 +43,6 @@ class GeminiProvider(
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
-
-    private fun buildConfigKey(): String {
-        return try {
-            val field = BuildConfig::class.java.getField("GEMINI_API_KEY")
-            (field.get(null) as? String)?.trim() ?: ""
-        } catch (_: Throwable) {
-            ""
-        }
-    }
 
     private fun getApiKey(): String = keyProvider().trim()
 

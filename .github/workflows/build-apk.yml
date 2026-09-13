@@ -60,13 +60,15 @@ jobs:
         run: |
           ./gradlew assembleDebug --stacktrace > build-full.log 2>&1
           build_status=$?
-          # Surface compile errors as GitHub annotations so they are readable via the API
-          grep -E "^e: |error: |Caused by:" build-full.log | head -60 | while IFS= read -r line; do
-            echo "::error title=BuildError::${line:0:240}"
-          done
           if [ $build_status -ne 0 ]; then
-            echo "BUILD FAILED - full error section:"
-            grep -B2 -A8 "^e: \|FAILURE" build-full.log | head -100 || true
+            echo "BUILD FAILED - surfacing errors and committing the log for diagnosis"
+            grep -E "^e: |error: |Caused by:|What went wrong" -A 4 build-full.log | head -120 || true
+            tail -n 600 build-full.log > build-error.log
+            git config user.name "sayvis-builder[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add build-error.log -f
+            git commit -m "chore(bot): attach build error log [skip ci]" || echo "log unchanged"
+            git push || (git pull --rebase origin HEAD && git push)
             exit 1
           fi
 
