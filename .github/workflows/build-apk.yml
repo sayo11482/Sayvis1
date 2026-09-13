@@ -58,44 +58,56 @@ jobs:
 
       - name: Build debug APK
         run: |
-          # NOTE: GitHub runs this with `bash -e`; a failing gradle call would kill the
-          # script instantly, so we branch on it explicitly to keep control flow alive.
-          if ./gradlew assembleDebug --stacktrace > build-full.log 2>&1; then
-            echo "BUILD OK"
-          else
+          set +e
+          ./gradlew assembleDebug --stacktrace > build-full.log 2>&1
+          build_status=$?
+          echo "gradle exit code: $build_status"
+          if [ $build_status -ne 0 ]; then
             echo "BUILD FAILED - committing error log for diagnosis"
             {
-              echo "=== GRADLE BUILD FAILED ==="
+              echo "=== GRADLE BUILD FAILED (exit $build_status) ==="
               grep -E "^e: |error: |Caused by:|What went wrong" -A 4 build-full.log | head -140
               echo "=== TAIL OF FULL LOG ==="
               tail -n 400 build-full.log
-            } > build-error.log
+            } > build-error.log 2>&1
             git config user.name "sayvis-builder[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add -f build-error.log
-            git commit -m "chore(bot): attach build error log [skip ci]" || echo "no changes"
-            git push || (git pull --rebase origin HEAD && git push) || echo "PUSH FAILED"
+            git commit -m "chore(bot): attach build error log [skip ci]"
+            git push
+            if [ $? -ne 0 ]; then
+              git pull --rebase origin HEAD
+              git push
+            fi
             exit 1
           fi
+          exit 0
 
       - name: Run JVM unit tests (non-blocking for artifact delivery)
         run: |
-          if ./gradlew testDebugUnitTest --stacktrace > test-full.log 2>&1; then
-            echo "TESTS OK"
-          else
+          set +e
+          ./gradlew testDebugUnitTest --stacktrace > test-full.log 2>&1
+          test_status=$?
+          echo "test exit code: $test_status"
+          if [ $test_status -ne 0 ]; then
             echo "TESTS FAILED - committing test log for diagnosis"
             {
-              echo "=== UNIT TESTS FAILED ==="
+              echo "=== UNIT TESTS FAILED (exit $test_status) ==="
               grep -E "^e: |FAILED|error:" -B2 -A10 test-full.log | head -150
               tail -n 200 test-full.log
-            } > test-error.log
+            } > test-error.log 2>&1
             git config user.name "sayvis-builder[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add -f test-error.log
-            git commit -m "chore(bot): attach test error log [skip ci]" || echo "no changes"
-            git push || (git pull --rebase origin HEAD && git push) || echo "PUSH FAILED"
+            git commit -m "chore(bot): attach test error log [skip ci]"
+            git push
+            if [ $? -ne 0 ]; then
+              git pull --rebase origin HEAD
+              git push
+            fi
             exit 1
           fi
+          exit 0
         continue-on-error: true
 
       - name: Show build outputs
