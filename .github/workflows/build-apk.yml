@@ -1,0 +1,75 @@
+name: Build SAYVIS APK
+
+on:
+  push:
+    branches:
+      - main
+      - 'arena/**'
+  workflow_dispatch:
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Assemble Debug APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install required Android SDK components
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+          sdkmanager --install "platforms;android-36.1" > /dev/null 2>&1 \
+            || echo "::warning::platforms;android-36.1 not found as sdkmanager package - relying on AGP auto-install"
+
+      - name: Generate debug signing keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore debug.keystore \
+            -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Run JVM unit tests (non-blocking for artifact delivery)
+        run: ./gradlew testDebugUnitTest --stacktrace
+        continue-on-error: true
+
+      - name: Show build outputs
+        run: ls -la app/build/outputs/apk/debug/
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sayvis-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+
+      - name: Publish APK to branch (git transport)
+        if: success()
+        run: |
+          git config user.name "sayvis-builder[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp app/build/outputs/apk/debug/app-debug.apk SAYVIS-v1.0-debug.apk
+          git add SAYVIS-v1.0-debug.apk
+          git commit -m "chore(bot): attach debug APK build artifact [skip ci]" || echo "nothing to commit"
+          git push || (git pull --rebase origin HEAD && git push)
