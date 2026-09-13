@@ -1,11 +1,21 @@
 package com.example.sayvis.ai
 
 import android.util.Log
+import com.example.sayvis.core.SettingsStore
 
+/**
+ * Central AI Orchestration Core.
+ *
+ * Routes every query across multiple cloud model providers (Gemini, OpenRouter, Groq)
+ * according to the owner's provider choice, with automatic fallback to the sovereign
+ * on-device cognitive provider when offline, unconfigured or on provider failure.
+ */
 class AIOrchestrator(
-    private val geminiProvider: GeminiProvider = GeminiProvider(),
-    private val localProvider: LocalCognitiveProvider = LocalCognitiveProvider()
+    private val cloudProviders: List<AIProvider> = listOf(GeminiProvider()),
+    private val localProvider: LocalCognitiveProvider = LocalCognitiveProvider(),
+    private val choiceProvider: () -> String = { SettingsStore.providerChoice }
 ) {
+
     suspend fun querySAYVIS(
         prompt: String,
         uicContext: String,
@@ -24,15 +34,35 @@ class AIOrchestrator(
             return base.copy(text = "$notice\n\n${base.text}")
         }
 
-        if (!forceOffline && geminiProvider.isAvailable) {
-            try {
-                return geminiProvider.generateResponse(prompt, uicContext, systemContext, languageFa)
-            } catch (e: Exception) {
-                Log.w("AIOrchestrator", "Gemini provider failed, falling back to Local Provider: ${e.message}")
+        val choice = choiceProvider()
+        val ordered: List<AIProvider> = when (choice) {
+            SettingsStore.PROVIDER_GEMINI ->
+                cloudProviders.filter { it.providerType == ProviderType.GEMINI }
+            SettingsStore.PROVIDER_OPENROUTER ->
+                cloudProviders.filter { it.providerType == ProviderType.OPEN_ROUTER }
+            SettingsStore.PROVIDER_GROQ ->
+                cloudProviders.filter { it.providerType == ProviderType.GROQ_ROUTER }
+            SettingsStore.PROVIDER_LOCAL ->
+                emptyList()
+            else -> cloudProviders // auto: try every configured provider in order
+        }
+
+        if (!forceOffline) {
+            for (provider in ordered) {
+                if (provider.isAvailable) {
+                    try {
+                        return provider.generateResponse(prompt, uicContext, systemContext, languageFa)
+                    } catch (e: Exception) {
+                        Log.w(
+                            "AIOrchestrator",
+                            "${provider.providerType.name} failed, trying next provider: ${e.message}"
+                        )
+                    }
+                }
             }
         }
 
-        // Fallback to local on-device provider
+        // Fallback to the sovereign on-device provider
         return localProvider.generateResponse(prompt, uicContext, systemContext, languageFa)
     }
 }

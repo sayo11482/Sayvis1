@@ -1,5 +1,8 @@
 package com.example.sayvis.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +21,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Send
@@ -58,12 +63,23 @@ fun ChatScreen(
     messages: List<ChatMessage>,
     avatarState: AvatarState,
     isPersian: Boolean,
+    cloudStatus: String,
+    pendingAttachment: String?,
+    onAttachFile: (Uri) -> Unit,
+    onClearAttachment: () -> Unit,
     onSendMessage: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
     var isVoiceListening by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+
+    // SAF file picker: lets the owner attach ANY file for AI analysis
+    val filePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) onAttachFile(uri)
+    }
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
@@ -97,7 +113,7 @@ fun ChatScreen(
                     text = if (avatarState == AvatarState.THINKING) {
                         if (isPersian) "در حال پردازش شناختی..." else "Reasoning over UIC context..."
                     } else {
-                        if (isPersian) "آنلاین • مدل ارکستراسیون هوش مصنوعی" else "Online • Multi-Provider Orchestrator"
+                        cloudStatus
                     },
                     fontSize = 11.sp,
                     color = SayvisCyan
@@ -210,11 +226,45 @@ fun ChatScreen(
                 Icon(Icons.Default.Mic, contentDescription = null, tint = SayvisGold, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = if (isPersian) "در حال شنود صدا (VAD + پشتیبانی فارسی)..." else "Listening... (VAD active)",
+                    text = if (isPersian) "در حال شنوت صدا (VAD + پشتیبانی فارسی)..." else "Listening... (VAD active)",
                     fontSize = 12.sp,
                     color = SayvisGold,
                     fontWeight = FontWeight.SemiBold
                 )
+            }
+        }
+
+        // Pending file attachment chip (AI file analysis)
+        if (pendingAttachment != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SayvisSurfaceVariant)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.AttachFile,
+                    contentDescription = "Attached file",
+                    tint = SayvisGold,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = (pendingAttachment.lineSequence().firstOrNull() ?: "").take(48),
+                    fontSize = 11.sp,
+                    color = SayvisGold,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onClearAttachment, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Remove attachment",
+                        tint = SayvisSilverMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
             }
         }
 
@@ -244,6 +294,24 @@ fun ChatScreen(
                     imageVector = if (isVoiceListening) Icons.Default.Mic else Icons.Default.MicOff,
                     contentDescription = "Voice Input",
                     tint = if (isVoiceListening) Color.Black else SayvisSilverMuted
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Attach any file for AI analysis
+            IconButton(
+                onClick = { filePicker.launch(arrayOf("*/*")) },
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(SayvisSurfaceVariant)
+                    .testTag("chat_attach_btn")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AttachFile,
+                    contentDescription = "Attach file",
+                    tint = SayvisCyan
                 )
             }
 

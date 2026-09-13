@@ -3,6 +3,7 @@ package com.example.sayvis.data.repository
 import com.example.sayvis.data.local.AuditEventEntity
 import com.example.sayvis.data.local.AwareOpportunityEntity
 import com.example.sayvis.data.local.DeviceEntity
+import com.example.sayvis.data.local.MemoryItemEntity
 import com.example.sayvis.data.local.MissionEntity
 import com.example.sayvis.data.local.SayvisDatabase
 import com.example.sayvis.data.local.UicAttributeEntity
@@ -10,6 +11,7 @@ import com.example.sayvis.model.AuditEvent
 import com.example.sayvis.model.AwareOpportunity
 import com.example.sayvis.model.ContextSnapshot
 import com.example.sayvis.model.Device
+import com.example.sayvis.model.MemoryItem
 import com.example.sayvis.model.Mission
 import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.model.RiskLevel

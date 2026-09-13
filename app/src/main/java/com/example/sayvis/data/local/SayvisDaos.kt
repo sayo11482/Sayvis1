@@ -101,6 +101,9 @@ interface MemoryDao {
 
     @Query("DELETE FROM memory_items WHERE id = :id")
     suspend fun deleteMemory(id: String)
+
+    @Query("DELETE FROM memory_items")
+    suspend fun clearAll()
 }
 
 @Dao

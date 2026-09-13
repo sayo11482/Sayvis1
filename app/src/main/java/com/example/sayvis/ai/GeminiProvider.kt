@@ -1,6 +1,7 @@
 package com.example.sayvis.ai
 
 import com.example.BuildConfig
+import com.example.sayvis.core.SettingsStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -11,15 +12,26 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-class GeminiProvider : AIProvider {
+/**
+ * Google Gemini provider (generativelanguage REST API).
+ *
+ * Key resolution order:
+ * 1. Runtime key entered by the owner in the in-app Settings screen (SharedPreferences).
+ * 2. Build-time key injected by the secrets plugin / AI Studio (BuildConfig.GEMINI_API_KEY).
+ */
+class GeminiProvider(
+    private val keyProvider: () -> String = { SettingsStore.geminiKey.ifBlank { buildConfigKey() } },
+    private val modelProvider: () -> String = { SettingsStore.geminiModel }
+) : AIProvider {
+
     override val providerType: ProviderType = ProviderType.GEMINI
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
-    private fun getApiKey(): String {
+    private fun buildConfigKey(): String {
         return try {
             val field = BuildConfig::class.java.getField("GEMINI_API_KEY")
             (field.get(null) as? String)?.trim() ?: ""
@@ -27,6 +39,8 @@ class GeminiProvider : AIProvider {
             ""
         }
     }
+
+    private fun getApiKey(): String = keyProvider().trim()
 
     override val isAvailable: Boolean
         get() {
@@ -44,20 +58,13 @@ class GeminiProvider : AIProvider {
         val apiKey = getApiKey()
 
         if (apiKey.isBlank() || apiKey == "MY_GEMINI_API_KEY") {
-            throw IllegalStateException("Gemini API key is unconfigured in AI Studio Secrets panel.")
+            throw IllegalStateException(
+                "Gemini API key is not set. Open Settings and paste a free key from aistudio.google.com/apikey"
+            )
         }
 
-        val systemInstruction = """
-            You are SAYVIS (Persian: سایویس / سایو), a sovereign personal AI operating layer and agent for your human owner.
-            You are NOT a casual chatbot. You are precise, calm, highly competent, security-minded, and respectful of owner consent.
-            User Cognitive Model (UIC) Context:
-            $uicContext
-            
-            System State & Context:
-            $systemContext
-            
-            Language Preference: ${if (languageFa) "Farsi / Persian (فارسی)" else "English"}
-        """.trimIndent()
+        val systemInstruction = PromptFactory.buildSystemPrompt(uicContext, systemContext, languageFa)
+        val model = modelProvider().ifBlank { SettingsStore.DEFAULT_GEMINI_MODEL }
 
         val jsonBody = JSONObject().apply {
             put("contents", JSONArray().apply {
@@ -71,7 +78,7 @@ class GeminiProvider : AIProvider {
         }
 
         val request = Request.Builder()
-            .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey")
+            .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey")
             .post(jsonBody.toString().toRequestBody("application/json".toMediaType()))
             .build()
 
@@ -86,7 +93,8 @@ class GeminiProvider : AIProvider {
         val candidates = resJson.optJSONArray("candidates")
         val content = candidates?.optJSONObject(0)?.optJSONObject("content")
         val parts = content?.optJSONArray("parts")
-        val text = parts?.optJSONObject(0)?.optString("text") ?: "No output received from SAYVIS Gemini Node."
+        val text = parts?.optJSONObject(0)?.optString("text")
+            ?: "No output received from SAYVIS Gemini Node."
 
         AIResponse(
             text = text,

@@ -39,10 +39,17 @@ private val SayvisDarkColorScheme = darkColorScheme(
 
 @Composable
 fun SayvisTheme(
+    accentColor: Color? = null,
     content: @Composable () -> Unit
 ) {
+    // The AI can override the accent color at runtime (self-restyle protocol)
+    val scheme = if (accentColor != null) {
+        SayvisDarkColorScheme.copy(primary = accentColor)
+    } else {
+        SayvisDarkColorScheme
+    }
     MaterialTheme(
-        colorScheme = SayvisDarkColorScheme,
+        colorScheme = scheme,
         typography = Typography,
         content = content
     )

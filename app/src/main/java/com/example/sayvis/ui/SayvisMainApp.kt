@@ -25,9 +25,11 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -64,8 +66,10 @@ import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.ui.screens.AwareScreen
 import com.example.sayvis.ui.screens.ChatScreen
 import com.example.sayvis.ui.screens.HomeScreen
+import com.example.sayvis.ui.screens.MemoryScreen
 import com.example.sayvis.ui.screens.MissionsScreen
 import com.example.sayvis.ui.screens.SecurityDevicesScreen
+import com.example.sayvis.ui.screens.SettingsScreen
 import com.example.sayvis.ui.screens.SimulationTradingScreen
 import com.example.sayvis.ui.screens.UicScreen
 import com.example.sayvis.ui.theme.SayvisAmberWarning
@@ -99,6 +103,8 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
     val devices by viewModel.devices.collectAsState()
     val auditEvents by viewModel.auditEvents.collectAsState()
     val tradingGate by viewModel.tradingGate.collectAsState()
+    val memories by viewModel.memories.collectAsState()
+    val pendingAttachment by viewModel.pendingAttachment.collectAsState()
 
     val layoutDirection = if (isPersian) LayoutDirection.Rtl else LayoutDirection.Ltr
 
@@ -214,7 +220,9 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         NavDest(SayvisScreen.AWARE, if (isPersian) "ادراک" else "AWARE", Icons.Default.Radar, "nav_aware"),
                         NavDest(SayvisScreen.MISSIONS, if (isPersian) "مأموریت‌ها" else "Missions", Icons.Default.Flag, "nav_missions"),
                         NavDest(SayvisScreen.SECURITY, if (isPersian) "امنیت" else "Security", Icons.Default.Security, "nav_security"),
-                        NavDest(SayvisScreen.SIMULATION, if (isPersian) "شبیه‌ساز" else "Simulation", Icons.Default.AutoGraph, "nav_sim")
+                        NavDest(SayvisScreen.SIMULATION, if (isPersian) "شبیه‌ساز" else "Simulation", Icons.Default.AutoGraph, "nav_sim"),
+                        NavDest(SayvisScreen.MEMORY, if (isPersian) "حافظه" else "Memory", Icons.Default.Memory, "nav_memory"),
+                        NavDest(SayvisScreen.SETTINGS, if (isPersian) "تنظیمات" else "Settings", Icons.Default.Settings, "nav_settings")
                     )
 
                     Row(
@@ -278,6 +286,10 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         messages = chatMessages,
                         avatarState = avatarState,
                         isPersian = isPersian,
+                        cloudStatus = viewModel.cloudStatusText(),
+                        pendingAttachment = pendingAttachment,
+                        onAttachFile = { uri -> viewModel.attachFile(uri) },
+                        onClearAttachment = { viewModel.clearAttachment() },
                         onSendMessage = { viewModel.sendMessage(it) }
                     )
 
@@ -332,6 +344,18 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         lifeScenarios = viewModel.lifeScenarios,
                         tradingGate = tradingGate,
                         litSignals = viewModel.litSignals,
+                        isPersian = isPersian
+                    )
+
+                    SayvisScreen.MEMORY -> MemoryScreen(
+                        memories = memories,
+                        isPersian = isPersian,
+                        onDeleteMemory = { viewModel.deleteMemory(it) },
+                        onClearAll = { viewModel.clearAllMemories() }
+                    )
+
+                    SayvisScreen.SETTINGS -> SettingsScreen(
+                        viewModel = viewModel,
                         isPersian = isPersian
                     )
                 }
