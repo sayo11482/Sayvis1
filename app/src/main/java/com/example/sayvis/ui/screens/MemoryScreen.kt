@@ -22,6 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -104,7 +105,6 @@ fun MemoryScreen(
                     contentDescription = null,
                     tint = SayvisSilverMuted,
                     modifier = Modifier.size(36.dp)
- dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -134,12 +134,6 @@ fun MemoryScreen(
         }
     }
 }
-
-@Composable
-private fun rememberSimpleDateFormat(): SimpleDateFormat =
-    androidx.compose.runtime.remember { SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()) }
-
-private fun rememberSimpleDateFormatPattern(): SimpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault())
 
 @Composable
 private fun MemoryCard(

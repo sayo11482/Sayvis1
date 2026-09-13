@@ -225,6 +225,23 @@ class SayvisRepository(private val database: SayvisDatabase) {
         )
     }
 
+    // --- Memory System (self-learning substrate) ---
+    val allMemories: Flow<List<MemoryItem>> = database.memoryDao().getAllMemoriesFlow().map { entities ->
+        entities.map { it.toDomain() }
+    }
+
+    suspend fun addMemory(item: MemoryItem) {
+        database.memoryDao().insertMemory(MemoryItemEntity.fromDomain(item))
+    }
+
+    suspend fun deleteMemory(id: String) {
+        database.memoryDao().deleteMemory(id)
+    }
+
+    suspend fun clearMemories() {
+        database.memoryDao().clearAll()
+    }
+
     // Helper to build real-time context snapshot for AWARE engine
     fun getContextSnapshot(
         activeMissionsCount: Int,
