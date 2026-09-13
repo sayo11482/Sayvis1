@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.example.sayvis.ui.SayvisViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -36,15 +37,31 @@ class SayvisViewModelTest {
         val viewModel = SayvisViewModel(app)
 
         // Drain the main looper so any coroutines dispatched to Main run to completion.
-        shadowOf(Looper.getMainLooper()).idle()
+        val looper = shadowOf(Looper.getMainLooper())
+        looper.idle()
 
         assertNotNull(viewModel.repository)
         assertNotNull(viewModel.awareEngine)
         assertNotNull(viewModel.contextSnapshot.value)
         assertNotNull(viewModel.avatarState.value)
 
-        // The StateFlow must serve its initialValue even before any UI subscribes.
-        assertEquals(2, viewModel.contextSnapshot.value.activeMissionsCount)
-        assertEquals("Online", viewModel.contextSnapshot.value.networkStatus)
+        // Since v1.2 the context snapshot is a LIVE combine over the real database and
+        // telemetry (the AWARE engine subscribes to it from init, so WhileSubscribed
+        // activates immediately). Wait, bounded, for the first real emission to replace
+        // the placeholder initial value, then assert the real fresh-install state.
+        val deadline = System.currentTimeMillis() + 10_000
+        while (viewModel.contextSnapshot.value.activeMissionsCount != 0 &&
+            System.currentTimeMillis() < deadline
+        ) {
+            looper.idle()
+            Thread.sleep(25)
+        }
+        // A fresh install has zero active missions - the placeholder demo value (2) is gone.
+        assertEquals(0, viewModel.contextSnapshot.value.activeMissionsCount)
+        // networkStatus always comes from the repository's fixed vocabulary.
+        assertTrue(
+            viewModel.contextSnapshot.value.networkStatus == "Online - SAYVIS Gateway Secure Enclave" ||
+                viewModel.contextSnapshot.value.networkStatus == "Offline - Sovereign Local Safe Mode"
+        )
     }
 }
