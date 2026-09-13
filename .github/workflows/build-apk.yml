@@ -22,6 +22,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Extract app version
+        id: ver
+        run: echo "version=$(grep -oP 'versionName = \"\K[^\"]+' app/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -71,10 +75,43 @@ jobs:
 
       - name: Publish APK to branch (git transport)
         if: success()
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
         run: |
           git config user.name "sayvis-builder[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp app/build/outputs/apk/debug/app-debug.apk SAYVIS-v1.1-debug.apk
-          git add SAYVIS-v1.1-debug.apk debug.keystore
-          git commit -m "chore(bot): attach debug APK build artifact + signing key [skip ci]" || echo "nothing to commit"
+          cp "app/build/outputs/apk/debug/app-debug.apk" "SAYVIS-v${VERSION}-debug.apk"
+          git add "SAYVIS-v${VERSION}-debug.apk" debug.keystore
+          git commit -m "chore(bot): attach debug APK v${VERSION} [skip ci]" || echo "nothing to commit"
           git push || (git pull --rebase origin HEAD && git push)
+
+      - name: Create GitHub Release with APK (public download page)
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          APK="SAYVIS-v${VERSION}-debug.apk"
+          cp "app/build/outputs/apk/debug/app-debug.apk" "$APK"
+          cat > release_notes.md <<EOF
+          📦 SAYVIS v${VERSION} — سیستم‌عامل هوش مصنوعی شخصی (اندروید)
+
+          🇮🇷 نصب:
+          ۱. فایل APK را از بخش Assets همین صفحه دانلود کنید
+          ۲. فایل را باز کنید و اجازهٔ نصب از «منابع ناشناس» را بدهید
+          ۳. اگر نسخهٔ 1.0 نصب دارید، اول آن را حذف کنید (کلید امضا تغییر کرده)
+
+          🇬🇧 Install:
+          1. Download the APK from the Assets section below
+          2. Open it and allow installing unknown apps
+          3. If v1.0 is installed, uninstall it first (signing key changed)
+          EOF
+          if gh release view "v${VERSION}" > /dev/null 2>&1; then
+            gh release upload "v${VERSION}" "$APK" --clobber
+          else
+            gh release create "v${VERSION}" \
+              --title "SAYVIS v${VERSION}" \
+              --notes-file release_notes.md \
+              --target "$GITHUB_SHA" \
+              "$APK"
+          fi
