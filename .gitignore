@@ -15,4 +15,5 @@
 .cxx
 local.properties
 .env
-debug.keystore
+# NOTE: debug.keystore IS committed intentionally so CI builds keep a stable
+# signature (it is the well-known Android debug key, not a real secret).

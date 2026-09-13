@@ -39,13 +39,18 @@ jobs:
           sdkmanager --install "platforms;android-36.1" > /dev/null 2>&1 \
             || echo "::warning::platforms;android-36.1 not found as sdkmanager package - relying on AGP auto-install"
 
-      - name: Generate debug signing keystore
+      - name: Ensure debug signing keystore exists (stable across builds)
         run: |
-          keytool -genkeypair -v \
-            -keystore debug.keystore \
-            -storepass android -keypass android \
-            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=Android Debug,O=Android,C=US"
+          if [ ! -f debug.keystore ]; then
+            echo "No committed keystore found - generating a new one (will be committed for stable signatures)."
+            keytool -genkeypair -v \
+              -keystore debug.keystore \
+              -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          else
+            echo "Reusing committed debug.keystore for a stable signature."
+          fi
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
@@ -70,6 +75,6 @@ jobs:
           git config user.name "sayvis-builder[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           cp app/build/outputs/apk/debug/app-debug.apk SAYVIS-v1.0-debug.apk
-          git add SAYVIS-v1.0-debug.apk
-          git commit -m "chore(bot): attach debug APK build artifact [skip ci]" || echo "nothing to commit"
+          git add SAYVIS-v1.0-debug.apk debug.keystore
+          git commit -m "chore(bot): attach debug APK build artifact + signing key [skip ci]" || echo "nothing to commit"
           git push || (git pull --rebase origin HEAD && git push)
