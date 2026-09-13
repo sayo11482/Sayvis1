@@ -58,28 +58,42 @@ jobs:
 
       - name: Build debug APK
         run: |
-          ./gradlew assembleDebug --stacktrace > build-full.log 2>&1
-          build_status=$?
-          if [ $build_status -ne 0 ]; then
-            echo "BUILD FAILED - surfacing errors and committing the log for diagnosis"
-            grep -E "^e: |error: |Caused by:|What went wrong" -A 4 build-full.log | head -120 || true
-            tail -n 600 build-full.log > build-error.log
+          # NOTE: GitHub runs this with `bash -e`; a failing gradle call would kill the
+          # script instantly, so we branch on it explicitly to keep control flow alive.
+          if ./gradlew assembleDebug --stacktrace > build-full.log 2>&1; then
+            echo "BUILD OK"
+          else
+            echo "BUILD FAILED - committing error log for diagnosis"
+            {
+              echo "=== GRADLE BUILD FAILED ==="
+              grep -E "^e: |error: |Caused by:|What went wrong" -A 4 build-full.log | head -140
+              echo "=== TAIL OF FULL LOG ==="
+              tail -n 400 build-full.log
+            } > build-error.log
             git config user.name "sayvis-builder[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add build-error.log -f
-            git commit -m "chore(bot): attach build error log [skip ci]" || echo "log unchanged"
-            git push || (git pull --rebase origin HEAD && git push)
+            git add -f build-error.log
+            git commit -m "chore(bot): attach build error log [skip ci]" || echo "no changes"
+            git push || (git pull --rebase origin HEAD && git push) || echo "PUSH FAILED"
             exit 1
           fi
 
       - name: Run JVM unit tests (non-blocking for artifact delivery)
         run: |
-          ./gradlew testDebugUnitTest --stacktrace > test-full.log 2>&1
-          test_status=$?
-          grep -E "^e: |error: |FAILED" test-full.log | head -40 | while IFS= read -r line; do
-            echo "::error title=TestError::${line:0:240}"
-          done
-          if [ $test_status -ne 0 ]; then
+          if ./gradlew testDebugUnitTest --stacktrace > test-full.log 2>&1; then
+            echo "TESTS OK"
+          else
+            echo "TESTS FAILED - committing test log for diagnosis"
+            {
+              echo "=== UNIT TESTS FAILED ==="
+              grep -E "^e: |FAILED|error:" -B2 -A10 test-full.log | head -150
+              tail -n 200 test-full.log
+            } > test-error.log
+            git config user.name "sayvis-builder[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -f test-error.log
+            git commit -m "chore(bot): attach test error log [skip ci]" || echo "no changes"
+            git push || (git pull --rebase origin HEAD && git push) || echo "PUSH FAILED"
             exit 1
           fi
         continue-on-error: true
@@ -102,6 +116,8 @@ jobs:
           git config user.name "sayvis-builder[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           cp "app/build/outputs/apk/debug/app-debug.apk" "SAYVIS-v${VERSION}-debug.apk"
+          rm -f build-error.log test-error.log
+          git rm -q --cached build-error.log test-error.log 2>/dev/null || true
           git add "SAYVIS-v${VERSION}-debug.apk" debug.keystore
           git commit -m "chore(bot): attach debug APK v${VERSION} [skip ci]" || echo "nothing to commit"
           git push || (git pull --rebase origin HEAD && git push)
