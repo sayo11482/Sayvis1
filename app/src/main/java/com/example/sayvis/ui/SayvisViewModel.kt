@@ -70,23 +70,12 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val aiOrchestrator = AIOrchestrator()
     val awareEngine = AwareEngine(repository)
 
-    init {
-        viewModelScope.launch {
-            contextSnapshot.collect { snap ->
-                awareEngine.onSystemStateChanged(
-                    com.example.sayvis.model.SystemState(
-                        batteryLevel = if (snap.cognitiveLoad == "Fatigue Risk") 18 else 85,
-                        isCharging = false,
-                        networkType = if (snap.networkStatus.contains("Offline")) "NONE" else "WIFI",
-                        activeMissionsCount = snap.activeMissionsCount,
-                        blockedTasksCount = snap.blockedTasksCount,
-                        emergencyLockActive = snap.emergencyLockActive,
-                        focusWindowActive = snap.focusWindow.contains("Deep Work", ignoreCase = true)
-                    )
-                )
-            }
-        }
-    }
+    // NOTE: The AWARE system-state listener previously lived in an `init` block here.
+    // Kotlin initializes properties and init blocks in textual order, so `contextSnapshot`
+    // (declared further below) was still NULL when this block collected it, which crashed
+    // the app on launch (NullPointerException in SayvisViewModel.<init>).
+    // The listener now starts in an init block placed AFTER all state properties —
+    // see the bottom of this class.
 
     // Screen navigation
     private val _currentScreen = MutableStateFlow(SayvisScreen.HOME)
@@ -214,6 +203,27 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             networkStatus = "Online"
         )
     )
+
+    // NOTE: This init block MUST stay AFTER the `contextSnapshot` property declaration.
+    // Kotlin runs property initializers and init blocks top-to-bottom; collecting
+    // `contextSnapshot` before it is assigned throws an NPE at app launch.
+    init {
+        viewModelScope.launch {
+            contextSnapshot.collect { snap ->
+                awareEngine.onSystemStateChanged(
+                    com.example.sayvis.model.SystemState(
+                        batteryLevel = if (snap.cognitiveLoad == "Fatigue Risk") 18 else 85,
+                        isCharging = false,
+                        networkType = if (snap.networkStatus.contains("Offline")) "NONE" else "WIFI",
+                        activeMissionsCount = snap.activeMissionsCount,
+                        blockedTasksCount = snap.blockedTasksCount,
+                        emergencyLockActive = snap.emergencyLockActive,
+                        focusWindowActive = snap.focusWindow.contains("Deep Work", ignoreCase = true)
+                    )
+                )
+            }
+        }
+    }
 
     fun navigateTo(screen: SayvisScreen) {
         _currentScreen.value = screen

@@ -74,7 +74,7 @@ jobs:
         run: |
           git config user.name "sayvis-builder[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp app/build/outputs/apk/debug/app-debug.apk SAYVIS-v1.0-debug.apk
-          git add SAYVIS-v1.0-debug.apk debug.keystore
+          cp app/build/outputs/apk/debug/app-debug.apk SAYVIS-v1.1-debug.apk
+          git add SAYVIS-v1.1-debug.apk debug.keystore
           git commit -m "chore(bot): attach debug APK build artifact + signing key [skip ci]" || echo "nothing to commit"
           git push || (git pull --rebase origin HEAD && git push)
