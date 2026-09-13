@@ -142,12 +142,19 @@ fun ActionConsentDialog(
                         .padding(10.dp)
                 ) {
                     Column {
-                        Text(
-                            text = "Permission: ${opportunity.proposedAction.requiredPermission}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
+                        Row {
+                            Text(
+                                text = if (isPersian) "مجوز لازم: " else "Permission: ",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                            Text(
+                                text = opportunity.proposedAction.requiredPermission,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = opportunity.proposedAction.targetPayload,

@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sayvis.model.Mission
+import com.example.sayvis.ui.components.SayvisText
 import com.example.sayvis.model.MissionPriority
 import com.example.sayvis.model.MissionStatus
 import com.example.sayvis.model.MissionTask
@@ -240,19 +241,21 @@ fun MissionItemCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = mission.title,
+            SayvisText(
+                source = mission.title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.White,
+                markTranslated = true
             )
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            Text(
-                text = mission.description,
+            SayvisText(
+                source = mission.description,
                 style = MaterialTheme.typography.bodySmall,
-                color = SayvisSilverMuted
+                color = SayvisSilverMuted,
+                markTranslated = true
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -269,11 +272,19 @@ fun MissionItemCard(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            Text(
-                text = "${if (isPersian) "مهلت: " else "Deadline: "} ${mission.deadline}",
-                fontSize = 11.sp,
-                color = SayvisSilverMuted
-            )
+            Row {
+                Text(
+                    text = if (isPersian) "مهلت: " else "Deadline: ",
+                    fontSize = 11.sp,
+                    color = SayvisSilverMuted
+                )
+                SayvisText(
+                    source = mission.deadline,
+                    fontSize = 11.sp,
+                    color = SayvisSilverMuted,
+                    markTranslated = true
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -310,18 +321,28 @@ fun MissionItemCard(
                     Spacer(modifier = Modifier.width(6.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = task.title,
+                        SayvisText(
+                            source = task.title,
                             fontSize = 12.sp,
-                            color = if (task.isCompleted) SayvisSilverMuted else Color.White
+                            color = if (task.isCompleted) SayvisSilverMuted else Color.White,
+                            markTranslated = true
                         )
                         if (task.isBlocked) {
-                            Text(
-                                text = "⚠️ ${task.blockerReason ?: "Blocked dependency"}",
-                                fontSize = 10.sp,
-                                color = SayvisRedAlert,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            Row {
+                                Text(
+                                    text = "⚠️ ",
+                                    fontSize = 10.sp,
+                                    color = SayvisRedAlert,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                SayvisText(
+                                    source = task.blockerReason ?: "Blocked dependency",
+                                    fontSize = 10.sp,
+                                    color = SayvisRedAlert,
+                                    fontWeight = FontWeight.SemiBold,
+                                    markTranslated = true
+                                )
+                            }
                         }
                     }
                 }

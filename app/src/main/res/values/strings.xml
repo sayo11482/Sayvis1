@@ -6,4 +6,28 @@
     <string name="aware_title">AWARE Engine</string>
     <string name="missions_title">Missions</string>
     <string name="audit_title">Security &amp; Audit</string>
+
+    <!-- Primary navigation: four general categories -->
+    <string name="nav_home">Home</string>
+    <string name="nav_assistant">Assistant</string>
+    <string name="nav_tools">Tools</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Application Settings</string>
+    <string name="settings_language">Application language</string>
+    <string name="settings_ai_api">Artificial Intelligence &amp; API</string>
+    <string name="settings_trading_gateway">Trading Terminal Gateway</string>
+    <string name="settings_automation">Automation &amp; Scripting</string>
+    <string name="settings_security">Security &amp; Privacy</string>
+
+    <!-- Trading gateway -->
+    <string name="gateway_connect">Connect</string>
+    <string name="gateway_disconnect">Disconnect</string>
+    <string name="gateway_test">Test gateway</string>
+
+    <!-- Global toggles -->
+    <string name="emergency_lock_on">Emergency lock engaged</string>
+    <string name="emergency_lock_off">Normal security</string>
+    <string name="offline_mode">Offline mode</string>
 </resources>

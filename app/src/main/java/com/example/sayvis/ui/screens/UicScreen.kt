@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sayvis.model.PrivacyLevel
 import com.example.sayvis.model.UicAttribute
+import com.example.sayvis.ui.components.SayvisText
 import com.example.sayvis.model.UicCategory
 import com.example.sayvis.model.UicStatus
 import com.example.sayvis.ui.theme.SayvisAmberWarning
@@ -294,19 +295,21 @@ fun UicAttributeCard(
             Spacer(modifier = Modifier.height(6.dp))
 
             // Title & Value
-            Text(
-                text = attribute.title,
+            SayvisText(
+                source = attribute.title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.White,
+                markTranslated = true
             )
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            Text(
-                text = attribute.value,
+            SayvisText(
+                source = attribute.value,
                 style = MaterialTheme.typography.bodyMedium,
-                color = SayvisSilverMuted
+                color = SayvisSilverMuted,
+                markTranslated = true
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -317,12 +320,19 @@ fun UicAttributeCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = "${if (isPersian) "منشأ: " else "Provenance: "} ${attribute.provenance}",
-                    fontSize = 10.sp,
-                    color = SayvisSilverMuted.copy(alpha = 0.8f),
-                    modifier = Modifier.weight(1f)
-                )
+                Row(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isPersian) "منشأ: " else "Provenance: ",
+                        fontSize = 10.sp,
+                        color = SayvisSilverMuted.copy(alpha = 0.8f)
+                    )
+                    SayvisText(
+                        source = attribute.provenance,
+                        fontSize = 10.sp,
+                        color = SayvisSilverMuted.copy(alpha = 0.8f),
+                        markTranslated = true
+                    )
+                }
                 Text(
                     text = "${(attribute.confidence * 100).toInt()}% ${if (isPersian) "اطمینان" else "Confidence"}",
                     fontSize = 11.sp,

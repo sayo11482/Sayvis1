@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sayvis.model.LifeScenario
+import com.example.sayvis.ui.components.SayvisText
 import com.example.sayvis.model.LitAnalysisSignal
 import com.example.sayvis.model.TradingGateState
 import com.example.sayvis.ui.theme.SayvisAmberWarning
@@ -64,9 +65,11 @@ fun SimulationTradingScreen(
     tradingGate: TradingGateState,
     litSignals: List<LitAnalysisSignal>,
     isPersian: Boolean,
+    initialTab: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    var selectedTab by remember { mutableStateOf(0) } // 0: Life Simulation, 1: LIT Trading Intelligence
+    // 0: Life Simulation, 1: LIT Trading Intelligence
+    var selectedTab by remember { mutableStateOf(initialTab) }
 
     Column(
         modifier = modifier
@@ -265,20 +268,37 @@ fun LifeScenarioCard(scenario: LifeScenario, isPersian: Boolean) {
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            Text(
-                text = "${if (isPersian) "فرضیه تصمیم: " else "Hypothesis: "} ${scenario.decisionHypothesis}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+            Row {
+                Text(
+                    text = if (isPersian) "فرضیه تصمیم: " else "Hypothesis: ",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                SayvisText(
+                    source = scenario.decisionHypothesis,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    markTranslated = true
+                )
+            }
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            Text(
-                text = "${if (isPersian) "مسیر پیش‌بینی‌شده: " else "Projected Trajectory: "} ${scenario.projectedTrajectory}",
-                fontSize = 12.sp,
-                color = SayvisSilverMuted
-            )
+            Row {
+                Text(
+                    text = if (isPersian) "مسیر پیش‌بینی‌شده: " else "Projected Trajectory: ",
+                    fontSize = 12.sp,
+                    color = SayvisSilverMuted
+                )
+                SayvisText(
+                    source = scenario.projectedTrajectory,
+                    fontSize = 12.sp,
+                    color = SayvisSilverMuted,
+                    markTranslated = true
+                )
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -287,13 +307,19 @@ fun LifeScenarioCard(scenario: LifeScenario, isPersian: Boolean) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = if (isPersian) "ریسک‌های شناسایی‌شده:" else "Detected Risks:", fontSize = 10.sp, color = SayvisAmberWarning, fontWeight = FontWeight.Bold)
                     scenario.detectedRisks.forEach { r ->
-                        Text(text = "• $r", fontSize = 10.sp, color = SayvisSilverMuted)
+                        Row {
+                            Text(text = "• ", fontSize = 10.sp, color = SayvisSilverMuted)
+                            SayvisText(source = r, fontSize = 10.sp, color = SayvisSilverMuted, markTranslated = true)
+                        }
                     }
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = if (isPersian) "فرصت‌های رشد:" else "Opportunities:", fontSize = 10.sp, color = SayvisGreenSuccess, fontWeight = FontWeight.Bold)
                     scenario.projectedOpportunities.forEach { o ->
-                        Text(text = "• $o", fontSize = 10.sp, color = SayvisSilverMuted)
+                        Row {
+                            Text(text = "• ", fontSize = 10.sp, color = SayvisSilverMuted)
+                            SayvisText(source = o, fontSize = 10.sp, color = SayvisSilverMuted, markTranslated = true)
+                        }
                     }
                 }
             }
@@ -318,7 +344,12 @@ fun LitSignalCard(signal: LitAnalysisSignal, isPersian: Boolean) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.CandlestickChart, contentDescription = null, tint = SayvisCyan, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "${signal.assetSymbol} (${signal.timeframe})", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                    SayvisText(
+                        source = "${signal.assetSymbol} (${signal.timeframe})",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontSize = 13.sp
+                    )
                 }
 
                 Box(
@@ -361,10 +392,11 @@ fun LitSignalCard(signal: LitAnalysisSignal, isPersian: Boolean) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = signal.notes,
+            SayvisText(
+                source = signal.notes,
                 fontSize = 11.sp,
-                color = SayvisSilverMuted
+                color = SayvisSilverMuted,
+                markTranslated = true
             )
         }
     }

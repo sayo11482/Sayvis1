@@ -53,6 +53,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sayvis.model.AuditEvent
+import com.example.sayvis.ui.components.SayvisText
+import com.example.sayvis.ui.components.offlineTranslate
 import com.example.sayvis.model.Device
 import com.example.sayvis.model.DeviceType
 import com.example.sayvis.model.RiskLevel
@@ -277,7 +279,13 @@ fun DeviceCard(
                     Icon(deviceIcon, contentDescription = null, tint = SayvisCyan, modifier = Modifier.size(22.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
-                        Text(text = device.name, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                        SayvisText(
+                            source = device.name,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            markTranslated = true
+                        )
                         Text(
                             text = if (isPersian) device.type.labelFa else device.type.labelEn,
                             fontSize = 10.sp,
@@ -317,20 +325,43 @@ fun DeviceCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = "Key: ${device.publicKeyFingerprint}",
-                fontSize = 10.sp,
-                fontFamily = FontFamily.Monospace,
-                color = SayvisSilverMuted
-            )
+            Row {
+                Text(
+                    text = if (isPersian) "کلید: " else "Key: ",
+                    fontSize = 10.sp,
+                    color = SayvisSilverMuted
+                )
+                Text(
+                    text = device.publicKeyFingerprint,
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
+                    color = SayvisSilverMuted
+                )
+            }
 
             if (device.capabilities.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${if (isPersian) "قابلیت‌ها: " else "Capabilities: "} ${device.capabilities.take(3).joinToString(", ")}",
-                    fontSize = 10.sp,
-                    color = SayvisCyan.copy(alpha = 0.8f)
-                )
+                Row {
+                    Text(
+                        text = if (isPersian) "قابلیت‌ها: " else "Capabilities: ",
+                        fontSize = 10.sp,
+                        color = SayvisCyan.copy(alpha = 0.8f)
+                    )
+                    device.capabilities.take(3).forEachIndexed { index, capability ->
+                        if (index > 0) {
+                            Text(
+                                text = if (isPersian) "، " else ", ",
+                                fontSize = 10.sp,
+                                color = SayvisCyan.copy(alpha = 0.8f)
+                            )
+                        }
+                        Text(
+                            text = offlineTranslate(capability),
+                            fontSize = 10.sp,
+                            color = SayvisCyan.copy(alpha = 0.8f)
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -399,18 +430,30 @@ fun AuditEventCard(event: AuditEvent, isPersian: Boolean) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(text = event.action, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.White)
+                    SayvisText(
+                        source = event.action,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = Color.White,
+                        maxLines = 1
+                    )
                     Text(text = dateStr, fontSize = 10.sp, color = SayvisSilverMuted)
                 }
 
                 Spacer(modifier = Modifier.height(2.dp))
 
-                Text(
-                    text = "${event.actor} • ${event.authorization} • ${event.payloadDigest}",
-                    fontSize = 10.sp,
-                    color = SayvisSilverMuted,
-                    maxLines = 1
-                )
+                Row {
+                    Text(text = offlineTranslate(event.actor), fontSize = 10.sp, color = SayvisSilverMuted)
+                    Text(text = " • ", fontSize = 10.sp, color = SayvisSilverMuted)
+                    Text(text = offlineTranslate(event.authorization), fontSize = 10.sp, color = SayvisSilverMuted)
+                    Text(text = " • ", fontSize = 10.sp, color = SayvisSilverMuted)
+                    Text(
+                        text = event.payloadDigest,
+                        fontSize = 10.sp,
+                        color = SayvisSilverMuted,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }
