@@ -1,7 +1,6 @@
 package com.example.sayvis.service
 
 import android.app.Notification
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
@@ -224,7 +223,7 @@ class FloatingAvatarService : Service() {
     }
 
     private fun createChannel() {
-        val manager = getSystemService(NotificationManager::class.java)
+        val manager = NotificationManagerCompat.from(this)
         val channel = NotificationChannelCompat.Builder(CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_LOW)
             .setName(getString(R.string.notif_channel_avatar))
             .setShowBadge(false)
