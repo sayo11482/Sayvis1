@@ -253,7 +253,7 @@ private fun AutoConnectScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 when (phase) {
-                    GoogleSignInActivity.Phase.DONE -> {
+                    Phase.DONE -> {
                         Icon(
                             Icons.Default.CloudDone,
                             contentDescription = null,
@@ -267,7 +267,7 @@ private fun AutoConnectScreen(
                             color = SayvisGreenSuccess
                         )
                     }
-                    GoogleSignInActivity.Phase.FAILED -> {
+                    Phase.FAILED -> {
                         Text(
                             text = "⚠️ $statusLine",
                             fontSize = 12.5.sp,
@@ -275,7 +275,7 @@ private fun AutoConnectScreen(
                             modifier = Modifier.testTag("google_signin_failure")
                         )
                     }
-                    GoogleSignInActivity.Phase.WAITING_COPY -> {
+                    Phase.WAITING_COPY -> {
                         Text(
                             text = statusLine,
                             fontSize = 12.5.sp,
