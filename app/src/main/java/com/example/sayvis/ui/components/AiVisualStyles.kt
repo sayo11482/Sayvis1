@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -250,6 +251,8 @@ fun AiStyleCanvas(
     val phase = if (animate) angle else 0.35f
     val rainValue = if (animate) rain else 0.35f
 
+    val binaryPaint = glyphPaint()
+
     Canvas(modifier = modifier) {
         val center = Offset(size.width / 2f, size.height / 2f)
         val radius = min(size.width, size.height) / 2f * 0.84f
@@ -258,7 +261,7 @@ fun AiStyleCanvas(
         when (style) {
             AiVisualStyle.GEOMETRIC -> drawAtomicGeometric(center, radius, phase, voice, baseColor, accentColor)
             AiVisualStyle.STEREOLOGY -> drawAtomicStereology(center, radius, phase, voice, baseColor, accentColor)
-            AiVisualStyle.BINARY -> drawAtomicBinary(center, radius, phase, rainValue, voice, glyphPaint())
+            AiVisualStyle.BINARY -> drawAtomicBinary(center, radius, phase, rainValue, voice, binaryPaint)
             AiVisualStyle.HOLOGRAM -> drawAtomicHologram(center, radius, phase, voice, baseColor, accentColor)
         }
     }
@@ -468,7 +471,7 @@ private fun DrawScope.drawAtomicBinary(
 ) {
     val breath = AiStyleMath.breath(phase)
     val angle = phase * 2f * PI.toFloat()
-    val clip = Path().apply { addOval(androidx.compose.ui.graphics.Rect(center.x - radius, center.y - radius, center.x + radius, center.y + radius)) }
+    val clip = Path().apply { addOval(Rect(center.x - radius, center.y - radius, center.x + radius, center.y + radius)) }
 
     clipPath(clip) {
         val columns = 7
