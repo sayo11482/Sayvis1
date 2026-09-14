@@ -46,7 +46,7 @@ class AgentService(
         goal: String,
         languageFa: Boolean,
         synthesizer: (suspend (String) -> String)?,
-        googleFetch: (suspend (String) -> GoogleServicesService.FetchResult)?,
+        googleFetch: (suspend (String) -> GoogleServicesService.FetchResult?)?,
         onStep: (String) -> Unit
     ): AgentReport {
         val steps = ArrayList<String>()
