@@ -9,6 +9,37 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.example.sayvis.settings.AiVisualStyle
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.sin
+import kotlin.math.sqrt
+
+package com.example.sayvis.ui.components
+
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -120,6 +151,45 @@ object AiStyleMath {
         return grid
     }
 
+    // ------------------------------------------------- atomic breathing palette
+
+    /**
+     * Five-stop neon palette (violet -> cyan -> green -> gold -> rose) that cycles
+     * endlessly; every view samples it at a different phase so the whole avatar
+     * "breathes" in diverse colours instead of one flat tint.
+     */
+    val PALETTE_RGB = arrayOf(
+        floatArrayOf(0.655f, 0.545f, 0.980f),
+        floatArrayOf(0.220f, 0.741f, 0.973f),
+        floatArrayOf(0.204f, 0.827f, 0.600f),
+        floatArrayOf(0.831f, 0.686f, 0.216f),
+        floatArrayOf(0.984f, 0.443f, 0.522f)
+    )
+
+    /** Continuous RGB (0..1 triple) sampled from the cycling palette at [phase] 0..1. */
+    fun paletteRgb(phase: Float): FloatArray {
+        val t = ((phase % 1f) + 1f) % 1f
+        val scaled = t * PALETTE_RGB.size
+        val i = scaled.toInt().coerceAtMost(PALETTE_RGB.size - 1)
+        val j = (i + 1) % PALETTE_RGB.size
+        var f = scaled - scaled.toInt()
+        f = f * f * (3f - 2f * f) // smoothstep for seamless looping
+        val a = PALETTE_RGB[i]
+        val b = PALETTE_RGB[j]
+        return floatArrayOf(
+            a[0] + (b[0] - a[0]) * f,
+            a[1] + (b[1] - a[1]) * f,
+            a[2] + (b[2] - a[2]) * f
+        )
+    }
+
+    /** Atomic breathing envelope 0..1 (one full inhale/exhale per phase turn). */
+    fun breath(phase: Float): Float = 0.5f + 0.5f * sin(2.0 * PI * phase).toFloat()
+
+    /** Point on a squashed orbit (electrons); [squash] 0..1 flattens the ellipse. */
+    fun orbitPosition(angleRad: Float, squash: Float): Pair<Float, Float> =
+        cos(angleRad) to sin(angleRad) * squash
+
     /** One soft-clipped square-wave tone; [freqHz] 0 = silence. Pure JVM. */
     fun squareTone(freqHz: Int, durationMs: Int, sampleRate: Int = 16000): ShortArray {
         val n = sampleRate * durationMs / 1000
@@ -166,11 +236,21 @@ object AiStyleMath {
     private fun silence(ms: Int): ShortArray = ShortArray(16000 * ms / 1000)
 }
 
+// ==========================================================================
+// Compose-side colour helpers + the four professional atomic-breathing views
+// ==========================================================================
+
+/** Palette colour at [phase] (0..1 cycling) with [alpha]. */
+fun aiStyleColor(phase: Float, alpha: Float = 1f): Color {
+    val rgb = AiStyleMath.paletteRgb(phase)
+    return Color(rgb[0], rgb[1], rgb[2], alpha.coerceIn(0f, 1f))
+}
+
 /**
- * The four professional, animated, multidimensional "AI views": geometric
- * wireframes, stereologic cross-sections, binary 0/1 code rain and a hologram
- * scan. Used in Settings (selector + live preview) and by the avatar itself.
- * [level] (0..1, the live microphone amplitude) makes every view react to voice.
+ * The four professional, animated, multidimensional "AI views". Every view shares
+ * the atomic-breathing language: a nucleus that inhales/exhales, an endlessly
+ * cycling five-colour neon palette and orbiting electrons — all reacting to the
+ * live microphone [level] (0..1).
  */
 @Composable
 fun AiStyleCanvas(
@@ -184,177 +264,336 @@ fun AiStyleCanvas(
     val transition = rememberInfiniteTransition(label = "ai_style")
     val angle by transition.animateFloat(
         initialValue = 0f,
-        targetValue = (2.0 * PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(14000, easing = LinearEasing), RepeatMode.Restart),
-        label = "style_angle"
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(12000, easing = LinearEasing), RepeatMode.Restart),
+        label = "style_phase"
     )
     val rain by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Restart),
+        animationSpec = infiniteRepeatable(tween(1600, easing = LinearEasing), RepeatMode.Restart),
         label = "style_rain"
     )
-    val scan by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(2600, easing = LinearEasing), RepeatMode.Restart),
-        label = "style_scan"
-    )
-    val baseColor = if (color.isUnspecified) com.example.sayvis.ui.theme.SayvisCyan else color
-    val accentColor = if (accent.isUnspecified) com.example.sayvis.ui.theme.SayvisGold else accent
-    val angleValue = if (animate) angle else 0.8f
+    val baseColor = if (color.isUnspecified) aiStyleColor(angle) else color
+    val accentColor = if (accent.isUnspecified) aiStyleColor(angle + 0.35f) else accent
+    val phase = if (animate) angle else 0.35f
     val rainValue = if (animate) rain else 0.35f
-    val scanValue = if (animate) scan else 0.4f
-    val glyphPaint = remember {
-        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = android.graphics.Typeface.MONOSPACE
-            textAlign = android.graphics.Paint.Align.CENTER
-        }
-    }
 
     Canvas(modifier = modifier) {
         val center = Offset(size.width / 2f, size.height / 2f)
-        val radius = min(size.width, size.height) / 2f * 0.82f
-        val voiceBoost = 1f + level.coerceIn(0f, 1f) * 0.22f
+        val radius = min(size.width, size.height) / 2f * 0.84f
+        val voice = level.coerceIn(0f, 1f)
 
         when (style) {
-            AiVisualStyle.GEOMETRIC -> drawGeometric(center, radius * voiceBoost, angleValue, baseColor, accentColor)
-            AiVisualStyle.STEREOLOGY -> drawStereology(center, radius * voiceBoost, angleValue, baseColor, accentColor)
-            AiVisualStyle.BINARY -> drawBinary(center, radius, rainValue, baseColor, accentColor, glyphPaint, level)
-            AiVisualStyle.HOLOGRAM -> drawHologram(center, radius, scanValue, angleValue, baseColor, accentColor)
+            AiVisualStyle.GEOMETRIC -> drawAtomicGeometric(center, radius, phase, voice, baseColor, accentColor)
+            AiVisualStyle.STEREOLOGY -> drawAtomicStereology(center, radius, phase, voice, baseColor, accentColor)
+            AiVisualStyle.BINARY -> drawAtomicBinary(center, radius, phase, rainValue, voice, glyphPaint())
+            AiVisualStyle.HOLOGRAM -> drawAtomicHologram(center, radius, phase, voice, baseColor, accentColor)
         }
     }
 }
 
-private fun DrawScope.drawGeometric(
+@Composable
+private fun glyphPaint(): android.graphics.Paint = androidx.compose.runtime.remember {
+    android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = android.graphics.Typeface.MONOSPACE
+        textAlign = android.graphics.Paint.Align.CENTER
+    }
+}
+
+// ------------------------------------------------------------- GEOMETRIC
+
+/**
+ * Atomic geometric: a breathing multi-glow nucleus, a depth-shaded icosahedron
+ * wireframe and three tilted electron orbits with glowing electrons + trails.
+ */
+private fun DrawScope.drawAtomicGeometric(
     center: Offset,
     radius: Float,
-    angle: Float,
+    phase: Float,
+    voice: Float,
     color: Color,
-    accent: Color,
+    accent: Color
 ) {
+    val breath = AiStyleMath.breath(phase)
+    val breathe = 1f + 0.10f * breath + 0.14f * voice
+    val angle = phase * 2f * PI.toFloat()
+
+    // Breathing nucleus: layered palette glows + bright core.
+    val nucleusRadius = radius * (0.20f + 0.07f * breath + 0.05f * voice)
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(aiStyleColor(phase + 0.5f, 0.55f), Color.Transparent),
+            center = center,
+            radius = nucleusRadius * 3.2f
+        ),
+        radius = nucleusRadius * 3.2f,
+        center = center
+    )
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.95f), accent, Color.Transparent),
+            center = center,
+            radius = nucleusRadius
+        ),
+        radius = nucleusRadius,
+        center = center
+    )
+
+    // Icosahedron wireframe, edges shaded by depth and coloured by the palette.
     val projected = AiStyleMath.rotateAndProject(angle, angle * 0.6f + 0.7f)
+    val wireRadius = radius * 0.92f * breathe
     val verts = ArrayList<Offset>(projected.size / 2)
     for (i in projected.indices step 2) {
-        verts.add(Offset(center.x + projected[i] * radius, center.y + projected[i + 1] * radius))
+        verts.add(Offset(center.x + projected[i] * wireRadius, center.y + projected[i + 1] * wireRadius))
     }
-    // Depth-aware edges: nearer edges brighter.
     for ((a, b) in AiStyleMath.ICOSAHEDRON_EDGES) {
-        val za = projected[a * 2 + 1]
-        val depthAlpha = 0.35f + 0.45f * ((za + 1.5f) / 3f)
+        val depth = ((projected[a * 2 + 1] + 1.5f) / 3f).coerceIn(0f, 1f)
         drawLine(
-            color = color.copy(alpha = depthAlpha),
+            color = aiStyleColor(phase + depth * 0.3f, 0.30f + 0.55f * depth),
             start = verts[a],
             end = verts[b],
-            strokeWidth = 1.6.dp.toPx(),
+            strokeWidth = (0.9f + 1.1f * depth).dp.toPx(),
             cap = StrokeCap.Round
         )
     }
     verts.forEachIndexed { index, v ->
         drawCircle(
-            color = if (index % 3 == 0) accent else color,
-            radius = 1.9.dp.toPx(),
+            color = aiStyleColor(phase + index / 12f, 0.9f),
+            radius = (1.4f + 0.8f * (index % 3 == 0).compareTo(false)).dp.toPx(),
             center = v
         )
     }
-    drawCircle(color = accent.copy(alpha = 0.55f), radius = 2.6.dp.toPx(), center = center)
-}
 
-private fun DrawScope.drawStereology(
-    center: Offset,
-    radius: Float,
-    angle: Float,
-    color: Color,
-    accent: Color,
-) {
-    // Three nested, counter-rotating section planes + sampling lattice.
-    val planes = listOf(0.95f, 0.68f, 0.42f)
-    planes.forEachIndexed { index, fraction ->
-        val tilt = if (index % 2 == 0) angle else -angle * 1.35f
-        val squash = 0.32f + 0.16f * index
+    // Three tilted electron orbits with glowing electrons and trails.
+    val tilts = listOf(0.30f, 0.62f, 0.16f)
+    tilts.forEachIndexed { orbitIndex, squash ->
+        val orbitPhase = phase * (1f + orbitIndex * 0.35f) + orbitIndex * 0.33f
+        val orbitColor = aiStyleColor(phase + orbitIndex * 0.28f, 0.75f)
         drawOval(
-            color = if (index == 1) accent.copy(alpha = 0.8f) else color.copy(alpha = 0.85f),
-            topLeft = Offset(center.x - radius * fraction, center.y - radius * fraction * squash),
-            size = androidx.compose.ui.geometry.Size(radius * 2f * fraction, radius * 2f * fraction * squash),
-            style = Stroke(width = (2.1f - index * 0.4f).dp.toPx())
+            color = orbitColor.copy(alpha = 0.45f),
+            topLeft = Offset(center.x - wireRadius, center.y - wireRadius * squash),
+            size = Size(wireRadius * 2f, wireRadius * 2f * squash),
+            style = Stroke(width = 1.0f.dp.toPx())
         )
-        // Lattice ticks on each plane (stereological sampling grid).
-        val ticks = 8
-        for (k in 0 until ticks) {
-            val t = k / ticks.toFloat()
-            val x = center.x + (t * 2f - 1f) * radius * fraction
-            val halfChord = radius * fraction * sqrt((1f - (t * 2f - 1f) * (t * 2f - 1f)).coerceIn(0f, 1f))
-            drawLine(
-                color = color.copy(alpha = 0.22f),
-                start = Offset(x, center.y - halfChord * squash),
-                end = Offset(x, center.y + halfChord * squash),
-                strokeWidth = 0.9f.dp.toPx()
+        // Electron + trail along the orbit (rotated by the global angle for depth).
+        for (step in 5 downTo 0) {
+            val a = orbitPhase * 2f * PI.toFloat() - step * 0.09f + angle * (if (orbitIndex == 1) -1f else 1f)
+            val (ex, ey) = AiStyleMath.orbitPosition(a, squash)
+            val exRot = ex * cos(angle) - ey * sin(angle)
+            val eyRot = ex * sin(angle) + ey * cos(angle)
+            val pos = Offset(center.x + exRot * wireRadius, center.y + eyRot * wireRadius)
+            val glow = 1f - step / 6f
+            drawCircle(
+                color = aiStyleColor(phase + orbitIndex * 0.28f + 0.15f, (0.25f + 0.75f * glow)),
+                radius = (1.2f.dp.toPx() + 2.2f.dp.toPx() * glow),
+                center = pos
             )
         }
     }
-    // Core probe axis.
-    drawLine(
-        color = accent.copy(alpha = 0.9f),
-        start = Offset(center.x, center.y - radius),
-        end = Offset(center.x, center.y + radius),
-        strokeWidth = 1.2f.dp.toPx()
-    )
 }
 
-private fun DrawScope.drawBinary(
+// ------------------------------------------------------------ STEREOLOGY
+
+/**
+ * Atomic stereology: four palette-coloured section planes, a rotating radial
+ * spoke lattice, breath-pulsing sampling dots on the lattice intersections and
+ * a central electron pair.
+ */
+private fun DrawScope.drawAtomicStereology(
     center: Offset,
     radius: Float,
-    rain: Float,
+    phase: Float,
+    voice: Float,
     color: Color,
-    accent: Color,
-    glyphPaint: android.graphics.Paint,
-    level: Float,
+    accent: Color
 ) {
-    val columns = 7
-    val rows = 7
-    val grid = AiStyleMath.binaryColumns(columns, rows, rain)
-    val cell = radius * 2f / columns
-    glyphPaint.textSize = cell * 0.62f
-    val native = drawContext.canvas.nativeCanvas
-    for (c in 0 until columns) {
-        for (r in 0 until rows) {
-            val x = center.x - radius + cell * (c + 0.5f)
-            val y = center.y - radius + cell * (r + 0.85f)
-            val glyph = if (grid[c][r]) "1" else "0"
-            val highlight = (r == (columns - 1 - c) % rows)
-            glyphPaint.color = android.graphics.Color.argb(
-                (if (highlight) 235 else 110).toInt(),
-                (color.red * 255).toInt(),
-                (color.green * 255).toInt(),
-                (color.blue * 255).toInt()
+    val breath = AiStyleMath.breath(phase + 0.25f)
+    val angle = phase * 2f * PI.toFloat()
+    val breathe = 1f + 0.06f * breath + 0.10f * voice
+
+    // Section planes (nested, counter-rotating, palette coloured).
+    val planes = listOf(1.00f, 0.78f, 0.56f, 0.34f)
+    planes.forEachIndexed { index, fraction ->
+        val direction = if (index % 2 == 0) angle else -angle * 1.35f
+        val squash = 0.26f + 0.17f * index
+        drawOval(
+            color = aiStyleColor(phase + index * 0.22f, 0.85f),
+            topLeft = Offset(center.x - radius * fraction * breathe, center.y - radius * fraction * squash * breathe),
+            size = Size(radius * 2f * fraction * breathe, radius * 2f * fraction * squash * breathe),
+            style = Stroke(width = (2.2f - index * 0.4f).dp.toPx())
+        )
+        // Sampling lattice: vertical chords inside each plane.
+        val ticks = 9
+        for (k in 0 until ticks) {
+            val t = k / (ticks - 1).toFloat()
+            val nx = t * 2f - 1f
+            val halfChord = radius * fraction * sqrt((1f - nx * nx).coerceIn(0f, 1f))
+            drawLine(
+                color = color.copy(alpha = 0.16f),
+                start = Offset(center.x + nx * radius * fraction * breathe, center.y - halfChord * squash * breathe),
+                end = Offset(center.x + nx * radius * fraction * breathe, center.y + halfChord * squash * breathe),
+                strokeWidth = 0.8f.dp.toPx()
             )
-            native.drawText(glyph, x, y, glyphPaint)
         }
     }
-    // Voice-reactive core disc.
+
+    // Rotating radial spokes with breath-pulsing sampling dots at intersections.
+    val spokes = 12
+    for (s in 0 until spokes) {
+        val a = angle * 0.6f + s * (2f * PI.toFloat() / spokes)
+        val (ox, oy) = AiStyleMath.orbitPosition(a, 0.55f)
+        drawLine(
+            color = color.copy(alpha = 0.30f),
+            start = center,
+            end = Offset(center.x + ox * radius * breathe, center.y + oy * radius * breathe),
+            strokeWidth = 0.9f.dp.toPx()
+        )
+        // Sampling dot pulses with the breath, one per spoke.
+        val dotRadius = radius * (0.30f + 0.10f * breath)
+        drawCircle(
+            color = aiStyleColor(phase + s / spokes.toFloat(), 0.85f),
+            radius = 1.6f.dp.toPx() + 0.9f.dp.toPx() * breath,
+            center = Offset(center.x + ox * dotRadius, center.y + oy * dotRadius)
+        )
+    }
+
+    // Core: breathing nucleus + electron pair on the tight inner orbit.
+    val nucleusRadius = radius * (0.13f + 0.05f * breath + 0.04f * voice)
     drawCircle(
-        color = accent.copy(alpha = 0.16f + 0.25f * level.coerceIn(0f, 1f)),
-        radius = radius * (0.34f + 0.18f * level.coerceIn(0f, 1f)),
+        brush = Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.9f), accent.copy(alpha = 0.85f), Color.Transparent),
+            center = center,
+            radius = nucleusRadius * 2.6f
+        ),
+        radius = nucleusRadius * 2.6f,
         center = center
     )
-    drawCircle(color = accent, radius = 2.4f.dp.toPx(), center = center, style = Stroke(1.4f.dp.toPx()))
+    for (e in 0 until 2) {
+        val a = -angle * 1.6f + e * PI.toFloat()
+        val (ex, ey) = AiStyleMath.orbitPosition(a, 0.55f)
+        drawCircle(
+            color = Color.White.copy(alpha = 0.95f),
+            radius = 2.0f.dp.toPx(),
+            center = Offset(center.x + ex * radius * 0.22f, center.y + ey * radius * 0.22f)
+        )
+    }
 }
 
-private fun DrawScope.drawHologram(
+// --------------------------------------------------------------- BINARY
+
+/**
+ * Atomic binary: 0/1 rain inside a circular clip, every column tinted by the
+ * cycling palette, bright "head" glyphs, a breathing data ring and an orbiting
+ * electron around the disc.
+ */
+private fun DrawScope.drawAtomicBinary(
     center: Offset,
     radius: Float,
-    scan: Float,
-    angle: Float,
-    color: Color,
-    accent: Color,
+    phase: Float,
+    rain: Float,
+    voice: Float,
+    paint: android.graphics.Paint
 ) {
-    // Horizon grid: perspective lines converging on the centre band.
-    val gridColor = color.copy(alpha = 0.5f)
+    val breath = AiStyleMath.breath(phase)
+    val angle = phase * 2f * PI.toFloat()
+    val clip = Path().apply { addOval(androidx.compose.ui.graphics.Rect(center.x - radius, center.y - radius, center.x + radius, center.y + radius)) }
+
+    clipPath(clip) {
+        val columns = 7
+        val rows = 9
+        val grid = AiStyleMath.binaryColumns(columns, rows, rain)
+        val cell = (radius * 2.1f) / columns
+        paint.textSize = cell * 0.60f
+        val native = drawContext.canvas.nativeCanvas
+        val headRow = ((rain * rows * 2f).toInt() % rows + rows) % rows
+        for (c in 0 until columns) {
+            val columnColor = aiStyleColor(phase + c / columns.toFloat())
+            for (r in 0 until rows) {
+                val distance = ((r - headRow + rows) % rows).toFloat() / rows
+                val alpha = ((1f - distance) * (1f - distance) * 235f + 25f).toInt().coerceIn(0, 255)
+                val glyph = if (grid[c][r]) "1" else "0"
+                val tinted = if (distance < 0.12f) {
+                    android.graphics.Color.argb(alpha, 245, 245, 245) // white-hot head
+                } else {
+                    android.graphics.Color.argb(
+                        alpha,
+                        (columnColor.red * 255).toInt(),
+                        (columnColor.green * 255).toInt(),
+                        (columnColor.blue * 255).toInt()
+                    )
+                }
+                paint.color = tinted
+                val x = center.x - radius + cell * (c + 0.5f)
+                val y = center.y - radius + (radius * 2.1f) / rows * (r + 0.85f)
+                native.drawText(glyph, x, y, paint)
+            }
+        }
+    }
+
+    // Breathing data ring (double stroke, palette gradient).
+    drawCircle(
+        brush = Brush.sweepGradient(
+            colors = listOf(
+                aiStyleColor(phase),
+                aiStyleColor(phase + 0.25f),
+                aiStyleColor(phase + 0.5f),
+                aiStyleColor(phase + 0.75f),
+                aiStyleColor(phase)
+            ),
+            center = center
+        ),
+        radius = radius * (1.0f + 0.03f * breath),
+        center = center,
+        style = Stroke(width = (1.6f + 1.2f * breath).dp.toPx())
+    )
+
+    // Voice-reactive core + orbiting electron.
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                aiStyleColor(phase + 0.4f, 0.35f + 0.35f * voice),
+                Color.Transparent
+            ),
+            center = center,
+            radius = radius * (0.55f + 0.15f * breath + 0.15f * voice)
+        ),
+        radius = radius * (0.55f + 0.15f * breath + 0.15f * voice),
+        center = center
+    )
+    val (ex, ey) = AiStyleMath.orbitPosition(angle * 1.4f, 0.8f)
+    drawCircle(
+        color = Color.White.copy(alpha = 0.95f),
+        radius = 2.2f.dp.toPx(),
+        center = Offset(center.x + ex * radius * 0.95f, center.y + ey * radius * 0.95f)
+    )
+}
+
+// ------------------------------------------------------------- HOLOGRAM
+
+/**
+ * Atomic hologram: perspective grid, breathing radar rings, a rotating hex
+ * emitter with a gradient stroke, a scan beam with a glowing band and a core
+ * electron.
+ */
+private fun DrawScope.drawAtomicHologram(
+    center: Offset,
+    radius: Float,
+    phase: Float,
+    voice: Float,
+    color: Color,
+    accent: Color
+) {
+    val breath = AiStyleMath.breath(phase + 0.4f)
+    val angle = phase * 2f * PI.toFloat()
+    val horizon = center.y + radius * 0.30f
+
+    // Perspective grid.
     for (i in -3..3) {
-        val y = center.y + radius * 0.28f + i * radius * 0.22f
+        val y = horizon + i * radius * 0.22f
         val spread = 1f + abs(i) * 0.35f
         drawLine(
-            color = gridColor,
+            color = aiStyleColor(phase + 0.1f * abs(i), 0.45f),
             start = Offset(center.x - radius * spread * 0.8f, y),
             end = Offset(center.x + radius * spread * 0.8f, y),
             strokeWidth = 1f.dp.toPx()
@@ -363,43 +602,74 @@ private fun DrawScope.drawHologram(
     for (i in -4..4) {
         val x = center.x + i * radius * 0.25f
         drawLine(
-            color = gridColor.copy(alpha = 0.6f),
-            start = Offset(x, center.y + radius * 0.28f),
-            end = Offset(center.x + i * radius * 0.9f, center.y - radius * 0.5f),
-            strokeWidth = 0.9f.dp.toPx()
+            color = color.copy(alpha = 0.28f),
+            start = Offset(x, horizon),
+            end = Offset(center.x + i * radius * 0.9f, center.y - radius * 0.55f),
+            strokeWidth = 0.8f.dp.toPx()
         )
     }
-    // Rotating holographic hexagon emitter.
+
+    // Radar rings expanding with the breath.
+    for (r in 0 until 3) {
+        val ringPhase = ((phase + r / 3f) % 1f)
+        val ringRadius = radius * (0.25f + 0.75f * ringPhase)
+        drawCircle(
+            color = aiStyleColor(phase + r * 0.3f, (1f - ringPhase) * 0.8f),
+            radius = ringRadius,
+            center = Offset(center.x, center.y - radius * 0.1f),
+            style = Stroke(width = (1.6f * (1f - ringPhase) + 0.4f).dp.toPx())
+        )
+    }
+
+    // Rotating hexagonal emitter with a gradient stroke.
     val hex = Path()
-    val hexRadius = radius * 0.5f
+    val hexRadius = radius * 0.52f * (1f + 0.05f * breath + 0.06f * voice)
     for (i in 0 until 6) {
         val a = angle + i * (PI.toFloat() / 3f)
         val x = center.x + hexRadius * cos(a)
-        val y = center.y - radius * 0.12f + hexRadius * sin(a) * 0.55f
+        val y = center.y - radius * 0.10f + hexRadius * sin(a) * 0.55f
         if (i == 0) hex.moveTo(x, y) else hex.lineTo(x, y)
     }
     hex.close()
-    drawPath(hex, color = color.copy(alpha = 0.28f))
-    drawPath(hex, color = color, style = Stroke(1.6f.dp.toPx()))
-    // Moving scan beam clipped to the view.
-    val beamY = center.y - radius + (radius * 2f) * scan
+    drawPath(hex, color = color.copy(alpha = 0.20f))
+    drawPath(
+        hex,
+        brush = Brush.sweepGradient(
+            colors = listOf(accent, aiStyleColor(phase + 0.45f), accent),
+            center = center
+        ),
+        style = Stroke(width = 1.8f.dp.toPx())
+    )
+
+    // Scan beam + glowing band clipped to the hex.
+    val beamY = center.y - radius + (radius * 2f) * ((phase * 1.3f) % 1f)
     drawLine(
         color = accent.copy(alpha = 0.95f),
         start = Offset(center.x - radius, beamY),
         end = Offset(center.x + radius, beamY),
         strokeWidth = 1.8f.dp.toPx()
     )
-    drawLine(
-        color = accent.copy(alpha = 0.30f),
-        start = Offset(center.x - radius, beamY - 5f.dp.toPx()),
-        end = Offset(center.x + radius, beamY - 5f.dp.toPx()),
-        strokeWidth = 0.9f.dp.toPx()
-    )
     clipPath(hex) {
         drawRect(
-            color = accent.copy(alpha = 0.10f),
-            topLeft = Offset(center.x - radius, beamY - 6f.dp.toPx()),
-            size = androidx.compose.ui.geometry.Size(radius * 2f, 8f.dp.toPx())
+            brush = Brush.verticalGradient(
+                colors = listOf(Color.Transparent, accent.copy(alpha = 0.30f)),
+                startY = beamY - 14f.dp.toPx(),
+                endY = beamY
+            ),
+            topLeft = Offset(center.x - radius, beamY - 14f.dp.toPx()),
+            size = Size(radius * 2f, 14f.dp.toPx())
         )
     }
+
+    // Core electron hovering in the emitter.
+    val (ex, ey) = AiStyleMath.orbitPosition(angle * 1.8f, 0.5f)
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(Color.White, accent.copy(alpha = 0.4f), Color.Transparent),
+            center = Offset(center.x + ex * hexRadius * 0.7f, center.y - radius * 0.10f + ey * hexRadius * 0.4f),
+            radius = 7f.dp.toPx()
+        ),
+        radius = 7f.dp.toPx(),
+        center = Offset(center.x + ex * hexRadius * 0.7f, center.y - radius * 0.10f + ey * hexRadius * 0.4f)
+    )
 }

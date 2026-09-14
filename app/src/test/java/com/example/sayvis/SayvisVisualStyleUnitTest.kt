@@ -98,5 +98,54 @@ class SayvisVisualStyleUnitTest {
         assertEquals(AiVisualStyle.GEOMETRIC, AiVisualStyle.fromNameOrDefault(null))
     }
 
+    // ------------------------------------------------- atomic breathing
+
+    @Test
+    fun `palette cycles continuously through five stops`() {
+        val stops = AiStyleMath.PALETTE_RGB
+        assertEquals(5, stops.size)
+        // 200 samples around the cycle: every triple in range, adjacent jumps small.
+        var previous = AiStyleMath.paletteRgb(0f)
+        for (i in 1..200) {
+            val rgb = AiStyleMath.paletteRgb(i / 200f)
+            assertEquals(3, rgb.size)
+            rgb.forEach { channel -> assertTrue("channel out of range: $channel", channel in 0f..1f) }
+            val jump = kotlin.math.abs(rgb[0] - previous[0]) + kotlin.math.abs(rgb[1] - previous[1]) + kotlin.math.abs(rgb[2] - previous[2])
+            assertTrue("palette jump too large at $i: $jump", jump < 0.25f)
+            previous = rgb
+        }
+        // Seamless loop: phase 1 == phase 0.
+        val first = AiStyleMath.paletteRgb(0f)
+        val last = AiStyleMath.paletteRgb(1f)
+        assertEquals(first[0], last[0], 1e-4f)
+        assertEquals(first[1], last[1], 1e-4f)
+        assertEquals(first[2], last[2], 1e-4f)
+    }
+
+    @Test
+    fun `breath envelope oscillates smoothly between zero and one`() {
+        var min = 1f
+        var max = 0f
+        for (i in 0..99) {
+            val b = AiStyleMath.breath(i / 100f)
+            min = kotlin.math.min(min, b)
+            max = kotlin.math.max(max, b)
+            assertTrue(b in 0f..1f)
+        }
+        assertTrue("breath must reach near 0: $min", min < 0.05f)
+        assertTrue("breath must reach near 1: $max", max > 0.95f)
+        // Periodicity: breath(p) == breath(p + 1)
+        assertEquals(AiStyleMath.breath(0.3f), AiStyleMath.breath(1.3f), 1e-4f)
+    }
+
+    @Test
+    fun `orbit positions stay on the unit squashed ellipse`() {
+        for (i in 0..90) {
+            val (x, y) = AiStyleMath.orbitPosition(i / 90f * 2f * Math.PI.toFloat(), 0.4f)
+            assertTrue(x in -1.0001f..1.0001f)
+            assertTrue(y in -0.4001f..0.4001f)
+        }
+    }
+
     private fun abs(v: Int): Int = if (v < 0) -v else v
 }

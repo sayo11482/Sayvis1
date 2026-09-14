@@ -16,6 +16,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -27,18 +29,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.sayvis.settings.AiVisualStyle
 import com.example.sayvis.ui.AvatarState
-import com.example.sayvis.ui.theme.SayvisAmberWarning
-import com.example.sayvis.ui.theme.SayvisCyan
-import com.example.sayvis.ui.theme.SayvisGold
 import com.example.sayvis.ui.theme.SayvisRedAlert
-import com.example.sayvis.ui.theme.SayvisSilverMuted
 import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * The SAYVIS avatar with the four selectable multidimensional AI views
- * ([AiVisualStyle]): geometric wireframe, stereologic sections, binary 0/1 ring
- * and hologram scan — all voice-reactive through [level] (0..1 mic amplitude).
+ * The SAYVIS avatar rendering the four atomic-breathing AI views
+ * ([AiVisualStyle]): geometric wireframe with electron orbits, stereologic
+ * sections, a binary 0/1 glyph ring and a hologram scan — all cycling through
+ * the five-colour neon palette and reacting to the microphone [level].
  */
 @Composable
 fun SayvisAvatar(
@@ -71,22 +70,14 @@ fun SayvisAvatar(
     )
 
     val coreColor: Color = when (state) {
-        AvatarState.IDLE -> SayvisCyan
-        AvatarState.THINKING -> SayvisGold
-        AvatarState.SPEAKING -> SayvisCyan
-        AvatarState.OPPORTUNITY_AWARE -> SayvisAmberWarning
+        AvatarState.IDLE -> aiStyleColor(rotation / 360f)
+        AvatarState.THINKING -> aiStyleColor(rotation / 360f + 0.1f)
+        AvatarState.SPEAKING -> aiStyleColor(rotation / 360f + 0.25f)
+        AvatarState.OPPORTUNITY_AWARE -> aiStyleColor(rotation / 360f + 0.55f)
         AvatarState.EMERGENCY_LOCKED -> SayvisRedAlert
-        AvatarState.OFFLINE -> SayvisSilverMuted
+        AvatarState.OFFLINE -> Color(0xFF94A3B8)
     }
-
-    val haloColor: Color = when (state) {
-        AvatarState.IDLE -> SayvisCyan.copy(alpha = 0.35f)
-        AvatarState.THINKING -> SayvisGold.copy(alpha = 0.5f)
-        AvatarState.SPEAKING -> SayvisGold.copy(alpha = 0.6f)
-        AvatarState.OPPORTUNITY_AWARE -> SayvisGold.copy(alpha = 0.45f)
-        AvatarState.EMERGENCY_LOCKED -> SayvisRedAlert.copy(alpha = 0.5f)
-        AvatarState.OFFLINE -> SayvisSilverMuted.copy(alpha = 0.25f)
-    }
+    val accentColor: Color = aiStyleColor(rotation / 360f + 0.4f)
 
     val glyphPaint = remember {
         android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
@@ -105,119 +96,139 @@ fun SayvisAvatar(
             val center = Offset(this.size.width / 2f, this.size.height / 2f)
             val baseRadius = (this.size.minDimension / 2f) * 0.72f * pulse
             val voiceLevel = level.coerceIn(0f, 1f)
+            val phase = rotation / 360f
+            val angle = Math.toRadians(rotation.toDouble()).toFloat()
 
-            // 1. Ambient glow (voice-reactive).
+            // 1. Ambient breathing glow (palette + voice reactive).
             drawCircle(
-                color = haloColor.copy(alpha = 0.15f),
-                radius = baseRadius * (1.25f + 0.10f * voiceLevel),
+                brush = Brush.radialGradient(
+                    colors = listOf(coreColor.copy(alpha = 0.30f + 0.15f * voiceLevel), Color.Transparent),
+                    center = center,
+                    radius = baseRadius * (1.35f + 0.12f * voiceLevel)
+                ),
+                radius = baseRadius * (1.35f + 0.12f * voiceLevel),
                 center = center
             )
 
-            // 2. Style-specific outer view.
+            // 2. Style-specific atomic view.
             when (style) {
                 AiVisualStyle.GEOMETRIC -> {
-                    // Projected icosahedron wireframe rotating around the core.
-                    val projected = AiStyleMath.rotateAndProject(
-                        Math.toRadians(rotation.toDouble()).toFloat(),
-                        Math.toRadians((rotation * 0.6 + 40.0)).toFloat()
-                    )
+                    val projected = AiStyleMath.rotateAndProject(angle, angle * 0.6f + 0.7f)
                     val wireRadius = baseRadius * 0.95f
                     val verts = ArrayList<Offset>(projected.size / 2)
                     for (i in projected.indices step 2) {
                         verts.add(Offset(center.x + projected[i] * wireRadius, center.y + projected[i + 1] * wireRadius))
                     }
                     for ((a, b) in AiStyleMath.ICOSAHEDRON_EDGES) {
+                        val depth = ((projected[a * 2 + 1] + 1.5f) / 3f).coerceIn(0f, 1f)
                         drawLine(
-                            color = haloColor,
+                            color = aiStyleColor(phase + depth * 0.35f, 0.35f + 0.55f * depth),
                             start = verts[a],
                             end = verts[b],
-                            strokeWidth = 1.1.dp.toPx(),
+                            strokeWidth = (0.8f + 1.0f * depth).dp.toPx(),
                             cap = StrokeCap.Round
                         )
                     }
+                    // One electron orbit with a glowing electron.
+                    drawOval(
+                        color = accentColor.copy(alpha = 0.5f),
+                        topLeft = Offset(center.x - wireRadius, center.y - wireRadius * 0.35f),
+                        size = Size(wireRadius * 2f, wireRadius * 0.7f),
+                        style = Stroke(width = 0.9f.dp.toPx())
+                    )
+                    val ea = angle * 1.5f
+                    val (ex, ey) = AiStyleMath.orbitPosition(ea, 0.35f)
+                    drawCircle(
+                        color = Color.White,
+                        radius = 2.0f.dp.toPx(),
+                        center = Offset(center.x + ex * wireRadius, center.y + ey * wireRadius)
+                    )
                 }
 
                 AiVisualStyle.STEREOLOGY -> {
-                    // Nested counter-rotating section planes.
-                    val fractions = listOf(1.0f, 0.74f, 0.5f)
+                    val fractions = listOf(1.0f, 0.76f, 0.52f)
                     fractions.forEachIndexed { index, fraction ->
                         val direction = if (index % 2 == 0) rotation else -rotation * 1.3f
                         rotate(direction, pivot = center) {
-                            val squash = 0.30f + 0.18f * index
+                            val squash = 0.28f + 0.17f * index
                             drawOval(
-                                color = if (index == 1) SayvisGold.copy(alpha = 0.55f) else haloColor,
+                                color = aiStyleColor(phase + index * 0.25f, 0.85f),
                                 topLeft = Offset(center.x - baseRadius * fraction, center.y - baseRadius * fraction * squash),
-                                size = androidx.compose.ui.geometry.Size(
-                                    baseRadius * 2f * fraction,
-                                    baseRadius * 2f * fraction * squash
-                                ),
-                                style = Stroke(width = 1.3.dp.toPx())
+                                size = Size(baseRadius * 2f * fraction, baseRadius * 2f * fraction * squash),
+                                style = Stroke(width = 1.2.dp.toPx())
                             )
                         }
                     }
                 }
 
                 AiVisualStyle.BINARY -> {
-                    // Ring of 0/1 glyphs rotating around the core.
                     val glyphCount = 10
                     val native = drawContext.canvas.nativeCanvas
                     glyphPaint.textSize = baseRadius * 0.30f
                     for (i in 0 until glyphCount) {
-                        val angle = Math.toRadians((i * (360f / glyphCount) + rotation).toDouble())
-                        val x = center.x + baseRadius * cos(angle).toFloat()
-                        val y = center.y + baseRadius * sin(angle).toFloat() + glyphPaint.textSize * 0.36f
+                        val glyphAngle = Math.toRadians((i * (360f / glyphCount) + rotation).toDouble())
+                        val x = center.x + baseRadius * cos(glyphAngle).toFloat()
+                        val y = center.y + baseRadius * sin(glyphAngle).toFloat() + glyphPaint.textSize * 0.36f
                         val bit = ((i * 31 + (rotation / 30f).toInt()) % 3) != 0
-                        val alpha = if (i % 2 == 0) 230 else 130
+                        val glyphColor = aiStyleColor(phase + i / glyphCount.toFloat())
+                        val alpha = if (i % 2 == 0) 235 else 140
                         glyphPaint.color = android.graphics.Color.argb(
                             alpha,
-                            (coreColor.red * 255).toInt(),
-                            (coreColor.green * 255).toInt(),
-                            (coreColor.blue * 255).toInt()
+                            (glyphColor.red * 255).toInt(),
+                            (glyphColor.green * 255).toInt(),
+                            (glyphColor.blue * 255).toInt()
                         )
                         native.drawText(if (bit) "1" else "0", x, y, glyphPaint)
                     }
                 }
 
                 AiVisualStyle.HOLOGRAM -> {
-                    // Dashed-feel outer circle + moving horizontal scan beams.
                     drawCircle(
-                        color = haloColor,
+                        color = coreColor.copy(alpha = 0.8f),
                         radius = baseRadius,
                         center = center,
-                        style = Stroke(width = 1.4.dp.toPx())
+                        style = Stroke(width = 1.3.dp.toPx())
                     )
                     val beams = 3
                     for (b in 0 until beams) {
-                        val phase = ((rotation / 360f) + b / beams.toFloat()) % 1f
-                        val y = center.y - baseRadius + 2f * baseRadius * phase
+                        val beamPhase = ((phase) + b / beams.toFloat()) % 1f
+                        val y = center.y - baseRadius + 2f * baseRadius * beamPhase
                         drawLine(
-                            color = SayvisGold.copy(alpha = 0.65f - 0.18f * b),
+                            color = aiStyleColor(phase + b * 0.3f, 0.7f - 0.18f * b),
                             start = Offset(center.x - baseRadius * 0.96f, y),
                             end = Offset(center.x + baseRadius * 0.96f, y),
-                            strokeWidth = (1.4f - b * 0.3f).dp.toPx()
+                            strokeWidth = (1.3f - b * 0.3f).dp.toPx()
                         )
                     }
                 }
             }
 
-            // 3. Inner hexagonal cognitive core (shared by every style).
+            // 3. Inner hexagonal cognitive core.
             val hexPath = Path()
             val hexRadius = baseRadius * 0.60f
             for (i in 0 until 6) {
-                val angle = (i * 60f - 30f) * (Math.PI / 180f)
-                val x = (center.x + hexRadius * cos(angle)).toFloat()
-                val y = (center.y + hexRadius * sin(angle)).toFloat()
+                val hexAngle = (i * 60f - 30f) * (Math.PI / 180f)
+                val x = (center.x + hexRadius * cos(hexAngle)).toFloat()
+                val y = (center.y + hexRadius * sin(hexAngle)).toFloat()
                 if (i == 0) hexPath.moveTo(x, y) else hexPath.lineTo(x, y)
             }
             hexPath.close()
 
-            drawPath(path = hexPath, color = coreColor.copy(alpha = 0.25f))
+            drawPath(path = hexPath, color = coreColor.copy(alpha = 0.22f))
             drawPath(path = hexPath, color = coreColor, style = Stroke(width = 2.dp.toPx()))
 
-            // 4. Central sovereign nucleus (grows slightly with the voice level).
+            // 4. Central sovereign nucleus (breathes with the voice).
             drawCircle(
-                color = if (state == AvatarState.EMERGENCY_LOCKED) SayvisRedAlert else SayvisGold,
-                radius = 7.dp.toPx() * pulse * (1f + 0.25f * voiceLevel),
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.95f),
+                        accentColor,
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = 9.dp.toPx() * (1f + 0.25f * voiceLevel)
+                ),
+                radius = 9.dp.toPx() * (1f + 0.25f * voiceLevel),
                 center = center
             )
         }

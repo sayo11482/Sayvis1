@@ -76,6 +76,35 @@ class SayvisStrings(val fa: Boolean) {
         "A robotic chirp plays whenever SAYVIS answers your voice input."
     )
     val sectionLanguage get() = t("زبان و نمایش", "Language & Appearance")
+
+    // ------------------------------------------------------ permission gate
+    val gateTitle get() = t("دسترسی‌های سایویس", "SAYVIS permissions")
+    val gateSubtitle get() = t(
+        "برای فعال‌شدن کامل قابلیت‌ها، دستگاه از شما اجازه می‌گیرد؛ هر زمان می‌توانید از تنظیمات تغییر دهید.",
+        "The device will ask your approval to unlock every capability — changeable anytime in Settings."
+    )
+    val gateGrantAll get() = t("فعال‌سازی همهٔ دسترسی‌ها", "Enable all permissions")
+    val gateContinue get() = t("ورود به سایویس", "Enter SAYVIS")
+    val gatePrivacyNote get() = t(
+        "حریم خصوصی: پردازش صدا و داده‌ها فقط روی همین دستگاه انجام می‌شود و هیچ چیز بدون اجازهٔ شما به بیرون ارسال نمی‌گردد.",
+        "Privacy: audio and data are processed on this device only — nothing leaves without your explicit action."
+    )
+    val permMic get() = t("میکروفون", "Microphone")
+    val permMicDesc get() = t("گفتگو با دستیار، ورودی صوتی و شنیدار آواتار", "Talking to the assistant, voice input and the listening avatar")
+    val permCamera get() = t("دوربین", "Camera")
+    val permCameraDesc get() = t("اسکن اسناد و قابلیت‌های بینایی آینده", "Document scanning and upcoming vision features")
+    val permLocation get() = t("موقعیت مکانی", "Location")
+    val permLocationDesc get() = t("پیشنهادهای آگاه از مکان (آفلاین، روی خود دستگاه)", "Location-aware suggestions (offline, on-device only)")
+    val permGallery get() = t("گالری (تصاویر)", "Gallery (images)")
+    val permGalleryDesc get() = t("خواندن تصاویر انتخابی شما برای تحلیل و پیوست", "Reading images you pick for analysis and attachments")
+    val permContacts get() = t("مخاطبین", "Contacts")
+    val permContactsDesc get() = t("یافتن مخاطب هنگام اشتراک‌گذاری، فقط با فرمان شما", "Finding a contact when sharing — only on your command")
+    val permNotif get() = t("آگاهی‌سازها", "Notifications")
+    val permNotifDesc get() = t("نشان شنیدار آواتار و هشدارهای مهم", "The avatar listening badge and critical alerts")
+    val permOverlay get() = t("نمایش روی برنامه‌های دیگر", "Display over other apps")
+    val permOverlayDesc get() = t("ماندن حبابک آواتار روی هوم و سایر برنامه‌ها", "Keeping the avatar bubble over Home and other apps")
+    val sectionPermissions get() = t("دسترسی‌های دستگاه", "Device permissions")
+    val permOpenSettings get() = t("تنظیمات دسترسی‌ها", "Open permission settings")
     val sectionAi get() = t("هوش مصنوعی و API", "Artificial Intelligence & API")
     val sectionTrading get() = t("درگاه معاملاتی", "Trading Gateway")
     val sectionAutomation get() = t("خودکارسازی و کدنویسی", "Automation & Scripting")

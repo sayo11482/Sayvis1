@@ -189,6 +189,44 @@ fun SettingsScreen(
             )
         }
 
+        // ================================================== DEVICE PERMISSIONS
+        SayvisSectionHeader(title = s.sectionPermissions, icon = Icons.Default.Security)
+
+        SayvisCard {
+            val appContext = androidx.compose.ui.platform.LocalContext.current
+            var gateState by remember { mutableStateOf(0) }
+            val cameraOk = remember(gateState) { com.example.sayvis.ui.components.checkPermission(appContext, android.Manifest.permission.CAMERA) }
+            val locationOk = remember(gateState) {
+                com.example.sayvis.ui.components.checkPermission(appContext, android.Manifest.permission.ACCESS_FINE_LOCATION) ||
+                    com.example.sayvis.ui.components.checkPermission(appContext, android.Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
+            val galleryOk = remember(gateState) { com.example.sayvis.ui.components.checkPermission(appContext, com.example.sayvis.ui.components.galleryPermission()) }
+            val contactsOk = remember(gateState) { com.example.sayvis.ui.components.checkPermission(appContext, android.Manifest.permission.READ_CONTACTS) }
+            val micOk = remember(gateState) { com.example.sayvis.ui.components.checkPermission(appContext, android.Manifest.permission.RECORD_AUDIO) }
+            val notifOk = remember(gateState) { com.example.sayvis.voice.AvatarListenController.hasNotificationPermission(appContext) }
+
+            val requestLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+            ) { gateState++ }
+
+            PermissionStatusRow(s.permMic, micOk, s) { requestLauncher.launch(arrayOf(android.Manifest.permission.RECORD_AUDIO)) }
+            PermissionStatusRow(s.permCamera, cameraOk, s) { requestLauncher.launch(arrayOf(android.Manifest.permission.CAMERA)) }
+            PermissionStatusRow(s.permLocation, locationOk, s) {
+                requestLauncher.launch(arrayOf(
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                ))
+            }
+            PermissionStatusRow(s.permGallery, galleryOk, s) { requestLauncher.launch(arrayOf(com.example.sayvis.ui.components.galleryPermission())) }
+            PermissionStatusRow(s.permContacts, contactsOk, s) { requestLauncher.launch(arrayOf(android.Manifest.permission.READ_CONTACTS)) }
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                PermissionStatusRow(s.permNotif, notifOk, s) { requestLauncher.launch(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS)) }
+            }
+            PermissionStatusRow(s.permOverlay, com.example.sayvis.voice.AvatarListenController.hasOverlayPermission(appContext), s) {
+                appContext.startActivity(com.example.sayvis.voice.AvatarListenController.overlaySettingsIntent(appContext))
+            }
+        }
+
         // ==================================================== AI VISUAL STYLE
         SayvisSectionHeader(
             title = s.sectionVisual,
@@ -755,4 +793,27 @@ private fun gatewaySummary(state: MtGatewayState, settings: AppSettings, isPersi
     val mode = profile.executionMode.label(isPersian)
     val server = profile.serverAddress.ifBlank { if (isPersian) "سرور تنظیم‌نشده" else "no server set" }
     return "$terminal · $server · $mode"
+}
+
+
+@Composable
+private fun PermissionStatusRow(
+    label: String,
+    granted: Boolean,
+    s: com.example.sayvis.i18n.SayvisStrings,
+    onGrant: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, fontSize = 12.sp, color = SayvisSilver, modifier = Modifier.weight(1f))
+        if (granted) {
+            SayvisStatusPill(text = s.avatarPermGranted, color = SayvisGreenSuccess)
+        } else {
+            SayvisButton(label = s.avatarPermGrant, onClick = onGrant, tone = ButtonTone.GOLD)
+        }
+    }
 }
