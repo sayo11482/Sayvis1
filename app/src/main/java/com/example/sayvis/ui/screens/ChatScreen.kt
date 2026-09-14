@@ -1,8 +1,10 @@
 package com.example.sayvis.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +24,10 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,6 +56,8 @@ import com.example.sayvis.ui.components.SayvisAvatar
 import com.example.sayvis.ui.theme.SayvisBorder
 import com.example.sayvis.ui.theme.SayvisCyan
 import com.example.sayvis.ui.theme.SayvisGold
+import com.example.sayvis.ui.theme.SayvisGreenSuccess
+import com.example.sayvis.ui.theme.SayvisRedAlert
 import com.example.sayvis.ui.theme.SayvisSilverMuted
 import com.example.sayvis.ui.theme.SayvisSurface
 import com.example.sayvis.ui.theme.SayvisSurfaceVariant
@@ -60,10 +68,16 @@ fun ChatScreen(
     avatarState: AvatarState,
     isPersian: Boolean,
     onSendMessage: (String) -> Unit,
+    pendingAction: com.example.sayvis.ui.AssistantAction? = null,
+    onApproveAction: () -> Unit = {},
+    onDismissAction: () -> Unit = {},
+    voiceListening: Boolean = false,
+    voiceAvailable: Boolean = true,
+    onVoiceInput: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
-    var isVoiceListening by remember { mutableStateOf(false) }
+    val isVoiceListening = voiceListening
     val listState = rememberLazyListState()
 
     LaunchedEffect(messages.size) {
@@ -210,6 +224,53 @@ fun ChatScreen(
             item { Spacer(modifier = Modifier.height(8.dp)) }
         }
 
+        // Zero-trust consent card for a privileged assistant action.
+        if (pendingAction != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Card(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = SayvisSurfaceVariant),
+                    border = BorderStroke(1.dp, SayvisGold)
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text(
+                            text = if (isPersian) "🔐 نیاز به تأیید شما: " + pendingAction.titleFa
+                                   else "🔐 Your approval required: " + pendingAction.titleEn,
+                            fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = SayvisGold
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (isPersian) pendingAction.detailFa else pendingAction.detailEn,
+                            fontSize = 10.5.sp, color = SayvisSilverMuted
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = onApproveAction,
+                                colors = ButtonDefaults.buttonColors(containerColor = SayvisGreenSuccess, contentColor = Color.Black),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                            ) {
+                                Text(if (isPersian) "تأیید و اجرا" else "Approve & run", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Button(
+                                onClick = onDismissAction,
+                                colors = ButtonDefaults.buttonColors(containerColor = SayvisRedAlert, contentColor = Color.Black),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                            ) {
+                                Text(if (isPersian) "رد" else "Deny", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Voice Listening Overlay Bar
         if (isVoiceListening) {
             Row(
@@ -239,14 +300,10 @@ fun ChatScreen(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Push-To-Talk Voice Input Button
+            // Voice Input Button (real platform speech recognition)
             IconButton(
-                onClick = {
-                    isVoiceListening = !isVoiceListening
-                    if (isVoiceListening) {
-                        inputText = if (isPersian) "وضعیت مأموریت‌های استراتژیک را گزارش بده" else "Report status of active strategic missions"
-                    }
-                },
+                onClick = { onVoiceInput() },
+                enabled = voiceAvailable,
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(10.dp))
@@ -254,9 +311,9 @@ fun ChatScreen(
                     .testTag("chat_voice_btn")
             ) {
                 Icon(
-                    imageVector = if (isVoiceListening) Icons.Default.Mic else Icons.Default.MicOff,
+                    imageVector = if (voiceAvailable) Icons.Default.Mic else Icons.Default.MicOff,
                     contentDescription = "Voice Input",
-                    tint = if (isVoiceListening) Color.Black else SayvisSilverMuted
+                    tint = if (isVoiceListening) Color.Black else if (voiceAvailable) SayvisCyan else SayvisSilverMuted
                 )
             }
 

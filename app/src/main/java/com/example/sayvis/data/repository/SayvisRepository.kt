@@ -3,6 +3,7 @@ package com.example.sayvis.data.repository
 import com.example.sayvis.data.local.AuditEventEntity
 import com.example.sayvis.data.local.AwareOpportunityEntity
 import com.example.sayvis.data.local.DeviceEntity
+import com.example.sayvis.data.local.MemoryItemEntity
 import com.example.sayvis.data.local.MissionEntity
 import com.example.sayvis.data.local.SayvisDatabase
 import com.example.sayvis.data.local.UicAttributeEntity
@@ -12,6 +13,7 @@ import com.example.sayvis.model.CognitiveLoadLevel
 import com.example.sayvis.model.ContextSnapshot
 import com.example.sayvis.model.Device
 import com.example.sayvis.model.FocusActivity
+import com.example.sayvis.model.MemoryItem
 import com.example.sayvis.model.Mission
 import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.model.RiskLevel
@@ -68,6 +70,44 @@ class SayvisRepository(private val database: SayvisDatabase) {
             result = "SUCCESS",
             digest = "DeletedAttribute: $id"
         )
+    }
+
+    // --- Long-term memory (assistant "remember / recall") ---
+    val allMemories: Flow<List<MemoryItem>> = database.memoryDao().getAllMemoriesFlow().map { entities ->
+        entities.map { it.toDomain() }
+    }
+
+    suspend fun addMemory(item: MemoryItem) {
+        database.memoryDao().insertMemory(MemoryItemEntity.fromDomain(item))
+        recordAuditEvent(
+            actor = "SAYVIS_AGENT",
+            action = "memory.item.create",
+            riskLevel = RiskLevel.LOW_RISK,
+            auth = "OWNER_CONFIRMED",
+            result = "SUCCESS",
+            digest = "Memory: ${item.content.take(60)}"
+        )
+    }
+
+    suspend fun deleteMemory(id: String) {
+        database.memoryDao().deleteMemory(id)
+    }
+
+    /** Keyword search over stored facts, newest & most important first. */
+    suspend fun searchMemories(needle: String): List<MemoryItem> {
+        val key = needle.trim()
+        if (key.isEmpty()) return emptyList()
+        val variants = linkedSetOf(key)
+        // Persian users type with/without ZWNJ and with Arabic yeh/kaf variants.
+        variants.add(key.replace("\u200c".toRegex(), " "))
+        variants.add(key.replace('ی', 'ي').replace('ک', 'ك'))
+        val found = LinkedHashMap<String, MemoryItem>()
+        for (variant in variants) {
+            for (entity in database.memoryDao().searchMemories(variant)) {
+                found.putIfAbsent(entity.id, entity.toDomain())
+            }
+        }
+        return found.values.toList()
     }
 
     // --- AWARE Engine ---

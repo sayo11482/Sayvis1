@@ -325,7 +325,13 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         messages = chatMessages,
                         avatarState = avatarState,
                         isPersian = isPersian,
-                        onSendMessage = { viewModel.sendMessage(it) }
+                        onSendMessage = { viewModel.sendMessage(it) },
+                        pendingAction = viewModel.pendingAction.collectAsState().value,
+                        onApproveAction = { viewModel.approvePendingAction() },
+                        onDismissAction = { viewModel.dismissPendingAction() },
+                        voiceListening = viewModel.voiceListening.collectAsState().value,
+                        voiceAvailable = viewModel.voiceAvailable,
+                        onVoiceInput = { viewModel.startVoiceInput() }
                     )
 
                     SayvisScreen.TOOLS -> ToolsScreen(
@@ -351,7 +357,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         scriptCount = scripts.size,
                         vaultHardwareBacked = viewModel.vaultHardwareBacked,
                         translationCacheSize = viewModel.translationCacheSize,
-                        appVersion = "1.1.0",
+                        appVersion = com.example.BuildConfig.VERSION_NAME,
                         onTestConnection = { viewModel.testAiConnection() },
                         onOpenGateway = { viewModel.navigateTo(SayvisScreen.GATEWAY) },
                         onOpenScripts = { viewModel.navigateTo(SayvisScreen.SCRIPTS) },

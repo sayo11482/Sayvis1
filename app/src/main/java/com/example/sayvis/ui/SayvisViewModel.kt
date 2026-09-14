@@ -1,9 +1,18 @@
 package com.example.sayvis.ui
 
 import android.app.Application
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sayvis.ai.AIOrchestrator
+import com.example.sayvis.ai.AssistantCommand
+import com.example.sayvis.ai.AssistantCommandEngine
 import com.example.sayvis.ai.ChatTurn
 import com.example.sayvis.ai.ProviderType
 import com.example.sayvis.ai.TranslationResult
@@ -22,8 +31,13 @@ import com.example.sayvis.model.LifeDomain
 import com.example.sayvis.model.LifeScenario
 import com.example.sayvis.model.LitAnalysisSignal
 import com.example.sayvis.model.LitSignalType
+import com.example.sayvis.model.MemoryItem
+import com.example.sayvis.model.MemoryType
 import com.example.sayvis.model.Mission
+import com.example.sayvis.model.MissionPriority
 import com.example.sayvis.model.MissionStatus
+import com.example.sayvis.model.RetentionPolicy
+import com.example.sayvis.model.EpistemicStatus
 import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.model.PrivacyLevel
 import com.example.sayvis.model.RiskLevel
@@ -70,7 +84,10 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -132,6 +149,21 @@ data class ChatMessage(
     val providerUsed: ProviderType? = null,
     val timestamp: Long = System.currentTimeMillis()
 )
+
+/**
+ * A privileged assistant action that waits for an explicit owner tap on
+ * approve/deny inside the chat before it is executed (zero-trust gate).
+ */
+data class AssistantAction(
+    val id: String = UUID.randomUUID().toString(),
+    val kind: Kind,
+    val titleFa: String,
+    val titleEn: String,
+    val detailFa: String,
+    val detailEn: String
+) {
+    enum class Kind { EMERGENCY_LOCK_ON, EMERGENCY_LOCK_OFF, OFFLINE_ON, OFFLINE_OFF }
+}
 
 class SayvisViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -309,7 +341,8 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         text = if (persian) {
             "سلام. من سایو هستم، دستیار شخصی سایویس.\n" +
                 "پروندهٔ شناختی شما بارگذاری شد، امنیت «اعتماد صفر» فعال است و ۳ دستگاه جفت شده‌اند.\n" +
-                "از تب «ابزارها» به مأموریت‌ها، معاملات و اسکریپت‌نویسی دسترسی دارید و همهٔ تنظیمات — از جمله کلید API و درگاه متاتریدر — در تب «تنظیمات» است."
+                "می‌توانید مستقیم دستور بدهید: «مأموریت بساز …»، «یادت باشه که …»، «حساب کن ۱۲×۳»، «وضعیت رو گزارش بده»، «باز کن تنظیمات» — را تحلیل و واقعاً اجرا می‌کنم. "
+                +"از تب «ابزارها» به مأموریت‌ها، معاملات و اسکریپت‌نویسی دسترسی دارید و همهٔ تنظیمات — از جمله کلید API و درگاه متاتریدر — در تب «تنظیمات» است."
         } else {
             "Hello. I am SAYO, your SAYVIS personal assistant.\n" +
                 "Your cognitive profile is loaded, zero-trust security is active and 3 devices are paired.\n" +
@@ -324,9 +357,26 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         val persian = current.isPersian(SayvisStrings.deviceIsPersian())
 
         _chatMessages.value = _chatMessages.value + ChatMessage(sender = "OWNER", text = text)
+        _pendingAction.value = null
         _avatarState.value = AvatarState.THINKING
 
         viewModelScope.launch {
+            // 1) Structured command analysis FIRST — these execute for real.
+            val command = AssistantCommandEngine.parse(text)
+            if (command != null) {
+                executeCommand(command, persian)
+                audit(
+                    actor = "SAYVIS_AGENT",
+                    action = "assistant.command.execute",
+                    riskLevel = RiskLevel.LOW_RISK,
+                    auth = "OWNER_CONFIRMED",
+                    result = "SUCCESS",
+                    digest = "${command::class.simpleName} <- ${text.take(40)}"
+                )
+                return@launch
+            }
+
+            // 2) Otherwise: full AI provider round-trip (cloud when configured, local core otherwise).
             val uicSummary = uicAttributes.value.joinToString("\n") {
                 "- [${it.category.name}] ${it.title}: ${it.value} (status ${it.status.name}, confidence ${it.confidence})"
             }
@@ -369,6 +419,347 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    // ------------------------------------------------- assistant command exec
+
+    private fun assistantReply(text: String) {
+        _chatMessages.value = _chatMessages.value + ChatMessage(
+            sender = "SAYVIS",
+            text = text,
+            providerUsed = ProviderType.LOCAL_COGNITIVE
+        )
+    }
+
+    private fun faOrEn(persian: Boolean, fa: String, en: String): String = if (persian) fa else en
+
+    /**
+     * Actually runs a parsed [AssistantCommand]. Low-risk commands execute
+     * immediately; privileged switches queue an [AssistantAction] that needs an
+     * explicit approve tap.
+     */
+    private suspend fun executeCommand(command: AssistantCommand, persian: Boolean) {
+        when (command) {
+            is AssistantCommand.CreateMission -> {
+                if (emergencyLockActive.value) {
+                    assistantReply(faOrEn(persian, "⛔ قفل اضطراری فعال است؛ ساخت مأموریت مسدود شد. ابتدا قفل را بردارید.", "⛔ The emergency lock is engaged; mission creation is blocked. Disengage it first."))
+                    updateAvatarState()
+                    return
+                }
+                val tasks = (1..command.taskCount).map { index ->
+                    com.example.sayvis.model.MissionTask(
+                        id = "task_" + UUID.randomUUID().toString().take(6),
+                        title = faOrEn(persian, "زیرکار $index", "Sub-task $index")
+                    )
+                }
+                val mission = Mission(
+                    id = "mission_" + UUID.randomUUID().toString().take(6),
+                    title = command.title,
+                    description = faOrEn(persian, "ایجادشده از طریق دستیار سایویس", "Created through the SAYVIS assistant"),
+                    priority = if (command.urgent) MissionPriority.CRITICAL else MissionPriority.HIGH,
+                    status = MissionStatus.ACTIVE,
+                    progressPercent = 0,
+                    deadline = "",
+                    tasks = tasks
+                )
+                repository.addMission(mission)
+                assistantReply(
+                    faOrEn(
+                        persian,
+                        "✅ مأموریت «${command.title}» ساخته شد" +
+                            (if (command.taskCount > 0) " با ${command.taskCount} زیرکار" else "") +
+                            (if (command.urgent) " و با اولویت بحرانی" else "") +
+                            ". از «ابزارها ← مأموریت‌ها» قابل پیگیری است.",
+                        "✅ Mission \"${command.title}\" was created" +
+                            (if (command.taskCount > 0) " with ${command.taskCount} sub-task(s)" else "") +
+                            (if (command.urgent) " at CRITICAL priority" else "") +
+                            ". Track it under Tools → Missions."
+                    )
+                )
+                audit("SAYVIS_AGENT", "mission.create_from_chat", RiskLevel.LOW_RISK, "OWNER_CONFIRMED", "SUCCESS", command.title)
+            }
+
+            is AssistantCommand.Remember -> {
+                repository.addMemory(
+                    MemoryItem(
+                        id = "mem_" + UUID.randomUUID().toString().take(8),
+                        type = MemoryType.LONG_TERM_MEMORY,
+                        content = command.fact,
+                        source = "OWNER_CHAT",
+                        confidence = 1.0f,
+                        provenance = faOrEn(persian, "گفتهٔ مالک در گفتگو", "Owner statement in chat"),
+                        importance = 7,
+                        retentionPolicy = RetentionPolicy.PERSISTENT,
+                        epistemicStatus = EpistemicStatus.CONFIRMED
+                    )
+                )
+                assistantReply(
+                    faOrEn(persian, "🧠 ثبت شد در حافظهٔ بلندمدت: «${command.fact}»\nهر وقت پرسیدید «یادت هست…؟» همان را می‌گویم.",
+                        "🧠 Stored in long-term memory: \"${command.fact}\"\nAsk me \"do you remember…?\" any time.")
+                )
+                audit("SAYVIS_AGENT", "memory.create_from_chat", RiskLevel.LOW_RISK, "OWNER_CONFIRMED", "SUCCESS", command.fact.take(50))
+            }
+
+            is AssistantCommand.Recall -> {
+                val hits = repository.searchMemories(command.query)
+                val uicHits = if (command.query.isBlank()) emptyList() else uicAttributes.value.filter {
+                    it.title.contains(command.query, ignoreCase = true) || it.value.contains(command.query, ignoreCase = true)
+                }.take(3)
+                val lines = ArrayList<String>()
+                lines.add(faOrEn(persian, "🧠 آنچه در حافظه دارم:", "🧠 What I remember:"))
+                if (hits.isEmpty() && uicHits.isEmpty()) {
+                    lines.clear()
+                    lines.add(
+                        if (command.query.isBlank()) faOrEn(persian, "هنوز چیزی در حافظه ثبت نشده. با «یادت باشه که …» ثبتش کنید.",
+                            "Nothing is stored yet. Say \"remember that …\" to store a fact.")
+                        else faOrEn(persian, "چیزی دربارهٔ «${command.query}» پیدا نکردم. می‌توانید با «یادت باشه که …» ثبتش کنید.",
+                            "I found nothing about \"${command.query}\". You can store it with \"remember that …\".")
+                    )
+                } else {
+                    hits.forEach { item ->
+                        val date = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault()).format(Date(item.createdAt))
+                        lines.add("• ${item.content}  ($date)")
+                    }
+                    uicHits.forEach { attr ->
+                        lines.add(faOrEn(persian, "• [پروندهٔ شناختی] ${attr.title}: ${attr.value}", "• [Cognitive profile] ${attr.title}: ${attr.value}"))
+                    }
+                }
+                assistantReply(lines.joinToString("\n"))
+            }
+
+            is AssistantCommand.Calculate -> {
+                val formatted = formatNumber(command.value, persian)
+                assistantReply(
+                    faOrEn(persian, "🧮 ${command.expression} = $formatted", "🧮 ${command.expression} = $formatted")
+                )
+            }
+
+            AssistantCommand.StatusReport -> {
+                val snap = contextSnapshot.value
+                val current = settingsStore.current()
+                val provider = current.ai.activeModel()
+                assistantReply(
+                    faOrEn(persian,
+                        "📊 وضعیت لحظه‌ای سایویس:\n" +
+                            "• مأموریت‌های فعال: ${snap.activeMissionsCount}\n" +
+                            "• وظیفه‌های مسدود: ${snap.blockedTasksCount}\n" +
+                            "• باتری: ${snap.batteryPercent}٪" + (if (snap.isCharging) " (در حال شارژ)" else "") + "\n" +
+                            "• شبکه: " + (if (snap.isOnline) "آنلاین" else "آفلاین") + "\n" +
+                            "• قفل اضطراری: " + (if (current.emergencyLockActive) "فعال" else "غیرفعال") + "\n" +
+                            "• هستهٔ هوش: $provider\n" +
+                            "• یادداشت‌های حافظه: ${memories.value.size}",
+                        "📊 SAYVIS live status:\n" +
+                            "• Active missions: ${snap.activeMissionsCount}\n" +
+                            "• Blocked tasks: ${snap.blockedTasksCount}\n" +
+                            "• Battery: ${snap.batteryPercent}%" + (if (snap.isCharging) " (charging)" else "") + "\n" +
+                            "• Network: " + (if (snap.isOnline) "online" else "offline") + "\n" +
+                            "• Emergency lock: " + (if (current.emergencyLockActive) "ENGAGED" else "off") + "\n" +
+                            "• AI core: $provider\n" +
+                            "• Memory notes: ${memories.value.size}"
+                    )
+                )
+            }
+
+            AssistantCommand.ShowMissions -> {
+                val list = missions.value
+                if (list.isEmpty()) {
+                    assistantReply(faOrEn(persian, "هیچ مأموریتی ثبت نشده است. بگویید «مأموریت بساز …» تا همین‌جا بسازم.",
+                        "No missions yet. Say \"create mission …\" and I will build one right here."))
+                } else {
+                    val body = list.take(10).mapIndexed { index, mission ->
+                        "${index + 1}. ${mission.title} — ${mission.progressPercent}٪ (${mission.tasks.size} " +
+                            faOrEn(persian, "وظیفه،", "tasks,") + " ${mission.priority.labelFa}/${mission.priority.labelEn})"
+                    }.joinToString("\n")
+                    assistantReply(faOrEn(persian, "📋 مأموریت‌های شما:\n$body", "📋 Your missions:\n$body"))
+                }
+            }
+
+            AssistantCommand.RunAwareScan -> {
+                runAwareScan()
+                assistantReply(
+                    faOrEn(persian, "🔎 اسکن ادراک محیطی انجام شد؛ پیشنهادهای تازه در «ابزارها ← پیشنهادهای هوشمند» ظاهر می‌شوند.",
+                        "🔎 AWARE scan finished; fresh suggestions appear under Tools → Smart Suggestions.")
+                )
+            }
+
+            is AssistantCommand.Navigate -> {
+                val target = runCatching { SayvisScreen.valueOf(command.target) }.getOrNull()
+                if (target != null) {
+                    navigateTo(target)
+                    assistantReply(
+                        faOrEn(persian, "صفحهٔ «${target.titleFa}» باز شد ✅", "Opened ${target.titleEn} ✅")
+                    )
+                }
+            }
+
+            is AssistantCommand.ToggleEmergencyLock -> {
+                val already = emergencyLockActive.value == command.engage
+                if (already) {
+                    assistantReply(
+                        faOrEn(persian,
+                            "قفل اضطراری از قبل " + (if (command.engage) "فعال است." else "غیرفعال است."),
+                            "The emergency lock is already " + (if (command.engage) "engaged." else "off."))
+                    )
+                } else {
+                    _pendingAction.value = if (command.engage) {
+                        AssistantAction(
+                            kind = AssistantAction.Kind.EMERGENCY_LOCK_ON,
+                            titleFa = "فعال‌سازی قفل اضطراری", titleEn = "Engage the emergency lock",
+                            detailFa = "همهٔ اجراها، ابزارها و خودکارسازی‌ها مسدود می‌شوند.",
+                            detailEn = "All execution, tools and automations will be blocked."
+                        )
+                    } else {
+                        AssistantAction(
+                            kind = AssistantAction.Kind.EMERGENCY_LOCK_OFF,
+                            titleFa = "برداشتن قفل اضطراری", titleEn = "Disengage the emergency lock",
+                            detailFa = "اجراهای مسدودشده دوباره آزاد می‌شوند.",
+                            detailEn = "Blocked executions will be permitted again."
+                        )
+                    }
+                    assistantReply(
+                        faOrEn(persian, "برای این کار به تأیید صریح شما نیاز دارم — کارت تأیید را در پایین گفتگو ببینید.",
+                            "I need your explicit approval — see the confirmation card at the bottom of the chat.")
+                    )
+                }
+            }
+
+            is AssistantCommand.ToggleOffline -> {
+                val already = forceOfflineMode.value == command.enable
+                if (already) {
+                    assistantReply(
+                        faOrEn(persian,
+                            "حالت آفلاین از قبل " + (if (command.enable) "روشن است." else "خاموش است."),
+                            "Offline mode is already " + (if (command.enable) "on." else "off."))
+                    )
+                } else {
+                    _pendingAction.value = if (command.enable) {
+                        AssistantAction(
+                            kind = AssistantAction.Kind.OFFLINE_ON,
+                            titleFa = "روشن‌کردن حالت آفلاین اجباری", titleEn = "Enable forced offline mode",
+                            detailFa = "هیچ درخواستی به اینترنت فرستاده نمی‌شود.",
+                            detailEn = "No request will ever reach the internet."
+                        )
+                    } else {
+                        AssistantAction(
+                            kind = AssistantAction.Kind.OFFLINE_OFF,
+                            titleFa = "خاموش‌کردن حالت آفلاین", titleEn = "Disable offline mode",
+                            detailFa = "سرویس هوش مصنوعی ابری (در صورت تنظیم) دوباره در دسترس می‌شود.",
+                            detailEn = "The cloud AI provider (if configured) becomes reachable again."
+                        )
+                    }
+                    assistantReply(
+                        faOrEn(persian, "به تأیید شما نیاز دارم — کارت تأیید را در پایین گفتگو ببینید.",
+                            "I need your approval — see the confirmation card at the bottom of the chat.")
+                    )
+                }
+            }
+
+            AssistantCommand.TimeQuery -> {
+                val fmt = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                val now = fmt.format(Date())
+                assistantReply(faOrEn(persian, "🕐 ساعت $now است.", "🕐 It is $now."))
+            }
+
+            AssistantCommand.DateQuery -> {
+                val faLocale = if (persian) Locale("fa") else Locale.getDefault()
+                val fmt = SimpleDateFormat("EEEE، yyyy/MM/dd", faLocale)
+                val today = fmt.format(Date())
+                assistantReply(faOrEn(persian, "📅 امروز $today است.", "📅 Today is $today."))
+            }
+
+            AssistantCommand.BatteryQuery -> {
+                val (pct, charging) = readBatteryStatus()
+                assistantReply(
+                    faOrEn(persian,
+                        "🔋 باتری دستگاه ${pct}٪ است" + (if (charging) " و در حال شارژ است." else "."),
+                        "🔋 The device battery is at $pct%" + (if (charging) " and charging." else "."))
+                )
+            }
+
+            AssistantCommand.Help -> assistantReply(helpText(persian))
+        }
+        _avatarState.value = AvatarState.SPEAKING
+        updateAvatarState()
+    }
+
+    private fun formatNumber(value: Double, persian: Boolean): String {
+        val plain = if (kotlin.math.abs(value - value.toLong()) < 1e-9) {
+            value.toLong().toString()
+        } else {
+            "%.4f".format(value).trimEnd('0').trimEnd('.')
+        }
+        return if (persian) com.example.sayvis.i18n.PersianFormat.toPersianNumerals(plain) else plain
+    }
+
+    private fun helpText(persian: Boolean): String =
+        if (persian) {
+            "من فقط دستیار متن نیستم؛ دستور را تحلیل و واقعاً اجرا می‌کنم:\n" +
+                "• «مأموریت بساز خرید هفتگی با ۳ وظیفه»\n" +
+                "• «یادت باشه که جلسهٔ فردا ساعت ۹ است» → ثبت در حافظه\n" +
+                "• «یادت هست جلسه؟» → جست‌وجوی حافظه\n" +
+                "• «حساب کن ۱۲×۳+۵» یا «what is 8/2»\n" +
+                "• «وضعیت رو گزارش بده» / «مأموریت‌هامو نشون بده»\n" +
+                "• «اسکن کن» → پیشنهادهای هوشمند\n" +
+                "• «باز کن تنظیمات / مأموریت‌ها / درگاه / آواتار …»\n" +
+                "• «قفل اضطراری را فعال کن» و «حالت آفلاین را روشن کن» (با کارت تأیید)\n" +
+                "• «ساعت چنده؟»، «تاریخ امروز؟»، «باتری چقدره؟"\n" +
+                "سؤال‌های باز را هم با هستهٔ محلی یا سرویس ابری پاسخ می‌دهم."
+        } else {
+            "I don't just chat — I parse and actually execute commands:\n" +
+                "• \"create mission weekly shopping with 3 tasks\"\n" +
+                "• \"remember that the review is tomorrow at 9\" → long-term memory\n" +
+                "• \"do you remember the review?\" → memory search\n" +
+                "• \"calculate 12*3+5\" or \"what is 8/2\"\n" +
+                "• \"report status\" / \"show missions\"\n" +
+                "• \"run a scan\" → smart suggestions\n" +
+                "• \"open settings / missions / gateway / avatar …\"\n" +
+                "• \"engage emergency lock\" and \"enable offline mode\" (with a consent card)\n" +
+                "• \"what time is it?\", \"today's date?\", \"battery?\"\n" +
+                "Open questions go to the local core or your cloud provider."
+        }
+
+    // -------------------------------------------------- pending (risky) action
+
+    private val _pendingAction = MutableStateFlow<AssistantAction?>(null)
+    val pendingAction: StateFlow<AssistantAction?> = _pendingAction.asStateFlow()
+
+    /** Zero-trust: the switch flips only after this explicit tap. */
+    fun approvePendingAction() {
+        val action = _pendingAction.value ?: return
+        _pendingAction.value = null
+        val persian = isPersian.value
+        when (action.kind) {
+            AssistantAction.Kind.EMERGENCY_LOCK_ON -> {
+                settingsStore.setEmergencyLock(true)
+                updateAvatarState()
+                assistantReply(faOrEn(persian, "🔒 قفل اضطراری فعال شد. همهٔ اجراها مسدود هستند.", "🔒 Emergency lock engaged. All execution is blocked."))
+                audit("OWNER", "security.emergency_lock.engage", RiskLevel.CRITICAL, "OWNER_CONFIRMED", "SUCCESS", "Approved from chat")
+            }
+            AssistantAction.Kind.EMERGENCY_LOCK_OFF -> {
+                settingsStore.setEmergencyLock(false)
+                updateAvatarState()
+                assistantReply(faOrEn(persian, "🔓 قفل اضطراری برداشته شد.", "🔓 Emergency lock disengaged."))
+                audit("OWNER", "security.emergency_lock.disengage", RiskLevel.CRITICAL, "OWNER_CONFIRMED", "SUCCESS", "Approved from chat")
+            }
+            AssistantAction.Kind.OFFLINE_ON -> {
+                settingsStore.setForceOffline(true)
+                updateAvatarState()
+                assistantReply(faOrEn(persian, "✈️ حالت آفلاین اجباری روشن شد؛ هیچ داده‌ای به بیرون نمی‌رود.", "✈️ Forced offline mode enabled; nothing leaves the device."))
+                audit("OWNER", "settings.offline_mode.enable", RiskLevel.MEDIUM_RISK, "OWNER_CONFIRMED", "SUCCESS", "Approved from chat")
+            }
+            AssistantAction.Kind.OFFLINE_OFF -> {
+                settingsStore.setForceOffline(false)
+                updateAvatarState()
+                assistantReply(faOrEn(persian, "🌐 حالت آفلاین خاموش شد.", "🌐 Offline mode disabled."))
+                audit("OWNER", "settings.offline_mode.disable", RiskLevel.MEDIUM_RISK, "OWNER_CONFIRMED", "SUCCESS", "Approved from chat")
+            }
+        }
+    }
+
+    fun dismissPendingAction() {
+        _pendingAction.value = null
+        val persian = isPersian.value
+        assistantReply(faOrEn(persian, "باشه، اجرا نشد.", "Okay — not executed."))
+    }
+
     // -------------------------------------------------------------- database
     val uicAttributes: StateFlow<List<UicAttribute>> = repository.allUicAttributes.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
@@ -387,6 +778,11 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     )
 
     val auditEvents: StateFlow<List<AuditEvent>> = repository.allAuditEvents.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    /** Long-term memory the assistant remembers across restarts. */
+    val memories: StateFlow<List<MemoryItem>> = repository.allMemories.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
     )
 
@@ -569,6 +965,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         settings
     ) { missionList, current ->
         val blockedCount = missionList.flatMap { it.tasks }.count { it.isBlocked }
+        val (batteryLevel, batteryCharging) = readBatteryStatus()
         val now = Calendar.getInstance()
         val hour = now.get(Calendar.HOUR_OF_DAY)
         val minute = now.get(Calendar.MINUTE)
@@ -578,6 +975,8 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             blockedTasksCount = blockedCount,
             emergencyLockActive = current.emergencyLockActive,
             isOnline = !current.forceOfflineMode,
+            batteryPercent = batteryLevel,
+            isCharging = batteryCharging,
             focusWindowActive = focusActive,
             currentActivity = when {
                 focusActive -> FocusActivity.DEEP_WORK
@@ -929,6 +1328,120 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch { repository.revokeDevice(deviceId) }
     }
 
+    // ------------------------------------------------------- device telemetry
+
+    /** Real battery level & charging state for the context engine and chat queries. */
+    private fun readBatteryStatus(): Pair<Int, Boolean> {
+        val app = getApplication<Application>()
+        return runCatching {
+            val bm = app.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+            val capacity = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+            val sticky = app.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val level = sticky?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+            val scale = sticky?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+            val pct = when {
+                capacity in 1..100 -> capacity
+                level >= 0 && scale > 0 -> level * 100 / scale
+                else -> 85
+            }
+            val charging = sticky?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) == BatteryManager.BATTERY_STATUS_CHARGING ||
+                (sticky?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) > 0
+            pct.coerceIn(0, 100) to charging
+        }.getOrDefault(85 to false)
+    }
+
+    // ----------------------------------------------------------- voice input
+
+    private var speechRecognizer: SpeechRecognizer? = null
+
+    private val _voiceListening = MutableStateFlow(false)
+    val voiceListening: StateFlow<Boolean> = _voiceListening.asStateFlow()
+
+    /** True when the device has a working speech recognition service. */
+    val voiceAvailable: Boolean
+        get() = runCatching { SpeechRecognizer.isRecognitionAvailable(getApplication()) }.getOrDefault(false)
+
+    /**
+     * Real speech-to-text through the platform [SpeechRecognizer]: captures the
+     * owner's sentence and feeds it straight into the command pipeline.
+     */
+    fun startVoiceInput() {
+        if (_voiceListening.value) return
+        val app = getApplication<Application>()
+        val available = runCatching { SpeechRecognizer.isRecognitionAvailable(app) }.getOrDefault(false)
+        if (!available) {
+            val persian = isPersian.value
+            pushAssistantMessage(
+                if (persian) "🎤 ورودی گفتار روی این دستگاه در دسترس نیست (سرویس تشخیص گفتار نصب نیست). لطفاً تایپ کنید."
+                else "🎤 Voice input is unavailable on this device (no speech recognition service). Please type."
+            )
+            return
+        }
+        val persian = isPersian.value
+        val recognizer = speechRecognizer ?: SpeechRecognizer.createSpeechRecognizer(app).also { speechRecognizer = it }
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, if (persian) "fa-IR" else "en-US")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MATCH, 2)
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+        }
+        recognizer.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: android.os.Bundle?) {
+                _voiceListening.value = true
+            }
+
+            override fun onBeginningOfSpeech() {}
+
+            override fun onRmsChanged(rmsdB: Float) {}
+
+            override fun onBufferReceived(buffer: ByteArray?) {}
+
+            override fun onEndOfSpeech() {}
+
+            override fun onError(error: Int) {
+                _voiceListening.value = false
+                val persian = isPersian.value
+                val reason = when (error) {
+                    SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
+                        if (persian) "صدایی شنیده نشد؛ دوباره تلاش کنید." else "No speech was heard; try again."
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
+                        if (persian) "برای ورودی گفتار، اجازهٔ میکروفون لازم است." else "The microphone permission is required for voice input."
+                    else ->
+                        if (persian) "تشخیص گفتار ناموفق بود (کد $error). لطفاً تایپ کنید." else "Speech recognition failed (code $error). Please type."
+                }
+                pushAssistantMessage("🎤 $reason")
+            }
+
+            override fun onResults(results: android.os.Bundle?) {
+                _voiceListening.value = false
+                val best = results
+                    ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    ?.firstOrNull()
+                if (best.isNullOrBlank()) {
+                    val persian = isPersian.value
+                    pushAssistantMessage(
+                        if (persian) "🎤 گفتاری تشخیص داده نشد." else "🎤 No speech could be recognised."
+                    )
+                } else {
+                    sendMessage(best)
+                }
+            }
+
+            override fun onPartialResults(partialResults: android.os.Bundle?) {}
+
+            override fun onEvent(eventType: Int, params: android.os.Bundle?) {}
+        })
+        _voiceListening.value = true
+        recognizer.startListening(intent)
+    }
+
+    override fun onCleared() {
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+        super.onCleared()
+    }
+
     // ---------------------------------------------------------------- misc
     private fun updateAvatarState() {
         val current = settingsStore.current()
@@ -1008,7 +1521,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         val gw = _gatewayState.value
         return buildString {
             appendLine("SAYVIS diagnostics")
-            appendLine("version: 1.1.0")
+            appendLine("version: " + com.example.BuildConfig.VERSION_NAME)
             appendLine("language: ${current.localization.language.name}")
             appendLine("ai provider: ${current.ai.provider.name} configured=${current.ai.isProviderConfigured()}")
             appendLine("ai model: ${current.ai.activeModel()}")
