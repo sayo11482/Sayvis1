@@ -289,19 +289,19 @@ object AssistantCommandEngine {
         val wantsOpen = containsAny(text, listOf("باز کن", "بازکردن", "برو به", "برو تو", "نمایش بده", "open ", "go to ", "show me ", "switch to "))
         if (!wantsOpen) return null
         val targets = listOf(
-            Triple(listOf("تنظیمات", "settings"), "SETTINGS"),
-            Triple(listOf("مأموریت", "ماموریت", "کارها", "mission"), "MISSIONS"),
-            Triple(listOf("چت", "گفتگو", "دستیار", "chat", "assistant"), "ASSISTANT"),
-            Triple(listOf("ابزار", "tools"), "TOOLS"),
-            Triple(listOf("خانه", "home"), "HOME"),
-            Triple(listOf("درگاه", "gateway", "متاتریدر", "metatrader"), "GATEWAY"),
-            Triple(listOf("اسکریپت", "خودکارسازی", "script", "automation"), "SCRIPTS"),
-            Triple(listOf("امنیت", "دستگاه", "security"), "SECURITY"),
-            Triple(listOf("پرونده شناختی", "uic"), "UIC"),
-            Triple(listOf("اواتار", "آواتار", "شنیدار", "میکروفون", "avatar", "listening", "microphone"), "AVATAR"),
-            Triple(listOf("شبیه سازی", "شبیهسازی", "simulation", "simulator"), "SIMULATION"),
-            Triple(listOf("معاملات", "بازار", "ترید", "trading", "market"), "TRADING"),
-            Triple(listOf("پیشنهاد", "ادراک", "aware"), "AWARE")
+            Pair(listOf("تنظیمات", "settings"), "SETTINGS"),
+            Pair(listOf("مأموریت", "ماموریت", "کارها", "mission"), "MISSIONS"),
+            Pair(listOf("چت", "گفتگو", "دستیار", "chat", "assistant"), "ASSISTANT"),
+            Pair(listOf("ابزار", "tools"), "TOOLS"),
+            Pair(listOf("خانه", "home"), "HOME"),
+            Pair(listOf("درگاه", "gateway", "متاتریدر", "metatrader"), "GATEWAY"),
+            Pair(listOf("اسکریپت", "خودکارسازی", "script", "automation"), "SCRIPTS"),
+            Pair(listOf("امنیت", "دستگاه", "security"), "SECURITY"),
+            Pair(listOf("پرونده شناختی", "uic"), "UIC"),
+            Pair(listOf("اواتار", "آواتار", "شنیدار", "میکروفون", "avatar", "listening", "microphone"), "AVATAR"),
+            Pair(listOf("شبیه سازی", "شبیهسازی", "simulation", "simulator"), "SIMULATION"),
+            Pair(listOf("معاملات", "بازار", "ترید", "trading", "market"), "TRADING"),
+            Pair(listOf("پیشنهاد", "ادراک", "aware"), "AWARE")
         )
         // The earliest (then longest) keyword wins, so "open the avatar settings"
         // lands on the avatar screen, not on settings.
