@@ -78,6 +78,22 @@ Nothing in the interface is left in English when the owner picks Persian.
 
 ---
 
+## Brand & Launcher Icon
+The launcher identity is the SAYVIS power-core artwork (violet chrome head, neon
+conduits, hexagonal plasma core):
+
+- `art/sayvis-icon-master.png` — the square master artwork (source of truth).
+- `art/sayvis-icon-512.png` — store-listing size.
+- `tools/make-icons.sh [source-image]` — regenerates **every** launcher asset from any
+  source image: centre-crops to square, then emits the five `mipmap` densities
+  (`ic_launcher.webp`), circular `ic_launcher_round.webp` variants, the 432px adaptive
+  foreground (`drawable-nodpi/ic_launcher_foreground.png`) and the 512px store asset.
+  Hand the owner's original artwork to this script and the whole icon set follows.
+- Adaptive layers (API 26+): `drawable/ic_launcher_background.xml` (edge-sampled
+  gradient) and `drawable/ic_launcher_monochrome.xml` (themed-icon glyph).
+
+---
+
 ## Technology Stack
 - **Language**: Kotlin 2.0+
 - **UI Framework**: Jetpack Compose with Material Design 3
