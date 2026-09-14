@@ -232,7 +232,7 @@ class GoogleSignInActivity : ComponentActivity() {
 @Composable
 private fun AutoConnectScreen(
     isPersian: Boolean,
-    phase: GoogleSignInActivity.Phase,
+    phase: Phase,
     statusLine: String,
     onRecheck: () -> Unit,
     onOpenStudio: () -> Unit,
