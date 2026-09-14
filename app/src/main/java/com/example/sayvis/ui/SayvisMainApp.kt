@@ -99,6 +99,10 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
     val forceOfflineMode by viewModel.forceOfflineMode.collectAsState()
     val avatarState by viewModel.avatarState.collectAsState()
     val contextSnapshot by viewModel.contextSnapshot.collectAsState()
+    val ownerAccount by viewModel.ownerAccount.collectAsState()
+    val ownerSignedIn by viewModel.ownerSignedIn.collectAsState()
+    val pairingOffer by viewModel.pairingOffer.collectAsState()
+    val accountMessage by viewModel.accountMessage.collectAsState()
 
     val chatMessages by viewModel.chatMessages.collectAsState()
     val uicAttributes by viewModel.uicAttributes.collectAsState()
@@ -397,7 +401,19 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         isPersian = isPersian,
                         onToggleEmergencyLock = { viewModel.toggleEmergencyLock() },
                         onToggleDeviceTrust = { deviceId, trust -> viewModel.toggleDeviceTrust(deviceId, trust) },
-                        onRevokeDevice = { viewModel.revokeDevice(it) }
+                        onRevokeDevice = { viewModel.revokeDevice(it) },
+                        ownerAccount = ownerAccount,
+                        ownerSignedIn = ownerSignedIn,
+                        pairingOffer = pairingOffer,
+                        accountMessage = accountMessage,
+                        onClearAccountMessage = { viewModel.clearAccountMessage() },
+                        onRegisterOwner = { e, p -> viewModel.registerOwner(e, p) },
+                        onSignInOwner = { e, p -> viewModel.signInOwner(e, p) },
+                        onSignOutOwner = { viewModel.signOutOwner() },
+                        onChangePassword = { c, n -> viewModel.changeOwnerPassword(c, n) },
+                        onStartPairing = { viewModel.startPairing() },
+                        onCancelPairing = { viewModel.cancelPairing() },
+                        onCompletePairing = { name, type, fp, proof -> viewModel.completePairing(name, type, fp, proof) }
                     )
 
                     SayvisScreen.TRADING -> SimulationTradingScreen(

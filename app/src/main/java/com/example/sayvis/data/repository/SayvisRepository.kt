@@ -213,6 +213,20 @@ class SayvisRepository(private val database: SayvisDatabase) {
         )
     }
 
+    /** Adds a device that passed the pairing handshake. It starts UNTRUSTED. */
+    suspend fun registerPairedDevice(device: Device) {
+        database.deviceDao().insertDevice(DeviceEntity.fromDomain(device))
+        recordAuditEvent(
+            actor = "OWNER",
+            action = "device.pair",
+            riskLevel = RiskLevel.HIGH,
+            auth = "OWNER_CONFIRMED_PAIRING_CODE",
+            result = "SUCCESS",
+            digest = "Paired ${device.type.name} ${device.name} fp=${device.publicKeyFingerprint}",
+            deviceId = device.id
+        )
+    }
+
     suspend fun revokeDevice(deviceId: String) {
         database.deviceDao().updateDeviceStatus(deviceId, isRevoked = true, isTrusted = false)
         recordAuditEvent(

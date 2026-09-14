@@ -102,3 +102,9 @@ conduits, hexagonal plasma core):
 - **Concurrency**: Kotlin Coroutines & Reactive StateFlow
 - **Cryptography**: SHA-256 tamper-evident audit chaining; AES-256/GCM via Android Keystore
 - **Localization**: Native bidirectional support (Persian RTL / English LTR)
+
+## حساب مالک و جفت‌سازی دستگاه‌ها (Owner account & device pairing)
+
+- حساب مالک با **ایمیل + رمز عبور** روی خود گوشی ساخته می‌شود؛ رمز ذخیره نمی‌شود، فقط اثر `PBKDF2-HMAC-SHA256` (۱۲۰٬۰۰۰ تکرار) داخل Keystore نگه داشته می‌شود.
+- **جفت‌سازی PC/دستگاه دیگر**: گوشی یک کد ۵ دقیقه‌ای می‌سازد، دستگاه مقابل با همان ایمیل/رمز وارد می‌شود و `proof = HMAC(secret, code|fingerprint|accountId)` می‌سازد، مالک آن را روی گوشی تأیید می‌کند. دستگاه جدید همیشه «محدود» شروع می‌شود تا مالک اعتماد بدهد. همهٔ مراحل در سیاههٔ ممیزی ثبت می‌شوند و در قفل اضطراری مسدودند.
+- وضعیت طبق Dossier: **Account/Auth = IMPLEMENTED (on-device)**، **Pairing handshake = IMPLEMENTED (crypto contract + UI)**، **Gateway شبکه‌ای / همگام‌سازی واقعی بین دستگاه‌ها = PLANNED** — سمت PC هنوز باید همین قرارداد (`identity/DevicePairing.kt`) را پیاده کند.

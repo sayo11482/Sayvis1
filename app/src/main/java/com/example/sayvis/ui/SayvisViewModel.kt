@@ -44,6 +44,11 @@ import com.example.sayvis.settings.AppSettings
 import com.example.sayvis.settings.MtGatewayProfile
 import com.example.sayvis.settings.ProviderProbe
 import com.example.sayvis.settings.SettingsStore
+import com.example.sayvis.identity.AccountResult
+import com.example.sayvis.identity.DevicePairing
+import com.example.sayvis.identity.OwnerAccount
+import com.example.sayvis.identity.OwnerAccountStore
+import com.example.sayvis.model.DeviceType
 import com.example.sayvis.settings.TradingExecutionMode
 import com.example.sayvis.trading.MetaTraderGateway
 import com.example.sayvis.trading.MtConnectionPhase
@@ -133,6 +138,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     val repository = SayvisRepository(database)
 
     private val settingsStore = SettingsStore.get(application)
+    private val accountStore = OwnerAccountStore.get(application)
     private val scriptStore = ScriptStore.get(application).apply { ensureStarters() }
     private val scriptEngine = ScriptEngine()
     private val translationService = TranslationService(application)
@@ -814,6 +820,103 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
 
     fun addMission(mission: Mission) {
         viewModelScope.launch { repository.addMission(mission) }
+    }
+
+    // ------------------------------------------------------ owner account
+    val ownerAccount: StateFlow<OwnerAccount?> = accountStore.account
+    val ownerSignedIn: StateFlow<Boolean> = accountStore.signedIn
+    val pairingOffer: StateFlow<DevicePairing.Offer?> = accountStore.activeOffer
+
+    private val _accountMessage = MutableStateFlow<String?>(null)
+    val accountMessage: StateFlow<String?> = _accountMessage.asStateFlow()
+
+    fun clearAccountMessage() { _accountMessage.value = null }
+
+    fun registerOwner(email: String, password: String) {
+        val persian = isPersian.value
+        when (val r = accountStore.register(email, password, persian)) {
+            is AccountResult.Success -> {
+                _accountMessage.value = if (persian) "حساب مالک ساخته شد و وارد شدید." else "Owner account created and signed in."
+                audit("OWNER", "account.register", RiskLevel.HIGH, "OWNER_PASSWORD", "SUCCESS", "account=${r.account.accountId}")
+            }
+            is AccountResult.Failure -> _accountMessage.value = r.message(persian)
+        }
+    }
+
+    fun signInOwner(email: String, password: String) {
+        val persian = isPersian.value
+        when (val r = accountStore.signIn(email, password)) {
+            is AccountResult.Success -> {
+                _accountMessage.value = if (persian) "ورود موفق." else "Signed in."
+                audit("OWNER", "account.sign_in", RiskLevel.MEDIUM, "OWNER_PASSWORD", "SUCCESS", "account=${r.account.accountId}")
+            }
+            is AccountResult.Failure -> {
+                _accountMessage.value = r.message(persian)
+                audit("OWNER", "account.sign_in", RiskLevel.MEDIUM, "OWNER_PASSWORD", "REJECTED", "attempts=${accountStore.failedAttempts()}")
+            }
+        }
+    }
+
+    fun signOutOwner() {
+        accountStore.signOut()
+        audit("OWNER", "account.sign_out", RiskLevel.LOW, "OWNER", "SUCCESS", "")
+    }
+
+    fun changeOwnerPassword(current: String, new: String) {
+        val persian = isPersian.value
+        when (val r = accountStore.changePassword(current, new, persian)) {
+            is AccountResult.Success -> {
+                _accountMessage.value = if (persian) "رمز عبور تغییر کرد." else "Password changed."
+                audit("OWNER", "account.password_change", RiskLevel.HIGH, "OWNER_PASSWORD", "SUCCESS", "")
+            }
+            is AccountResult.Failure -> _accountMessage.value = r.message(persian)
+        }
+    }
+
+    fun deleteOwnerAccount() {
+        accountStore.deleteAccount()
+        audit("OWNER", "account.delete", RiskLevel.CRITICAL, "OWNER_CONFIRMED", "SUCCESS", "")
+    }
+
+    fun startPairing() {
+        if (emergencyLockActive.value) {
+            _accountMessage.value = if (isPersian.value) "در حالت قفل اضطراری جفت‌سازی ممکن نیست." else "Pairing is blocked while the emergency lock is active."
+            return
+        }
+        val offer = accountStore.startPairingOffer()
+        if (offer == null) {
+            _accountMessage.value = if (isPersian.value) "ابتدا با ایمیل و رمز عبور وارد شوید." else "Sign in with e-mail and password first."
+        } else {
+            audit("OWNER", "device.pair.offer", RiskLevel.MEDIUM, "OWNER_SESSION", "SUCCESS", "code=${offer.code}")
+        }
+    }
+
+    fun cancelPairing() = accountStore.cancelPairingOffer()
+
+    fun completePairing(deviceName: String, type: DeviceType, fingerprint: String, proof: String) {
+        val persian = isPersian.value
+        val ok = accountStore.completePairing(fingerprint, proof)
+        if (!ok) {
+            _accountMessage.value = if (persian) "کد تأیید دستگاه نامعتبر یا منقضی است." else "Device proof is invalid or the code expired."
+            audit("OWNER", "device.pair", RiskLevel.HIGH, "PAIRING_PROOF", "REJECTED", "fp=$fingerprint")
+            return
+        }
+        val device = Device(
+            id = "dev_" + DevicePairing.normalizeFingerprint(fingerprint).take(12),
+            name = deviceName.ifBlank { type.labelEn },
+            type = type,
+            publicKeyFingerprint = DevicePairing.prettyFingerprint(fingerprint),
+            isTrusted = false,
+            isRevoked = false,
+            lastActiveAt = System.currentTimeMillis(),
+            capabilities = when (type) {
+                DeviceType.WINDOWS_PC, DeviceType.SECURE_LAPTOP -> listOf("filesystem", "controlled_powershell", "local_llm")
+                DeviceType.WEB_CLIENT -> listOf("dashboard", "read_only")
+                else -> emptyList()
+            }
+        )
+        viewModelScope.launch { repository.registerPairedDevice(device) }
+        _accountMessage.value = if (persian) "دستگاه جفت شد (وضعیت: محدود). برای اعطای اختیار روی «اعتماد» بزنید." else "Device paired (untrusted). Tap Trust to grant authority."
     }
 
     // -------------------------------------------------------------- devices
