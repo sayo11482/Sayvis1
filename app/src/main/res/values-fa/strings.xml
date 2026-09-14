@@ -36,4 +36,14 @@
     <string name="emergency_lock_on">قفل اضطراری فعال</string>
     <string name="emergency_lock_off">امنیت عادی</string>
     <string name="offline_mode">حالت آفلاین</string>
+
+    <!-- آواتار شناور و شنیدار محیطی (رشته‌های رو‌به‌روی سیستم‌عامل) -->
+    <string name="notif_channel_avatar">شنیدار آواتار شناور</string>
+    <string name="notif_avatar_title">آواتار شناور سایویس فعال است</string>
+    <string name="notif_avatar_text">شنیدن روی دستگاه برای تشخیص صدای شما — لمس برای بازکردن، نگه‌داشتن آواتار برای توقف</string>
+    <string name="notif_action_open">بازکردن سایویس</string>
+    <string name="notif_action_stop">توقف</string>
+    <string name="avatar_missing_permissions">برای آواتار شناور، دسترسی میکروفون و «نمایش روی برنامه‌های دیگر» لازم است.</string>
+    <string name="avatar_mic_start_failed">بازکردن میکروفون ناموفق بود.</string>
+    <string name="avatar_stopped_toast">آواتار شناور بسته شد.</string>
 </resources>

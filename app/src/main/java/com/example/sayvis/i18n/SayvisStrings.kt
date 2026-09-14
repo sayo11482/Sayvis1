@@ -292,6 +292,79 @@ class SayvisStrings(val fa: Boolean) {
         else -> levelName
     }
 
+    // -------------------------------------- floating avatar & ambient listening
+    val toolAvatarListen get() = t("آواتار شناور و شنیدار", "Floating Avatar & Listening")
+    val toolAvatarListenHint get() =
+        t("حبابک همیشگی روی هوم گوشی، میکروفون زنده و شناسایی صدای شما", "A persistent bubble on your Home screen with a live mic that knows your voice")
+    val avatarTitle get() = t("آواتار شناور و شنیدار لحظه‌ای", "Floating Avatar & Ambient Listening")
+    val avatarSubtitle get() = t(
+        "حبابک کوچک سایویس بعد از رفتن به هوم هم روی صفحه می‌مانَد، صدای محیط را می‌شنود و صدای شما را می‌شناسد.",
+        "The small SAYVIS bubble stays on screen after you press Home, hears ambient sound and recognises your voice."
+    )
+    val avatarStatusTitle get() = t("وضعیت شنیدار", "Listening status")
+    val avatarModeOff get() = t("غیرفعال", "Off")
+    val avatarModeListening get() = t("در حال شنیدن محیط…", "Listening to the surroundings…")
+    val avatarModeOwner get() = t("صدای شما شناسایی شد!", "Your voice was recognised!")
+    val avatarLevel get() = t("سطح صدای محیط", "Ambient sound level")
+    val avatarRunToggle get() = t("آواتار شناور و میکروفون زنده", "Floating avatar & live microphone")
+    val avatarRunHint get() = t(
+        "با رفتن به هوم، حبابک روی صفحه می‌ماند و به شنیدن ادامه می‌دهد.",
+        "The bubble stays on screen over the launcher and keeps listening."
+    )
+    val avatarTapHint get() = t(
+        "لمس = بازشدن سایویس • کشیدن = جابه‌جایی • نگه‌داشتن = بستن",
+        "Tap = open SAYVIS • drag = move • hold = stop"
+    )
+    val avatarPermTitle get() = t("دسترسی‌های لازم", "Required permissions")
+    val avatarPermMic get() = t("میکروفون", "Microphone")
+    val avatarPermOverlay get() = t("نمایش روی برنامه‌های دیگر", "Display over other apps")
+    val avatarPermNotif get() = t("آگاهی‌ساز (نشان شنیدار)", "Notification (listening badge)")
+    val avatarPermGrant get() = t("اجازه دادن", "Grant")
+    val avatarPermGranted get() = t("داده شد", "Granted")
+    val avatarPermMissing get() = t("داده نشده", "Missing")
+    val avatarEnrollTitle get() = t("شناسنامهٔ صوتی من", "My voice-print")
+    val avatarEnrollHint get() = t(
+        "در محیط آرام، سه بار یک جملهٔ ثابت بخوانید (مثلاً: «سایویس، خودت را معرفی کن»). همه‌چیز فقط روی همین دستگاه می‌ماند.",
+        "In a quiet room, read the same short phrase three times (e.g. \"SAYVIS, introduce yourself\"). Everything stays on this device only."
+    )
+    val avatarEnrollStart get() = t("شروع ثبت نمونه", "Start capturing a sample")
+    val avatarEnrollNext get() = t("ثبت نمونهٔ بعدی", "Capture the next sample")
+    val avatarCapturing get() = t("در حال ضبط… صحبت کنید", "Recording… speak now")
+    val avatarEnrollDone get() = t("شناسنامهٔ صوتی شما ثبت شد ✅", "Your voice-print is enrolled ✅")
+    val avatarEnrolledAt get() = t("تاریخ ثبت", "Enrolled on")
+    val avatarReEnroll get() = t("ثبت دوباره", "Re-enrol")
+    val avatarDeletePrint get() = t("حذف شناسنامهٔ صوتی", "Delete voice-print")
+    val avatarNoPrintYet get() = t(
+        "هنوز شناسنامهٔ صوتی ثبت نشده؛ فقط سطح صدای محیط پایش می‌شود.",
+        "No voice-print yet — only the ambient level is being monitored."
+    )
+    val avatarTestTitle get() = t("آزمون شناسایی", "Recognition test")
+    val avatarTestHint get() = t(
+        "۶ ثانیه میکروفون باز می‌ماند؛ همان جملهٔ ثبت‌شده را بخوانید.",
+        "The mic stays open for 6 seconds; read your enrolled phrase."
+    )
+    val avatarTestRun get() = t("اجرای آزمون", "Run test")
+    val avatarThreshold get() = t("حساسیت شناسایی", "Recognition sensitivity")
+    val avatarThresholdLow get() = t("سخت‌گیر", "Strict")
+    val avatarThresholdHigh get() = t("آسان‌گیر", "Permissive")
+    val avatarHistoryTitle get() = t("شناسایی‌های اخیر", "Recent recognitions")
+    val avatarHistoryEmpty get() = t("هنوز صدایی شناسایی نشده است.", "No voice recognised yet.")
+    val avatarPrivacyNote get() = t(
+        "حریم خصوصی: پردازش صدا کاملاً روی دستگاه است؛ هیچ صدایی ذخیره یا ارسال نمی‌شود و نشانگر میکروفون اندروید همیشه روشن است. برای توقف، آواتار را نگه دارید یا از آگاهی‌ساز استفاده کنید.",
+        "Privacy: audio processing is fully on-device — nothing is stored or uploaded, and Android's microphone indicator stays lit. Hold the avatar or use the notification to stop."
+    )
+    val avatarMicUnavailable get() = t("میکروفون در دسترس نیست.", "Microphone unavailable.")
+    val avatarTooNoisy get() = t(
+        "صدای واضحی ضبط نشد؛ در محیط آرام‌تر دوباره تلاش کنید.",
+        "No clear voice was captured; try again somewhere quieter."
+    )
+    fun avatarSampleCaptured(n: Int): String =
+        t("نمونهٔ شمارهٔ $n ثبت شد؛ نمونهٔ بعدی را ضبط کنید.", "Sample $n captured; record the next one.")
+    fun avatarTestOk(percent: String): String =
+        t("صدای شما با اطمینان $percent٪ شناخته شد.", "Your voice matched with $percent% confidence.")
+    fun avatarTestNo(percent: String): String =
+        t("مطابقت کافی نبود ($percent٪). دوباره ثبت کنید یا حساسیت را بالا ببرید.", "Not a confident match ($percent%). Re-enrol or raise the sensitivity.")
+
     companion object {
         val English = SayvisStrings(false)
         val Persian = SayvisStrings(true)

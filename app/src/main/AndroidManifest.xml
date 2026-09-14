@@ -26,6 +26,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            Floating avatar & ambient listening: keeps a small overlay avatar on the
+            launcher after Home and runs the on-device owner-voice matcher.
+        -->
+        <service
+            android:name="com.example.sayvis.service.FloatingAvatarService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
     </application>
 
 </manifest>

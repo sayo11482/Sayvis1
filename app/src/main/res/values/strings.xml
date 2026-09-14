@@ -30,4 +30,14 @@
     <string name="emergency_lock_on">Emergency lock engaged</string>
     <string name="emergency_lock_off">Normal security</string>
     <string name="offline_mode">Offline mode</string>
+
+    <!-- Floating avatar & ambient listening (OS-facing strings) -->
+    <string name="notif_channel_avatar">Floating avatar listening</string>
+    <string name="notif_avatar_title">SAYVIS floating avatar is active</string>
+    <string name="notif_avatar_text">Listening on-device for your voice — tap to open, hold the avatar to stop</string>
+    <string name="notif_action_open">Open SAYVIS</string>
+    <string name="notif_action_stop">Stop</string>
+    <string name="avatar_missing_permissions">The floating avatar needs the microphone and “display over other apps” permissions.</string>
+    <string name="avatar_mic_start_failed">Could not open the microphone.</string>
+    <string name="avatar_stopped_toast">Floating avatar stopped.</string>
 </resources>

@@ -22,6 +22,7 @@
 8. **Scripting & Automation**: A small line-based rule language the owner writes in-app; scripts emit effects that pass through the zero-trust gate and never perform I/O themselves.
 9. **Life Simulation Engine**: Probabilistic scenario analysis for career, financial, and strategic life decisions.
 10. **Sovereign Avatar**: Real-time cybernetic canvas state visualizer displaying cognitive, communicative, and security posture.
+11. **Floating Avatar & Ambient Listening**: A small draggable chat-head avatar (foreground service with `microphone` type + `SYSTEM_ALERT_WINDOW`) that stays on screen over the launcher after Home. It listens on-device with an adaptive VAD, builds a 26-dimensional voice-print (log-mel + F0 + centroid) from three enrollment samples, and recognises the owner's voice offline — tap opens SAYVIS, drag moves, long-press stops. Nothing is recorded, stored as audio, or uploaded.
 
 ---
 
