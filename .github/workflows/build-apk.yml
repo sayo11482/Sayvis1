@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
       issues: write
     steps:
@@ -91,3 +91,20 @@ jobs:
           name: sayvis-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      # Publish the installer as a GitHub Release so the owner has a permanent,
+      # directly downloadable link (artifacts expire and need a login).
+      - name: Publish APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          TAG="v${VERSION}-build.${GITHUB_RUN_NUMBER}"
+          OUT="SAYVIS-${VERSION}-debug.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$OUT"
+          sha256sum "$OUT" > "$OUT.sha256"
+          gh release create "$TAG" "$OUT" "$OUT.sha256" \
+            --target "$GITHUB_SHA" \
+            --title "SAYVIS ${VERSION} (build ${GITHUB_RUN_NUMBER})" \
+            --notes "نسخهٔ نصبی SAYVIS ${VERSION} — ساخته‌شده به‌صورت خودکار از کامیت ${GITHUB_SHA::7} روی شاخهٔ ${GITHUB_REF_NAME}. امضای debug؛ برای نصب باید «نصب از منابع ناشناس» فعال باشد." \
+            --prerelease
