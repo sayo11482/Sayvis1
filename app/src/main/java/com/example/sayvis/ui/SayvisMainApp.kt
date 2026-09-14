@@ -123,6 +123,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
     val probe by viewModel.probe.collectAsState()
     val isProbing by viewModel.isProbing.collectAsState()
     val listenLevel by com.example.sayvis.voice.ListenBus.level.collectAsState()
+    val connectivity by viewModel.connectivity.collectAsState()
 
     val strings = remember(isPersian) { SayvisStrings.of(isPersian) }
     val layoutDirection = if (isPersian && settings.localization.forceRtlForPersian) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -490,7 +491,9 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                     SayvisScreen.ROBOT -> RobotScreen(
                         avatarState = avatarState,
                         listenLevel = listenLevel,
+                        connectivity = connectivity,
                         isPersian = isPersian,
+                        onRefreshConnectivity = { viewModel.refreshConnectivity() },
                         onAskAssistant = { message ->
                             viewModel.navigateTo(SayvisScreen.ASSISTANT)
                             viewModel.sendMessage(message)

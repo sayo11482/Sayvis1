@@ -16,6 +16,7 @@ import com.example.sayvis.ai.AssistantCommandEngine
 import com.example.sayvis.ai.ChatTurn
 import com.example.sayvis.ai.AgentService
 import com.example.sayvis.ai.GoogleAuthManager
+import com.example.sayvis.ai.ConnectivityProbe
 import com.example.sayvis.ai.GoogleServicesService
 import com.example.sayvis.ai.WebSearchService
 import com.example.sayvis.ai.ProviderType
@@ -186,6 +187,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val aiOrchestrator = AIOrchestrator()
     private val webSearch = WebSearchService()
     private val agentService = AgentService()
+    private val connectivityProbe = ConnectivityProbe()
     private val googleServices = GoogleServicesService()
 
     val awareEngine = AwareEngine(repository)
@@ -364,6 +366,18 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     /** Quick intermediate SAYVIS chat line (agent steps etc.). */
     private fun appendAssistantNote(text: String) {
         _chatMessages.value = _chatMessages.value + ChatMessage(sender = "SAYVIS", text = text)
+    }
+
+    // ---------------------------------------------------------- connectivity
+
+    private val _connectivity = MutableStateFlow<ConnectivityProbe.Result?>(null)
+    val connectivity: StateFlow<ConnectivityProbe.Result?> = _connectivity.asStateFlow()
+
+    /** Live network truth — shown as a status pill instead of silence. */
+    fun refreshConnectivity() {
+        viewModelScope.launch {
+            _connectivity.value = connectivityProbe.probe()
+        }
     }
 
     // ----------------------------------------------------- research agent

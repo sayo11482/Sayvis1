@@ -1,361 +1,267 @@
 package com.example.sayvis.ui.components
 
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.unit.dp
-import com.example.sayvis.ui.AvatarState
-import kotlin.math.abs
+import androidx.compose.ui.graphics.drawscope.withTransform
+import com.example.sayvis.ui.SayvisViewModel.AvatarState
+import kotlin.math.PI
 import kotlin.math.cos
-import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * The live SAYVIS robot — the launcher-art robot head recreated in vector:
- * a chrome helmet with the SAYVIS plate, glowing colour-shifting eyes, the
- * purple mouth vent that changes colour while thinking, orbiting neck cables,
- * and the hexagonal lattice chest core with a pulsing nucleus.
+ * The SAYVIS machine, redesigned: one calm, minimal, robotic presence.
  *
- * Everything breathes ([AiStyleMath.breath]) and cycles the neon palette; the
- * eyes/intensity react to the avatar state and the microphone [level].
+ * Composition (professional restraint — nothing more):
+ *   • one orbit ring with a single satellite dot,
+ *   • one squircle head with a dark visor,
+ *   • two light bars for eyes (a single scanning bar while thinking),
+ *   • a thin mouth line (equaliser while speaking, pulse dots thinking),
+ *   • a small antenna and the gold SAYVIS chin notch.
+ *
+ * The palette cycles through the atomic [aiStyleColor]; THINKING accelerates
+ * the hue and the scan; EMERGENCY_LOCKED pins everything to alarm red; the
+ * whole face breathes via a global scale + soft glow. No allocations inside
+ * the draw pass.
  */
 @Composable
 fun SayvisRobotFace(
     state: AvatarState,
-    modifier: Modifier = Modifier,
-    level: Float = 0f,
-    animate: Boolean = true
+    level: Float,
+    modifier: Modifier = Modifier
 ) {
-    val transition = rememberInfiniteTransition(label = "robot_live")
+    val transition = rememberInfiniteTransition(label = "sayvis_robot")
     val phase by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Restart),
-        label = "robot_phase"
+        animationSpec = infiniteRepeatable(tween(durationMillis = 5200, easing = LinearEasing)),
+        label = "phase"
     )
-    val flicker by transition.animateFloat(
+    val breathPhase by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart),
-        label = "robot_flicker"
+        animationSpec = infiniteRepeatable(tween(durationMillis = 3400, easing = LinearEasing)),
+        label = "breath"
     )
-    val paint = remember {
-        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD)
-            textAlign = android.graphics.Paint.Align.CENTER
-        }
-    }
-    val phaseValue = if (animate) phase else 0.35f
-    val flickerValue = if (animate) flicker else 0.5f
 
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val u = min(w, h) / 3.3f
-        val cx = w / 2f
-        val cy = h * 0.40f
-        val angle = phaseValue * 2f * Math.PI.toFloat()
-        val voice = level.coerceIn(0f, 1f)
-        val thinking = state == AvatarState.THINKING
+    modifier.drawBehind {
         val locked = state == AvatarState.EMERGENCY_LOCKED
+        val thinking = state == AvatarState.THINKING
         val speaking = state == AvatarState.SPEAKING
+        val offline = state == AvatarState.OFFLINE
 
-        // Eye/mouth colour: palette cycle, fast-forwarded while thinking.
-        val eyePhase = phaseValue * (if (thinking) 2.2f else 1f) + (if (speaking) 0.15f else 0f)
-        val eyeColor = if (locked) Color(0xFFEF4444) else aiStyleColor(eyePhase)
-        val mouthColor = if (locked) Color(0xFFEF4444) else aiStyleColor(eyePhase + 0.18f)
-        val breath = AiStyleMath.breath(phaseValue)
-
-        // ------------------------------------------------------ background
-        drawRect(
-            brush = Brush.verticalGradient(listOf(Color(0xFF04060B), Color(0xFF0A0D16), Color(0xFF05070D))),
-            size = size
-        )
-        // Dim server-rack dot walls on both edges.
-        val racks = AiStyleMath.binaryColumns(5, 16, phaseValue * 0.35f)
-        val dot = 1.6f.dp.toPx()
-        for (c in 0 until 5) {
-            for (r in 0 until 16) {
-                if (!racks[c][r]) continue
-                val rackColor = if (c % 2 == 0) Color(0xFFD4AF37) else Color(0xFF38BDF8)
-                drawCircle(
-                    color = rackColor.copy(alpha = 0.10f + 0.10f * breath),
-                    radius = dot,
-                    center = Offset(4.dp.toPx() + c * 4.4f.dp.toPx(), 8.dp.toPx() + r * 4.4f.dp.toPx())
-                )
-                drawCircle(
-                    color = rackColor.copy(alpha = 0.10f + 0.10f * breath),
-                    radius = dot,
-                    center = Offset(w - 4.dp.toPx() - c * 4.4f.dp.toPx(), 8.dp.toPx() + r * 4.4f.dp.toPx())
-                )
-            }
+        val breath = AiStyleMath.breath(breathPhase)
+        val eyePhase = if (thinking) phase * 2.2f else phase
+        val core = if (locked) Color(0xFFEF4444) else aiStyleColor(eyePhase).let {
+            if (offline) it.copy(alpha = 0.35f) else it
         }
 
-        // --------------------------------------------------- neck cables (behind)
-        val cableAlphaBase = 0.45f + 0.30f * breath + 0.25f * voice
-        for (side in listOf(-1, 1)) {
-            for (i in 0 until 5) {
-                val radius = u * (1.10f + 0.09f * i)
-                val start = -150f + i * 14f
-                val sweep = 115f + 8f * i
-                val glow = cableAlphaBase * (1f - i * 0.13f) * (0.75f + 0.25f * flickerValue)
-                rotate(degrees = side * (6f + 2f * sin(angle + i).toFloat()), pivot = Offset(cx, cy)) {
-                    drawArc(
-                        color = Color(0xFF8B5CF6).copy(alpha = glow * 0.55f),
-                        startAngle = if (side < 0) 180f + (150f - start - sweep) else start,
-                        sweepAngle = sweep,
-                        useCenter = false,
-                        topLeft = Offset(cx - radius, cy - radius),
-                        size = Size(radius * 2f, radius * 1.7f),
-                        style = Stroke(width = 3.4f.dp.toPx())
+        val d = density
+        fun px(dp: Float): Float = dp * d
+
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val scale = 1f + 0.012f * breath * (if (thinking) 1.6f else 1f)
+
+        withTransform({ scale(scale, scale, pivot = Offset(cx, cy)) }) {
+            // --- ambient glow: one soft, quiet halo ---
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        core.copy(alpha = 0.10f + 0.05f * breath + level * 0.08f),
+                        Color.Transparent
+                    ),
+                    center = Offset(cx, cy),
+                    radius = size.minDimension * 0.52f
+                ),
+                radius = size.minDimension * 0.52f,
+                center = Offset(cx, cy)
+            )
+
+            // --- orbit ring + single satellite ---
+            val ringR = size.minDimension * 0.435f
+            drawCircle(
+                color = core.copy(alpha = 0.16f),
+                radius = ringR,
+                center = Offset(cx, cy),
+                style = Stroke(width = px(1.2f))
+            )
+            val satAngle = (if (thinking) 2.2f else 1f) * phase * 2f * PI.toFloat()
+            val sat = Offset(cx + ringR * cos(satAngle), cy + ringR * 0.94f * sin(satAngle))
+            drawCircle(color = core.copy(alpha = 0.30f), radius = px(7f), center = sat)
+            drawCircle(color = core, radius = px(2.6f), center = sat)
+
+            // --- head: squircle with a subtle vertical sheen ---
+            val headW = size.width * 0.46f
+            val headH = size.height * 0.36f
+            val headTop = cy - headH * 0.56f
+            val headTL = Offset(cx - headW / 2f, headTop)
+            val headSize = Size(headW, headH)
+            val headRadius = CornerRadius(px(30f))
+            drawRoundRect(
+                brush = Brush.verticalGradient(
+                    listOf(Color(0xFF121C2E), Color(0xFF0A1120)),
+                    startY = headTop,
+                    endY = headTop + headH
+                ),
+                topLeft = headTL,
+                size = headSize,
+                cornerRadius = headRadius
+            )
+            drawRoundRect(
+                color = core.copy(alpha = 0.55f + 0.2f * breath),
+                topLeft = headTL,
+                size = headSize,
+                cornerRadius = headRadius,
+                style = Stroke(width = px(1.4f))
+            )
+
+            // --- antenna ---
+            val stemTop = Offset(cx, headTop - px(11f))
+            drawLine(
+                color = core.copy(alpha = 0.6f),
+                start = stemTop,
+                end = Offset(cx, headTop + px(1f)),
+                strokeWidth = px(1.4f),
+                cap = StrokeCap.Round
+            )
+            drawCircle(
+                color = core.copy(alpha = if (thinking) 0.6f + 0.4f * breath else 0.75f),
+                radius = px(3f),
+                center = stemTop
+            )
+
+            // --- visor ---
+            val visorW = headW * 0.72f
+            val visorH = headH * 0.34f
+            val visorTL = Offset(cx - visorW / 2f, headTop + headH * 0.24f)
+            drawRoundRect(
+                color = Color(0xFF05090F),
+                topLeft = visorTL,
+                size = Size(visorW, visorH),
+                cornerRadius = CornerRadius(px(14f))
+            )
+
+            // --- eyes ---
+            val eyeY = visorTL.y + visorH / 2f
+            val eyeColor = core.copy(alpha = 0.72f + 0.28f * breath)
+            val eyeW = visorW * 0.22f
+            val gap = visorW * 0.16f
+            when {
+                locked -> {
+                    // Flat static dashes — a halted machine.
+                    val flatH = px(2.4f)
+                    drawRoundRect(
+                        color = eyeColor.copy(alpha = 0.6f),
+                        topLeft = Offset(cx - gap / 2f - eyeW, eyeY - flatH / 2f),
+                        size = Size(eyeW, flatH),
+                        cornerRadius = CornerRadius(flatH / 2f)
                     )
-                    drawArc(
-                        color = Color(0xFFD8B4FE).copy(alpha = glow),
-                        startAngle = if (side < 0) 180f + (150f - start - sweep) else start,
-                        sweepAngle = sweep,
-                        useCenter = false,
-                        topLeft = Offset(cx - radius, cy - radius),
-                        size = Size(radius * 2f, radius * 1.7f),
-                        style = Stroke(width = 1.2f.dp.toPx())
+                    drawRoundRect(
+                        color = eyeColor.copy(alpha = 0.6f),
+                        topLeft = Offset(cx + gap / 2f, eyeY - flatH / 2f),
+                        size = Size(eyeW, flatH),
+                        cornerRadius = CornerRadius(flatH / 2f)
+                    )
+                }
+                thinking -> {
+                    // One scanning bar sweeping the visor.
+                    val sweep = (phase * 2f) % 1f
+                    val barW = visorW * 0.30f
+                    val x = visorTL.x + px(6f) + sweep * (visorW - barW - px(12f))
+                    val barH = px(4.8f)
+                    drawRoundRect(
+                        color = eyeColor,
+                        topLeft = Offset(x, eyeY - barH / 2f),
+                        size = Size(barW, barH),
+                        cornerRadius = CornerRadius(barH / 2f)
+                    )
+                }
+                else -> {
+                    // Two calm light bars; speaking adds a subtle level lift.
+                    val lift = if (speaking) (level * 2.2f).coerceAtMost(1.4f) else 0f
+                    val eyeH = px(4.8f) + lift * px(1.6f)
+                    drawRoundRect(
+                        color = eyeColor,
+                        topLeft = Offset(cx - gap / 2f - eyeW, eyeY - eyeH / 2f),
+                        size = Size(eyeW, eyeH),
+                        cornerRadius = CornerRadius(eyeH / 2f)
+                    )
+                    drawRoundRect(
+                        color = eyeColor,
+                        topLeft = Offset(cx + gap / 2f, eyeY - eyeH / 2f),
+                        size = Size(eyeW, eyeH),
+                        cornerRadius = CornerRadius(eyeH / 2f)
                     )
                 }
             }
-        }
 
-        // ------------------------------------------------------- shoulders + neck
-        val shoulderTop = cy + u * 1.30f
-        drawPath(
-            path = Path().apply {
-                moveTo(cx - u * 1.15f, h.toFloat())
-                lineTo(cx - u * 0.95f, shoulderTop + u * 0.16f)
-                quadraticBezierTo(cx - u * 0.55f, shoulderTop - u * 0.12f, cx, shoulderTop - u * 0.16f)
-                quadraticBezierTo(cx + u * 0.55f, shoulderTop - u * 0.12f, cx + u * 0.95f, shoulderTop + u * 0.16f)
-                lineTo(cx + u * 1.15f, h.toFloat())
-                close()
-            },
-            brush = Brush.verticalGradient(listOf(Color(0xFF232837), Color(0xFF0D1018)))
-        )
-        drawLine(
-            color = Color(0xFFA78BFA).copy(alpha = 0.5f + 0.3f * breath),
-            start = Offset(cx - u * 0.95f, shoulderTop + u * 0.16f),
-            end = Offset(cx + u * 0.95f, shoulderTop + u * 0.16f),
-            strokeWidth = 1.1f.dp.toPx()
-        )
-        drawRect(
-            brush = Brush.verticalGradient(listOf(Color(0xFF1A1F2C), Color(0xFF0B0E15))),
-            topLeft = Offset(cx - u * 0.26f, cy + u * 0.92f),
-            size = Size(u * 0.52f, u * 0.5f)
-        )
+            // --- mouth ---
+            val mouthY = headTop + headH * 0.72f
+            when {
+                speaking -> {
+                    val bars = 5
+                    val barW = px(2.6f)
+                    val gapM = px(3.4f)
+                    val total = bars * barW + (bars - 1) * gapM
+                    var x = cx - total / 2f
+                    repeat(bars) { i ->
+                        val wave = (sin((phase * 4f + i * 0.7f) * 2f * PI) * 0.5f + 0.5f).toFloat()
+                        val h = px(3.5f) + wave * px(10f)
+                        drawRoundRect(
+                            color = core.copy(alpha = 0.85f),
+                            topLeft = Offset(x, mouthY - h / 2f),
+                            size = Size(barW, h),
+                            cornerRadius = CornerRadius(barW / 2f)
+                        )
+                        x += barW + gapM
+                    }
+                }
+                thinking -> {
+                    val dotR = px(1.8f)
+                    val gapD = px(7f)
+                    repeat(3) { i ->
+                        val pulse = (sin((phase * 2f - i * 0.22f) * 2f * PI) * 0.5f + 0.5f).toFloat()
+                        drawCircle(
+                            color = core.copy(alpha = 0.25f + 0.6f * pulse),
+                            radius = dotR,
+                            center = Offset(cx + (i - 1) * gapD, mouthY)
+                        )
+                    }
+                }
+                else -> {
+                    val lineW = headW * 0.16f
+                    drawLine(
+                        color = core.copy(alpha = 0.4f),
+                        start = Offset(cx - lineW / 2f, mouthY),
+                        end = Offset(cx + lineW / 2f, mouthY),
+                        strokeWidth = px(1.6f),
+                        cap = StrokeCap.Round
+                    )
+                }
+            }
 
-        // --------------------------------------------------------- helmet (chrome)
-        drawOval(
-            brush = Brush.verticalGradient(
-                colorStops = arrayOf(
-                    0.00f to Color(0xFF11141C),
-                    0.22f to Color(0xFF39404F),
-                    0.40f to Color(0xFFB9C1D0),
-                    0.52f to Color(0xFF7C8598),
-                    0.78f to Color(0xFF2A303D),
-                    1.00f to Color(0xFF0D1017)
-                )
-            ),
-            topLeft = Offset(cx - u * 0.95f, cy - u * 1.02f),
-            size = Size(u * 1.9f, u * 2.04f)
-        )
-        // Faceplate shadow.
-        drawOval(
-            color = Color(0xFF0A0D13).copy(alpha = 0.82f),
-            topLeft = Offset(cx - u * 0.64f, cy - u * 0.62f),
-            size = Size(u * 1.28f, u * 1.44f)
-        )
-        // Ear pods.
-        for (side in listOf(-1, 1)) {
-            val podX = cx + side * u * 0.92f
+            // --- chin notch: the SAYVIS plate reduced to one quiet gold tick ---
             drawRoundRect(
-                brush = Brush.verticalGradient(listOf(Color(0xFF39404F), Color(0xFF12151D))),
-                topLeft = Offset(podX - u * 0.09f, cy - u * 0.22f),
-                size = Size(u * 0.18f, u * 0.44f),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(u * 0.06f)
-            )
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color.White, eyeColor, Color.Transparent),
-                    center = Offset(podX, cy + 0.02f * u),
-                    radius = u * 0.07f
-                ),
-                radius = u * 0.07f * (1f + 0.2f * breath),
-                center = Offset(podX, cy + 0.02f * u)
-            )
-        }
-
-        // ------------------------------------------------------- forehead label
-        val native = drawContext.canvas.nativeCanvas
-        paint.textSize = u * 0.155f
-        paint.color = android.graphics.Color.argb(235, 213, 220, 232)
-        paint.setShadowLayer(u * 0.03f, 0f, 0f, android.graphics.Color.argb(120, 139, 92, 246))
-        native.drawText("SAYVIS", cx, cy - u * 0.52f, paint)
-        paint.clearShadowLayer()
-
-        // ---------------------------------------------------------------- eyes
-        val eyeAlpha = 0.55f + 0.35f * breath + 0.30f * voice + (if (thinking) 0.25f else 0f)
-        val eyeGlowRadius = u * (0.20f + 0.05f * breath + 0.05f * voice)
-        val eyeY = cy - u * 0.12f
-        for (side in listOf(-1, 1)) {
-            val eyeX = cx + side * u * 0.33f
-            // Glow halo.
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(eyeColor.copy(alpha = eyeAlpha.coerceIn(0f, 1f)), Color.Transparent),
-                    center = Offset(eyeX, eyeY),
-                    radius = eyeGlowRadius
-                ),
-                radius = eyeGlowRadius,
-                center = Offset(eyeX, eyeY)
-            )
-            // Angular glowing eye shape.
-            val eye = Path().apply {
-                moveTo(eyeX - side * u * 0.20f, eyeY - u * 0.015f)
-                lineTo(eyeX - side * u * 0.04f, eyeY - u * 0.085f)
-                lineTo(eyeX + side * u * 0.20f, eyeY - u * 0.035f)
-                lineTo(eyeX + side * u * 0.05f, eyeY + u * 0.065f)
-                close()
-            }
-            drawPath(eye, color = eyeColor.copy(alpha = eyeAlpha.coerceIn(0f, 1f)))
-            drawPath(
-                eye,
-                brush = Brush.verticalGradient(
-                    listOf(Color.White.copy(alpha = 0.85f), eyeColor.copy(alpha = 0.15f))
-                )
-            )
-        }
-
-        // Nose ridge.
-        drawLine(
-            color = Color(0xFF1E2330),
-            start = Offset(cx, cy - u * 0.02f),
-            end = Offset(cx, cy + u * 0.24f),
-            strokeWidth = 3.5f.dp.toPx()
-        )
-
-        // -------------------------------------------------------- mouth vent
-        val mouthY = cy + u * 0.40f
-        val slits = 5
-        val mouthColorArgb = android.graphics.Color.argb(
-            ((0.45f + 0.45f * breath + (if (thinking) 0.25f else 0f)).coerceIn(0f, 1f) * 255).toInt(),
-            (mouthColor.red * 255).toInt(),
-            (mouthColor.green * 255).toInt(),
-            (mouthColor.blue * 255).toInt()
-        )
-        drawRoundRect(
-            color = Color(0xFF07090F).copy(alpha = 0.9f),
-            topLeft = Offset(cx - u * 0.24f, mouthY - u * 0.075f),
-            size = Size(u * 0.48f, u * 0.15f),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(u * 0.04f)
-        )
-        for (i in 0 until slits) {
-            val slitX = cx - u * 0.18f + i * u * 0.09f
-            val slitH = when {
-                speaking -> u * (0.05f + 0.05f * abs(sin(angle * 3f + i)))
-                thinking -> u * (0.05f + 0.035f * breath)
-                else -> u * 0.055f
-            }
-            drawRoundRect(
-                color = androidx.compose.ui.graphics.Color(mouthColorArgb),
-                topLeft = Offset(slitX, mouthY - slitH / 2f),
-                size = Size(u * 0.035f, slitH),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(u * 0.017f)
-            )
-        }
-
-        // ------------------------------------------------- chest hexagonal core
-        val coreCenter = Offset(cx, cy + u * 1.72f)
-        val coreRadius = u * 0.46f
-        val coreHex = Path().apply {
-            for (i in 0 until 6) {
-                val a = Math.toRadians((60.0 * i - 30.0))
-                val x = coreCenter.x + coreRadius * cos(a).toFloat()
-                val y = coreCenter.y + coreRadius * sin(a).toFloat()
-                if (i == 0) moveTo(x, y) else lineTo(x, y)
-            }
-            close()
-        }
-        drawPath(
-            coreHex,
-            brush = Brush.verticalGradient(listOf(Color(0xFF2B3140), Color(0xFF0A0D14)))
-        )
-        drawPath(coreHex, color = Color(0xFF9CA3AF).copy(alpha = 0.8f), style = Stroke(width = 2.2f.dp.toPx()))
-        drawPath(coreHex, color = Color(0xFF7C5CFF).copy(alpha = 0.35f + 0.3f * breath), style = Stroke(width = 0.8f.dp.toPx()))
-
-        // Lattice grid clipped inside the hex.
-        clipPath(coreHex) {
-            val step = u * 0.115f
-            for (k in -6..6) {
-                val offset = k * step
-                drawLine(
-                    color = Color(0xFF38BDF8).copy(alpha = 0.40f),
-                    start = Offset(coreCenter.x + offset, coreCenter.y - coreRadius),
-                    end = Offset(coreCenter.x + offset - coreRadius, coreCenter.y + coreRadius),
-                    strokeWidth = 0.7f.dp.toPx()
-                )
-                drawLine(
-                    color = Color(0xFF38BDF8).copy(alpha = 0.40f),
-                    start = Offset(coreCenter.x + offset, coreCenter.y - coreRadius),
-                    end = Offset(coreCenter.x + offset + coreRadius, coreCenter.y + coreRadius),
-                    strokeWidth = 0.7f.dp.toPx()
-                )
-                drawLine(
-                    color = Color(0xFF38BDF8).copy(alpha = 0.30f),
-                    start = Offset(coreCenter.x - coreRadius, coreCenter.y + offset),
-                    end = Offset(coreCenter.x + coreRadius, coreCenter.y + offset),
-                    strokeWidth = 0.7f.dp.toPx()
-                )
-            }
-            // Pulsing nucleus.
-            val nucleus = coreRadius * (0.30f + 0.10f * breath + 0.08f * voice + (if (thinking) 0.06f else 0f))
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color.White, Color(0xFFE879F9), Color.Transparent),
-                    center = coreCenter,
-                    radius = nucleus
-                ),
-                radius = nucleus,
-                center = coreCenter
-            )
-            // Orbit ring + electron.
-            rotate(degrees = phaseValue * 160f, pivot = coreCenter) {
-                drawOval(
-                    color = Color(0xFFE879F9).copy(alpha = 0.75f),
-                    topLeft = Offset(coreCenter.x - nucleus * 1.7f, coreCenter.y - nucleus * 0.65f),
-                    size = Size(nucleus * 3.4f, nucleus * 1.3f),
-                    style = Stroke(width = 1.0f.dp.toPx())
-                )
-            }
-            drawCircle(
-                color = Color.White,
-                radius = 2f.dp.toPx(),
-                center = Offset(
-                    coreCenter.x + nucleus * 1.7f * cos(angle * 1.3f),
-                    coreCenter.y + nucleus * 0.65f * sin(angle * 1.3f)
-                )
+                color = Color(0xFFD4AF37).copy(alpha = if (offline) 0.2f else 0.5f),
+                topLeft = Offset(cx - px(9f), headTop + headH + px(5f)),
+                size = Size(px(18f), px(1.6f)),
+                cornerRadius = CornerRadius(px(0.8f))
             )
         }
     }
 }
-

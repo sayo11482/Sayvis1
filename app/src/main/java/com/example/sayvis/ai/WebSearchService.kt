@@ -15,8 +15,11 @@ import java.util.concurrent.TimeUnit
  * regional block) and even in forced-offline mode, because fetching public pages
  * is read-only and never sends personal data.
  *
- * Backends:
- *  - DuckDuckGo HTML endpoint (no key, no API) parsed with pure-Kotlin regexes;
+ * Backends, tried in parallel so one blocked/limiting backend never kills the
+ * answer (live-tested: Bing answers from neutral AND Iran-side networks, DDG
+ * html serves bot CAPTCHAs sporadically, Wikipedia is a stable constant):
+ *  - Bing web results (no key) parsed with pure-Kotlin regexes;
+ *  - DuckDuckGo HTML endpoint as an extra source when it cooperates;
  *  - Wikipedia opensearch (fa/en) for encyclopaedic coverage.
  */
 class WebSearchService(
@@ -38,13 +41,30 @@ class WebSearchService(
         val trimmed = query.trim()
         if (trimmed.isBlank()) return@withContext emptyList()
         coroutineScope {
+            val bing = async { runCatching { searchBing(trimmed) }.getOrDefault(emptyList()) }
             val ddg = async { runCatching { searchDuckDuckGo(trimmed) }.getOrDefault(emptyList()) }
             val wiki = async { runCatching { searchWikipedia(trimmed, languageFa) }.getOrDefault(emptyList()) }
             val combined = LinkedHashMap<String, WebResult>()
-            (ddg.await() + wiki.await()).forEach { result ->
+            (bing.await() + ddg.await() + wiki.await()).forEach { result ->
                 combined.putIfAbsent(result.url, result)
             }
             combined.values.take(6)
+        }
+    }
+
+    // ------------------------------------------------------------------- Bing
+
+    suspend fun searchBing(query: String): List<WebResult> = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("https://www.bing.com/search?q=" + urlencode(query) + "&count=10")
+            .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+            .header("Accept-Language", "en;q=0.9,fa;q=0.8")
+            .get()
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) return@use emptyList<WebResult>()
+            val html = response.body?.string().orEmpty()
+            parseBingHtml(html)
         }
     }
 
@@ -84,6 +104,47 @@ class WebSearchService(
     companion object {
 
         // -------------------------------------------------- pure parsing (tested)
+
+        /**
+         * Extracts Bing results: each hit lives in an `<li class="b_algo">`
+         * block holding an `<h2><a href="URL">Title</a></h2>` and a snippet
+         * `<p>`. Block-wise parsing keeps snippets paired with their titles
+         * even when Bing reorders attributes.
+         */
+        fun parseBingHtml(html: String): List<WebResult> {
+            val blockRegex = Regex("""<li[^>]*class="[^"]*b_algo[^"]*"[^>]*>([\s\S]*?)</li>""")
+            val anchorRegex = Regex("""<h2[^>]*>\s*<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)</a>""")
+            val snippetRegex = Regex("""<p[^>]*>([\s\S]*?)</p>""")
+            val out = ArrayList<WebResult>()
+            for (blockMatch in blockRegex.findAll(html)) {
+                val block = blockMatch.groupValues[1]
+                val anchor = anchorRegex.find(block) ?: continue
+                val title = stripTags(anchor.groupValues[2])
+                val url = resolveBingUrl(anchor.groupValues[1])
+                if (title.isBlank() || url.isBlank()) continue
+                val snippet = snippetRegex.find(block)?.groupValues?.let { stripTags(it[1]) }.orEmpty()
+                out.add(WebResult(title = title, url = url, snippet = snippet, source = "Bing"))
+                if (out.size >= 6) break
+            }
+            return out
+        }
+
+        /** Bing wraps some targets in /ck/a redirects; unwrap the u parameter. */
+        fun resolveBingUrl(raw: String): String {
+            if (!raw.contains("bing.com/ck/")) return raw
+            return runCatching {
+                val match = Regex("[?&]u=a1(.+)").find(raw) ?: return raw
+                val packed = match.groupValues[1]
+                val decoded = String(
+                    java.util.Base64.getUrlDecoder().decode(padded(packed)),
+                    Charsets.UTF_8
+                )
+                if (decoded.startsWith("http")) decoded else raw
+            }.getOrDefault(raw)
+        }
+
+        private fun padded(value: String): String =
+            value.takeWhile { it != '&' } + "=".repeat((4 - (value.takeWhile { it != '&' }.length % 4)) % 4)
 
         /** Extracts results from the DDG HTML page: anchor + snippet pairs. */
         fun parseDuckDuckGoHtml(html: String): List<WebResult> {

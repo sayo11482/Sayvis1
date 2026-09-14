@@ -207,6 +207,17 @@ class SayvisStrings(val fa: Boolean) {
     val googleGateHint get() = t("برای ادامه، با حساب گوگل خود وارد شوید.", "Continue by signing in with your Google account.")
     val googleGateWelcome get() = t("خوش آمدید", "Welcome")
     val googleGateLocal get() = t("ادامهٔ محلی بدون ورود", "Continue locally without signing in")
+    val googleConnecting get() = t("در حال تبادل توکن گوگل…", "Exchanging Google tokens…")
+    val googleAutoConnecting get() = t("اتصال خودکار به جمینای…", "Auto-connecting to Gemini…")
+    val googleOpeningStudio get() = t("بازشدن خودکار AI Studio — کلید را بسازید و کپی کنید", "Opening AI Studio automatically — create and copy a key")
+    val googleWaitingCopy get() = t("در انتظار کپی‌کردن کلید…", "Waiting for the key to be copied…")
+    val googleKeyVerifying get() = t("آزمایش زندهٔ کلید و اتصال…", "Verifying the key and linking…")
+    val googleAutoDone get() = t("اتصال خودکار کامل شد — جمینای متصل است ✅", "Auto-connect complete — Gemini is linked ✅")
+    val googleCopyGuide get() = t(
+        "در صفحهٔ AI Studio: Create API key → Copy، بعد «بررسی مجدد» را بزنید (یا فقط به اپ برگردید).",
+        "In AI Studio: Create API key → Copy, then tap Re-check (or just return to the app)."
+    )
+    val googleRecheck get() = t("بررسی مجدد کلیپ‌بورد", "Re-check clipboard")
 
     // Research agent
     val sectionAgent get() = t("ایجنت پژوهش", "Research agent")
