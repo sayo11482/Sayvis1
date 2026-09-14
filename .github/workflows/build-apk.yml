@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - arena/01a09a63-sayvis1
+      - arena/01a0a110-sayvis1
       - main
   workflow_dispatch:
 
