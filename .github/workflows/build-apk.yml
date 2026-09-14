@@ -51,11 +51,11 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
-      - name: Assemble debug APK
+      - name: Run unit tests & assemble debug APK
         id: build
         run: |
           set -o pipefail
-          gradle assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee build.log
+          gradle testDebugUnitTest assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee build.log
 
       # When compilation fails, surface the actual errors in a place that is
       # readable through the GitHub API (annotations + a PR comment) so they can
