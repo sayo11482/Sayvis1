@@ -135,20 +135,22 @@ object GoogleAuthManager {
 
     fun base64UrlDecode(value: String): ByteArray? {
         val clean = value.trim().trimEnd('=')
-        val out = ArrayList<Byte>(clean.size * 3 / 4 + 3)
-        var buffer = 0
+        val buffer = ByteArray(clean.length * 3 / 4 + 3)
+        var written = 0
+        var acc = 0
         var bits = 0
         for (ch in clean) {
             val v = ALPHABET.indexOf(ch)
             if (v < 0) return null
-            buffer = (buffer shl 6) or v
+            acc = (acc shl 6) or v
             bits += 6
             if (bits >= 8) {
                 bits -= 8
-                out.add(((buffer shr bits) and 0xFF).toByte())
+                buffer[written] = ((acc shr bits) and 0xFF).toByte()
+                written++
             }
         }
-        return out.toByteArray()
+        return buffer.copyOf(written)
     }
 
     private fun urlencode(value: String): String =

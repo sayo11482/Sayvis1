@@ -23,9 +23,9 @@ enum class AiProviderKind(val labelFa: String, val labelEn: String, val isLocal:
     GEMINI("گوگل جمینای", "Google Gemini", false),
     OPENROUTER("اوپن‌روتر (چندمدلی)", "OpenRouter (multi-model)", false),
     GROQ("گروک (پاسخ سریع)", "Groq (fast LPU)", false),
-    CUSTOM("سرویس دلخواه سازگار با OpenAI", "Custom OpenAI-compatible", false)
+    CUSTOM("سرویس دلخواه سازگار با OpenAI", "Custom OpenAI-compatible", false),
     OPENAI("چت‌جی‌پی‌تی (OpenAI)", "ChatGPT (OpenAI)", false),
-    XAI("گراک (xAI)", "Grok (xAI)", false),;
+    XAI("گراک (xAI)", "Grok (xAI)", false);
 
     fun label(isPersian: Boolean): String = if (isPersian) labelFa else labelEn
 }
