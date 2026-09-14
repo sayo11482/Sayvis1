@@ -56,6 +56,7 @@ import com.example.sayvis.model.MissionStatus
 import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.ui.components.LocalTranslation
 import com.example.sayvis.ui.screens.AwareScreen
+import com.example.sayvis.ui.screens.AgentScreen
 import com.example.sayvis.ui.screens.RobotScreen
 import com.example.sayvis.ui.screens.AvatarListenScreen
 import com.example.sayvis.ui.screens.ChatScreen
@@ -365,6 +366,9 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         translationCacheSize = viewModel.translationCacheSize,
                         appVersion = com.example.BuildConfig.VERSION_NAME,
                         onTestConnection = { viewModel.testAiConnection() },
+                        onGoogleSignIn = { viewModel.beginGoogleSignIn() },
+                        onGoogleSignOut = { viewModel.googleSignOut() },
+                        onSetGoogleRequireSignIn = { viewModel.setGoogleRequireSignIn(it) },
                         onOpenGateway = { viewModel.navigateTo(SayvisScreen.GATEWAY) },
                         onOpenScripts = { viewModel.navigateTo(SayvisScreen.SCRIPTS) },
                         onClearTranslationCache = { viewModel.clearTranslationCache() },
@@ -480,6 +484,8 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         isPersian = isPersian,
                         persianDigits = settings.localization.persianDigits
                     )
+
+                    SayvisScreen.AGENT -> AgentScreen(viewModel = viewModel)
 
                     SayvisScreen.ROBOT -> RobotScreen(
                         avatarState = avatarState,

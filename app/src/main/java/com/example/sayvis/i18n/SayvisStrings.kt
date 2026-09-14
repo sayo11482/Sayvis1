@@ -178,6 +178,50 @@ class SayvisStrings(val fa: Boolean) {
         "No key found in the shared text. Get a Gemini key from Google AI Studio."
     )
     val captureOpenStudio get() = t("ورود به Google AI Studio", "Open Google AI Studio")
+
+    // In-app Google sign-in (OAuth) + Google account capabilities
+    val googleSignIn get() = t("ورود با گوگل", "Sign in with Google")
+    val googleSignOut get() = t("خروج از حساب گوگل", "Sign out of Google")
+    val googleWelcome get() = t("ورود با گوگل موفق بود ✅", "Google sign-in succeeded ✅")
+    val googleDenied get() = t("اجازهٔ دسترسی داده نشد (access_denied)", "Access was denied (access_denied)")
+    val googleErrorGeneric get() = t("جریان ورود گوگل ناتمام ماند؛ دوباره تلاش کنید", "The Google sign-in flow did not complete; try again")
+    val googleReturnHint get() = t("در انتظار بازگشت از مرورگر… اگر این صفحه ماند، ورود را از تنظیمات دوباره شروع کنید.", "Waiting for the browser to return… if this page stays, restart sign-in from Settings.")
+    val googleConnectedAs get() = t("حساب گوگل متصل شد:", "Google account connected:")
+    val googleSectionTitle get() = t("حساب گوگل و دسترسی‌ها", "Google account & capabilities")
+    val googleSectionHint get() = t(
+        "ورود استاندارد OAuth گوگل با PKCE. توکن تازه‌سازی فقط در امن‌سپر (Keystore) نگه داشته می‌شود و دسترسی‌ها فقط-خواندنی‌اند: Gmail، تقویم، درایو.",
+        "Standard Google OAuth with PKCE. The refresh token lives only in the Keystore vault; scopes are read-only: Gmail, Calendar, Drive."
+    )
+    val googleClientId get() = t("شناسهٔ کلاینت OAuth گوگل", "Google OAuth client ID")
+    val googleClientIdHint get() = t(
+        "Google Cloud Console → APIs & Services → Credentials → OAuth client (Web) با ریدایرکت sayvis://oauth2 — یک‌بار برای همیشه",
+        "Google Cloud Console → APIs & Services → Credentials → OAuth client (Web) with redirect sayvis://oauth2 — one-time setup"
+    )
+    val googleHowTo get() = t(
+        "راهنما: در console.cloud.google.com یک OAuth Client از نوع Web بسازید و Redirect URI را دقیقاً sayvis://oauth2 بگذارید، سپس شناسهٔ …apps.googleusercontent.com را اینجا وارد کنید.",
+        "Guide: in console.cloud.google.com create a Web-type OAuth Client with redirect URI exactly sayvis://oauth2, then paste the …apps.googleusercontent.com ID here."
+    )
+    val googleOpenConsole get() = t("بازکردن Google Cloud Console", "Open Google Cloud Console")
+    val googleLockToggle get() = t("ورود به اپ فقط با گوگل", "Require Google sign-in at launch")
+    val googleGateTitle get() = t("ورود به سایویس", "Sign in to SAYVIS")
+    val googleGateHint get() = t("برای ادامه، با حساب گوگل خود وارد شوید.", "Continue by signing in with your Google account.")
+    val googleGateWelcome get() = t("خوش آمدید", "Welcome")
+    val googleGateLocal get() = t("ادامهٔ محلی بدون ورود", "Continue locally without signing in")
+
+    // Research agent
+    val sectionAgent get() = t("ایجنت پژوهش", "Research agent")
+    val toolAgent get() = t("ایجنت وب‌گردی سایویس", "SAYVIS web-browsing agent")
+    val toolAgentHint get() = t(
+        "جست‌وجو، بازکردن و خواندن صفحات وب و نتیجه‌گیری مستند — به‌علاوهٔ Gmail/تقویم/درایو وقتی وارد شوید",
+        "Searches, opens and reads web pages, then answers with citations — plus Gmail/Calendar/Drive when signed in"
+    )
+    val agentGoalLabel get() = t("هدف پژوهش", "Research goal")
+    val agentRun get() = t("اجرای ایجنت", "Run agent")
+    val agentRunning get() = t("ایجنت در حال کار…", "Agent working…")
+    val agentEmpty get() = t(
+        "مثال: «قیمت لحظه‌ای طلا و دلیل رشد آن» یا «ایمیل‌های اخیرم». در دستیار هم با «ایجنت: …» کار می‌کند.",
+        "e.g. “current gold price and why it is rising” or “my recent emails”. In the assistant too: “agent: …”."
+    )
     val saved get() = t("ذخیره شد", "Saved")
     val vaultHardware get() = t("کلیدها در تراشهٔ امن دستگاه رمزنگاری شده‌اند", "Keys are encrypted inside the device secure hardware")
     val vaultSoftware get() = t("هشدار: تراشهٔ امن در دسترس نیست؛ کلیدها فقط مبهم‌سازی شده‌اند", "Warning: secure hardware unavailable — keys are obfuscated only")

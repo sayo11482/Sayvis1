@@ -100,6 +100,9 @@ fun SettingsScreen(
     translationCacheSize: Int,
     appVersion: String,
     onTestConnection: () -> Unit,
+    onGoogleSignIn: () -> Unit,
+    onGoogleSignOut: () -> Unit,
+    onSetGoogleRequireSignIn: (Boolean) -> Unit,
     onOpenGateway: () -> Unit,
     onOpenScripts: () -> Unit,
     onClearTranslationCache: () -> Unit,
@@ -109,6 +112,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val s = LocalStrings.current
+    val context = LocalContext.current
     val listenLevel by com.example.sayvis.voice.ListenBus.level.collectAsState()
     var showResetDialog by remember { mutableStateOf(false) }
     var revealKey by remember { mutableStateOf(false) }
@@ -423,6 +427,44 @@ fun SettingsScreen(
                     )
                 }
 
+                AiProviderKind.OPENAI -> {
+                    SecretField(
+                        label = s.apiKey,
+                        hint = "sk-…",
+                        value = settings.ai.openAiApiKey,
+                        reveal = revealKey,
+                        onRevealChange = { revealKey = it },
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(openAiApiKey = it.trim()))) },
+                        isPersian = isPersian
+                    )
+                    SayvisField(
+                        label = s.model,
+                        value = settings.ai.openAiModel,
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(openAiModel = it.trim()))) },
+                        hint = "gpt-4o-mini / gpt-4o",
+                        monospace = true
+                    )
+                }
+
+                AiProviderKind.XAI -> {
+                    SecretField(
+                        label = s.apiKey,
+                        hint = "xai-…",
+                        value = settings.ai.xaiApiKey,
+                        reveal = revealKey,
+                        onRevealChange = { revealKey = it },
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(xaiApiKey = it.trim()))) },
+                        isPersian = isPersian
+                    )
+                    SayvisField(
+                        label = s.model,
+                        value = settings.ai.xaiModel,
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(xaiModel = it.trim()))) },
+                        hint = "grok-3-mini / grok-4",
+                        monospace = true
+                    )
+                }
+
                 AiProviderKind.CUSTOM -> {
                     SayvisField(
                         label = s.baseUrl,
@@ -583,6 +625,65 @@ fun SettingsScreen(
         }
 
         // ============================================================ TRADING
+        // ======================================================= GOOGLE ACCOUNT
+        SayvisSectionHeader(title = s.googleSectionTitle, icon = Icons.Default.Link)
+        SayvisCard {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = s.googleSectionHint, fontSize = 11.5.sp, color = SayvisSilverMuted)
+                SayvisField(
+                    label = s.googleClientId,
+                    value = settings.google.clientId,
+                    onValueChange = { onSettingsChange(settings.copy(google = settings.google.copy(clientId = it.trim()))) },
+                    hint = "1234…apps.googleusercontent.com",
+                    monospace = true
+                )
+                Text(text = s.googleHowTo, fontSize = 10.5.sp, color = SayvisSilverMuted)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SayvisButton(
+                        label = s.googleOpenConsole,
+                        onClick = {
+                            runCatching {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.cloud.google.com/apis/credentials")))
+                            }
+                        },
+                        tone = ButtonTone.NEUTRAL,
+                        modifier = Modifier.weight(1f).testTag("google_open_console")
+                    )
+                    SayvisButton(
+                        label = s.googleSignIn,
+                        onClick = onGoogleSignIn,
+                        enabled = settings.google.clientId.isNotBlank(),
+                        tone = ButtonTone.PRIMARY,
+                        modifier = Modifier.weight(1f).testTag("google_account_signin")
+                    )
+                }
+                if (settings.google.signedIn) {
+                    Text(
+                        text = "✅ " + settings.google.displayName.orEmpty().ifBlank { settings.google.email } +
+                            "  <" + settings.google.email + ">",
+                        fontSize = 11.5.sp,
+                        color = SayvisGreenSuccess,
+                        modifier = Modifier.testTag("google_account_status")
+                    )
+                    SayvisButton(
+                        label = s.googleSignOut,
+                        onClick = onGoogleSignOut,
+                        tone = ButtonTone.DANGER,
+                        modifier = Modifier.testTag("google_account_signout")
+                    )
+                }
+                SayvisToggleRow(
+                    label = s.googleLockToggle,
+                    hint = null,
+                    checked = settings.google.requireSignInAtLaunch,
+                    onCheckedChange = { onSetGoogleRequireSignIn(it) },
+                    enabled = settings.google.clientId.isNotBlank()
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         SayvisSectionHeader(title = s.sectionTrading, icon = Icons.Default.SwapHoriz)
 
         SayvisCard {

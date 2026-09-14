@@ -57,6 +57,29 @@
             the text-selection menu and the share sheet to capture the key,
             verify it live and store it in the Keystore-backed vault.
         -->
+        <!--
+            In-app Google OAuth sign-in: the consent screen redirects back into
+            the app through the sayvis://oauth2 custom scheme (PKCE flow).
+        -->
+        <activity
+            android:name="com.example.sayvis.ui.GoogleSignInActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="oauth2"
+                    android:scheme="sayvis" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name="com.example.sayvis.ui.GoogleLinkActivity"
             android:exported="true"

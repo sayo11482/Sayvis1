@@ -18,6 +18,8 @@ class AIOrchestrator(
     private val geminiProvider: GeminiProvider = GeminiProvider(),
     private val openRouterProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.OPENROUTER),
     private val groqProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.GROQ),
+    private val openAiProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.OPENAI),
+    private val xaiProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.XAI),
     private val customProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.CUSTOM),
     private val localProvider: LocalCognitiveProvider = LocalCognitiveProvider()
 ) {
@@ -33,6 +35,8 @@ class AIOrchestrator(
         AiProviderKind.GEMINI -> geminiProvider
         AiProviderKind.OPENROUTER -> openRouterProvider
         AiProviderKind.GROQ -> groqProvider
+        AiProviderKind.OPENAI -> openAiProvider
+        AiProviderKind.XAI -> xaiProvider
         AiProviderKind.CUSTOM -> customProvider
         AiProviderKind.LOCAL -> null
     }

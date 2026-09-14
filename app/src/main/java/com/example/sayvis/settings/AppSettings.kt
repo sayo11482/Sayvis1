@@ -23,7 +23,9 @@ enum class AiProviderKind(val labelFa: String, val labelEn: String, val isLocal:
     GEMINI("گوگل جمینای", "Google Gemini", false),
     OPENROUTER("اوپن‌روتر (چندمدلی)", "OpenRouter (multi-model)", false),
     GROQ("گروک (پاسخ سریع)", "Groq (fast LPU)", false),
-    CUSTOM("سرویس دلخواه سازگار با OpenAI", "Custom OpenAI-compatible", false);
+    CUSTOM("سرویس دلخواه سازگار با OpenAI", "Custom OpenAI-compatible", false)
+    OPENAI("چت‌جی‌پی‌تی (OpenAI)", "ChatGPT (OpenAI)", false),
+    XAI("گراک (xAI)", "Grok (xAI)", false),;
 
     fun label(isPersian: Boolean): String = if (isPersian) labelFa else labelEn
 }
@@ -128,6 +130,10 @@ data class AiSettings(
     val openRouterModel: String = "anthropic/claude-3.5-sonnet",
     val groqApiKey: String = "",
     val groqModel: String = "llama-3.3-70b-versatile",
+    val openAiApiKey: String = "",
+    val openAiModel: String = "gpt-4o-mini",
+    val xaiApiKey: String = "",
+    val xaiModel: String = "grok-3-mini",
     val customBaseUrl: String = "",
     val customApiKey: String = "",
     val customModel: String = "",
@@ -144,6 +150,8 @@ data class AiSettings(
         AiProviderKind.GEMINI -> geminiApiKey.isNotBlank()
         AiProviderKind.OPENROUTER -> openRouterApiKey.isNotBlank()
         AiProviderKind.GROQ -> groqApiKey.isNotBlank()
+        AiProviderKind.OPENAI -> openAiApiKey.isNotBlank()
+        AiProviderKind.XAI -> xaiApiKey.isNotBlank()
         AiProviderKind.CUSTOM -> customBaseUrl.isNotBlank() && customModel.isNotBlank()
     }
 
@@ -152,8 +160,25 @@ data class AiSettings(
         AiProviderKind.GEMINI -> geminiModel
         AiProviderKind.OPENROUTER -> openRouterModel
         AiProviderKind.GROQ -> groqModel
+        AiProviderKind.OPENAI -> openAiModel
+        AiProviderKind.XAI -> xaiModel
         AiProviderKind.CUSTOM -> customModel
     }
+}
+
+/** Google account identity used for in-app sign-in and Google capabilities. */
+data class GoogleAccountSettings(
+    /** OAuth client ID from Google Cloud Console (public — not a secret). */
+    val clientId: String = "",
+    val email: String = "",
+    val displayName: String = "",
+    val pictureUrl: String = "",
+    val signedInAtEpochMs: Long = 0L,
+    val grantedScopes: String = "",
+    /** When on (and OAuth configured), launch shows the Google sign-in gate. */
+    val requireSignInAtLaunch: Boolean = false
+) {
+    val signedIn: Boolean get() = email.isNotBlank()
 }
 
 /** Localisation & rendering preferences. */
@@ -186,7 +211,8 @@ data class AppSettings(
     val visualStyle: AiVisualStyle = AiVisualStyle.GEOMETRIC,
     /** Play the robotic chirp when SAYVIS answers a voice-originated message. */
     val roboticVoiceReplies: Boolean = true,
-    val onboardingCompleted: Boolean = false,
+    val onboardingCompleted: Boolean = false
+    val google: GoogleAccountSettings = GoogleAccountSettings(),,
     val settingsSchemaVersion: Int = 3
 ) {
     /** Convenience: is the active language Persian? */

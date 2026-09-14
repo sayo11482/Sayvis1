@@ -14,6 +14,9 @@ import com.example.sayvis.ai.AIOrchestrator
 import com.example.sayvis.ai.AssistantCommand
 import com.example.sayvis.ai.AssistantCommandEngine
 import com.example.sayvis.ai.ChatTurn
+import com.example.sayvis.ai.AgentService
+import com.example.sayvis.ai.GoogleAuthManager
+import com.example.sayvis.ai.GoogleServicesService
 import com.example.sayvis.ai.WebSearchService
 import com.example.sayvis.ai.ProviderType
 import com.example.sayvis.ai.TranslationResult
@@ -59,6 +62,7 @@ import com.example.sayvis.settings.AppSettings
 import com.example.sayvis.settings.MtGatewayProfile
 import com.example.sayvis.settings.ProviderProbe
 import com.example.sayvis.settings.SettingsStore
+import com.example.sayvis.settings.SecretKey
 import com.example.sayvis.identity.AccountResult
 import com.example.sayvis.identity.DevicePairing
 import com.example.sayvis.identity.OwnerAccount
@@ -108,6 +112,7 @@ enum class SayvisScreen(val titleEn: String, val titleFa: String) {
 
     // ---- secondary ----
     MISSIONS("Missions", "مأموریت‌ها"),
+    AGENT("Research agent", "ایجنت پژوهش"),
     UIC("Cognitive Profile", "پروندهٔ شناختی"),
     AWARE("Smart Suggestions", "پیشنهادهای هوشمند"),
     TRADING("Trading & Markets", "معاملات و بازار"),
@@ -180,6 +185,8 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val gateway = MetaTraderGateway()
     private val aiOrchestrator = AIOrchestrator()
     private val webSearch = WebSearchService()
+    private val agentService = AgentService()
+    private val googleServices = GoogleServicesService()
 
     val awareEngine = AwareEngine(repository)
 
@@ -354,6 +361,103 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         providerUsed = ProviderType.LOCAL_COGNITIVE
     )
 
+    /** Quick intermediate SAYVIS chat line (agent steps etc.). */
+    private fun appendAssistantNote(text: String) {
+        _chatMessages.value = _chatMessages.value + ChatMessage(sender = "SAYVIS", text = text)
+    }
+
+    // ----------------------------------------------------- research agent
+
+    private val _agentBusy = MutableStateFlow(false)
+    val agentBusy: StateFlow<Boolean> = _agentBusy.asStateFlow()
+
+    private val _agentSteps = MutableStateFlow<List<String>>(emptyList())
+    val agentSteps: StateFlow<List<String>> = _agentSteps.asStateFlow()
+
+    private val _agentResult = MutableStateFlow<String?>(null)
+    val agentResult: StateFlow<String?> = _agentResult.asStateFlow()
+
+    /** Runs the research agent loop from the Agent screen. */
+    fun runAgent(goal: String) {
+        val trimmed = goal.trim()
+        if (trimmed.isBlank() || _agentBusy.value) return
+        val current = settingsStore.current()
+        if (current.emergencyLockActive) {
+            _agentResult.value = "⚠️ قفل اضطراری فعال است — ایجنت مسدود شد."
+            return
+        }
+        _agentBusy.value = true
+        _agentSteps.value = emptyList()
+        _agentResult.value = null
+        viewModelScope.launch {
+            val report = agentService.run(
+                goal = trimmed,
+                languageFa = current.isPersian(SayvisStrings.deviceIsPersian()),
+                synthesizer = { research ->
+                    val response = aiOrchestrator.querySAYVIS(
+                        prompt = trimmed,
+                        uicContext = "",
+                        systemContext = research,
+                        languageFa = current.isPersian(SayvisStrings.deviceIsPersian()),
+                        emergencyLockActive = current.emergencyLockActive,
+                        forceOffline = current.forceOfflineMode,
+                        settings = current.ai
+                    )
+                    response.text
+                },
+                googleFetch = { query -> privateGoogleFetch(query) },
+                onStep = { step -> _agentSteps.value = _agentSteps.value + step }
+            )
+            _agentResult.value = report.answer +
+                (if (report.sources.isNotEmpty()) "\n\n🌐 " + report.sources.take(4)
+                    .joinToString("\n") { "${it.title} (${it.source})" } else "")
+            _agentBusy.value = false
+            audit(
+                actor = "SAYVIS_AGENT",
+                action = "agent.research",
+                riskLevel = RiskLevel.LOW_RISK,
+                auth = "OWNER_CONFIRMED",
+                result = "SUCCESS",
+                digest = "goal=${report.goal.take(40)} sources=${report.sources.size} google=${report.googleLines.size}"
+            )
+        }
+    }
+
+    /** Fetches the owner's private Google data for a capability query (or null). */
+    private suspend fun privateGoogleFetch(query: String): GoogleServicesService.FetchResult? {
+        val context = getApplication<Application>()
+        val current = settingsStore.current()
+        if (!current.google.signedIn) return null
+        val refreshToken = settingsStore.getSecret(SecretKey.GOOGLE_REFRESH_TOKEN)
+        val accessToken = GoogleAuthManager.validAccessToken(context, refreshToken, current.google.clientId)
+            ?: return null
+        return when (GoogleServicesService.matchCapability(query)) {
+            GoogleServicesService.Capability.GMAIL -> googleServices.recentEmails(accessToken, query.take(60))
+            GoogleServicesService.Capability.CALENDAR -> googleServices.upcomingEvents(accessToken)
+            GoogleServicesService.Capability.DRIVE -> googleServices.findFiles(accessToken, null)
+            null -> null
+        }
+    }
+
+    // -------------------------------------------------- google sign-in hooks
+
+    /** Opens the Google consent screen (requires the OAuth client ID). */
+    fun beginGoogleSignIn(): Boolean {
+        val clientId = settingsStore.current().google.clientId.trim()
+        if (clientId.isBlank()) return false
+        return GoogleAuthManager.openBrowser(getApplication(), clientId)
+    }
+
+    /** Removes the Google identity and refresh token from the device. */
+    fun googleSignOut() {
+        settingsStore.putSecret(SecretKey.GOOGLE_REFRESH_TOKEN, "")
+        settingsStore.update { it.copy(google = it.google.copy(email = "", displayName = "", pictureUrl = "", signedInAtEpochMs = 0L)) }
+    }
+
+    fun setGoogleRequireSignIn(enabled: Boolean) {
+        settingsStore.update { it.copy(google = it.google.copy(requireSignInAtLaunch = enabled)) }
+    }
+
     fun sendMessage(text: String, fromVoice: Boolean = false) {
         if (text.isBlank()) return
         val current = settingsStore.current()
@@ -379,10 +483,86 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
 
+            // 1b) Research agent: explicit owner command runs the multi-step
+            //     browsing loop (search -> read pages -> synthesize) and/or the
+            //     owner's private Google capabilities (gmail/calendar/drive).
+            val normalizedMessage = AssistantCommandEngine.normalize(text)
+            val agentGoal = AgentService.triggerGoal(normalizedMessage)
+            if (agentGoal != null && !current.emergencyLockActive) {
+                appendAssistantNote(
+                    if (persian) "🛰 ایجنت پژوهش سایویس فعال شد: «$agentGoal»"
+                    else "🛰 SAYVIS research agent engaged: \"$agentGoal\""
+                )
+                val report = agentService.run(
+                    goal = agentGoal,
+                    languageFa = persian,
+                    synthesizer = { research ->
+                        aiOrchestrator.querySAYVIS(
+                            prompt = agentGoal,
+                            uicContext = "",
+                            systemContext = research,
+                            languageFa = persian,
+                            emergencyLockActive = current.emergencyLockActive,
+                            forceOffline = current.forceOfflineMode,
+                            settings = current.ai
+                        ).text
+                    },
+                    googleFetch = { query -> privateGoogleFetch(query) },
+                    onStep = { step -> appendAssistantNote(step) }
+                )
+                _chatMessages.value = _chatMessages.value + ChatMessage(
+                    sender = "SAYVIS",
+                    text = report.answer + (if (report.sources.isNotEmpty())
+                        "\n\n🌐 " + (if (persian) "منابع ایجنت:" else "Agent sources:") + "\n" +
+                            report.sources.take(4).joinToString("\n") { "${it.title} (${it.source})" }
+                    else "")
+                )
+                updateAvatarState()
+                audit(
+                    actor = "SAYVIS_AGENT",
+                    action = "assistant.agent_research",
+                    riskLevel = RiskLevel.LOW_RISK,
+                    auth = "OWNER_CONFIRMED",
+                    result = "SUCCESS",
+                    digest = "goal=${report.goal.take(40)} sources=${report.sources.size}"
+                )
+                return@launch
+            }
+
+            // 1c) Google account capabilities (gmail / calendar / drive), when signed in.
+            if (current.google.signedIn && current.emergencyLockActive.not()) {
+                val capability = GoogleServicesService.matchCapability(normalizedMessage)
+                if (capability != null) {
+                    val fetched = privateGoogleFetch(normalizedMessage)
+                    val answer = if (fetched == null) {
+                        if (persian) "دسترسی گوگل برقرار نشد؛ دوباره وارد شوید یا شبکه را بررسی کنید."
+                        else "Google access failed; sign in again or check the network."
+                    } else if (fetched.ok && fetched.lines.isNotEmpty()) {
+                        (if (persian) "🔐 از حساب گوگل شما:\n\n" else "🔐 From your Google account:\n\n") +
+                            fetched.lines.joinToString("\n")
+                    } else if (fetched.ok) {
+                        if (persian) fetched.messageFa else fetched.messageEn
+                    } else {
+                        if (persian) fetched.messageFa else fetched.messageEn
+                    }
+                    _chatMessages.value = _chatMessages.value + ChatMessage(sender = "SAYVIS", text = answer)
+                    updateAvatarState()
+                    audit(
+                        actor = "SAYVIS_AGENT",
+                        action = "assistant.google_capability",
+                        riskLevel = RiskLevel.LOW_RISK,
+                        auth = "OWNER_CONFIRMED",
+                        result = if (fetched?.ok == true) "SUCCESS" else "FAILED",
+                        digest = "capability=$capability <- ${normalizedMessage.take(40)}"
+                    )
+                    return@launch
+                }
+            }
+
             // 2) Web grounding: questions (and explicit "search" commands) fetch fresh
             //    public sources — keyless, read-only — that work even when the cloud
             //    AI is blocked/unreachable, and even in forced-offline mode.
-            val searchDecision = WebSearchService.shouldSearch(AssistantCommandEngine.normalize(text))
+            val searchDecision = WebSearchService.shouldSearch(normalizedMessage)
             var sources: List<WebSearchService.WebResult> = emptyList()
             var sourcesBlock = ""
             if (searchDecision != null && !current.emergencyLockActive) {

@@ -26,6 +26,8 @@ class OpenAiCompatibleProvider(private val kind: AiProviderKind) : AIProvider {
     override fun isConfigured(settings: AiSettings): Boolean = when (kind) {
         AiProviderKind.OPENROUTER -> settings.openRouterApiKey.isNotBlank()
         AiProviderKind.GROQ -> settings.groqApiKey.isNotBlank()
+        AiProviderKind.OPENAI -> settings.openAiApiKey.isNotBlank()
+        AiProviderKind.XAI -> settings.xaiApiKey.isNotBlank()
         AiProviderKind.CUSTOM -> settings.customBaseUrl.isNotBlank() && settings.customModel.isNotBlank()
         else -> false
     }
@@ -33,6 +35,8 @@ class OpenAiCompatibleProvider(private val kind: AiProviderKind) : AIProvider {
     private fun endpoint(settings: AiSettings): String = when (kind) {
         AiProviderKind.OPENROUTER -> "https://openrouter.ai/api/v1/chat/completions"
         AiProviderKind.GROQ -> "https://api.groq.com/openai/v1/chat/completions"
+        AiProviderKind.OPENAI -> "https://api.openai.com/v1/chat/completions"
+        AiProviderKind.XAI -> "https://api.x.ai/v1/chat/completions"
         AiProviderKind.CUSTOM -> normalise(settings.customBaseUrl) + "/chat/completions"
         else -> ""
     }
@@ -40,6 +44,8 @@ class OpenAiCompatibleProvider(private val kind: AiProviderKind) : AIProvider {
     private fun apiKey(settings: AiSettings): String = when (kind) {
         AiProviderKind.OPENROUTER -> settings.openRouterApiKey.trim()
         AiProviderKind.GROQ -> settings.groqApiKey.trim()
+        AiProviderKind.OPENAI -> settings.openAiApiKey.trim()
+        AiProviderKind.XAI -> settings.xaiApiKey.trim()
         AiProviderKind.CUSTOM -> settings.customApiKey.trim()
         else -> ""
     }
@@ -47,6 +53,8 @@ class OpenAiCompatibleProvider(private val kind: AiProviderKind) : AIProvider {
     private fun model(settings: AiSettings): String = when (kind) {
         AiProviderKind.OPENROUTER -> settings.openRouterModel.trim()
         AiProviderKind.GROQ -> settings.groqModel.trim()
+        AiProviderKind.OPENAI -> settings.openAiModel.trim()
+        AiProviderKind.XAI -> settings.xaiModel.trim()
         AiProviderKind.CUSTOM -> settings.customModel.trim()
         else -> ""
     }

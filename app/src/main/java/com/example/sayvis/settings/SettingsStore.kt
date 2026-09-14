@@ -84,6 +84,8 @@ class SettingsStore private constructor(context: Context) {
             geminiApiKey = getSecret(SecretKey.GEMINI_API_KEY),
             openRouterApiKey = getSecret(SecretKey.OPENROUTER_API_KEY),
             groqApiKey = getSecret(SecretKey.GROQ_API_KEY),
+            openAiApiKey = getSecret(SecretKey.OPENAI_API_KEY),
+            xaiApiKey = getSecret(SecretKey.XAI_API_KEY),
             customApiKey = getSecret(SecretKey.CUSTOM_API_KEY)
         )
         val trading = base.trading.copy(
@@ -98,13 +100,16 @@ class SettingsStore private constructor(context: Context) {
         putSecret(SecretKey.GEMINI_API_KEY, settings.ai.geminiApiKey)
         putSecret(SecretKey.OPENROUTER_API_KEY, settings.ai.openRouterApiKey)
         putSecret(SecretKey.GROQ_API_KEY, settings.ai.groqApiKey)
+        putSecret(SecretKey.OPENAI_API_KEY, settings.ai.openAiApiKey)
+        putSecret(SecretKey.XAI_API_KEY, settings.ai.xaiApiKey)
         putSecret(SecretKey.CUSTOM_API_KEY, settings.ai.customApiKey)
         putSecret(SecretKey.MT_PASSWORD, settings.trading.password)
         putSecret(SecretKey.MT_BRIDGE_TOKEN, settings.trading.bridgeToken)
 
         val redacted = settings.copy(
             ai = settings.ai.copy(
-                geminiApiKey = "", openRouterApiKey = "", groqApiKey = "", customApiKey = ""
+                geminiApiKey = "", openRouterApiKey = "", groqApiKey = "",
+                openAiApiKey = "", xaiApiKey = "", customApiKey = ""
             ),
             trading = settings.trading.copy(password = "", bridgeToken = "")
         )
@@ -138,6 +143,8 @@ class SettingsStore private constructor(context: Context) {
             put("geminiModel", s.ai.geminiModel)
             put("openRouterModel", s.ai.openRouterModel)
             put("groqModel", s.ai.groqModel)
+            put("openAiModel", s.ai.openAiModel)
+            put("xaiModel", s.ai.xaiModel)
             put("customBaseUrl", s.ai.customBaseUrl)
             put("customModel", s.ai.customModel)
             put("persona", s.ai.systemPersona)
@@ -145,6 +152,16 @@ class SettingsStore private constructor(context: Context) {
             put("maxTokens", s.ai.maxOutputTokens)
             put("timeout", s.ai.timeoutSeconds)
             put("forceLang", s.ai.forceResponseLanguage)
+        })
+
+        put("google", JSONObject().apply {
+            put("clientId", s.google.clientId)
+            put("email", s.google.email)
+            put("name", s.google.displayName)
+            put("photo", s.google.pictureUrl)
+            put("signedInAt", s.google.signedInAtEpochMs)
+            put("scopes", s.google.grantedScopes)
+            put("requireSignIn", s.google.requireSignInAtLaunch)
         })
 
         put("mt", JSONObject().apply {
@@ -197,6 +214,8 @@ class SettingsStore private constructor(context: Context) {
                 geminiModel = ai.optString("geminiModel", "gemini-2.5-flash"),
                 openRouterModel = ai.optString("openRouterModel", "anthropic/claude-3.5-sonnet"),
                 groqModel = ai.optString("groqModel", "llama-3.3-70b-versatile"),
+                openAiModel = ai.optString("openAiModel", "gpt-4o-mini"),
+                xaiModel = ai.optString("xaiModel", "grok-3-mini"),
                 customBaseUrl = ai.optString("customBaseUrl", ""),
                 customModel = ai.optString("customModel", ""),
                 systemPersona = ai.optString("persona", ""),
@@ -205,6 +224,18 @@ class SettingsStore private constructor(context: Context) {
                 timeoutSeconds = ai.optInt("timeout", 25),
                 forceResponseLanguage = ai.optBoolean("forceLang", true)
             ),
+            google = run {
+                val g = root.optJSONObject("google") ?: JSONObject()
+                GoogleAccountSettings(
+                    clientId = g.optString("clientId", ""),
+                    email = g.optString("email", ""),
+                    displayName = g.optString("name", ""),
+                    pictureUrl = g.optString("photo", ""),
+                    signedInAtEpochMs = g.optLong("signedInAt", 0L),
+                    grantedScopes = g.optString("scopes", ""),
+                    requireSignInAtLaunch = g.optBoolean("requireSignIn", false)
+                )
+            },
             trading = MtGatewayProfile(
                 id = mt.optString("id", "mt_primary"),
                 profileName = mt.optString("name", ""),
@@ -253,6 +284,9 @@ enum class SecretKey(val vaultKey: String, val labelFa: String, val labelEn: Str
     GEMINI_API_KEY("sec_gemini_key", "کلید API گوگل جمینای", "Google Gemini API key"),
     OPENROUTER_API_KEY("sec_openrouter_key", "کلید API اوپن‌روتر", "OpenRouter API key"),
     GROQ_API_KEY("sec_groq_key", "کلید API گروک", "Groq API key"),
+    OPENAI_API_KEY("sec_openai_key", "کلید API چت‌جی‌پی‌تی", "ChatGPT / OpenAI API key"),
+    XAI_API_KEY("sec_xai_key", "کلید API گراک", "Grok / xAI API key"),
+    GOOGLE_REFRESH_TOKEN("sec_google_refresh", "توکن تازه‌سازی گوگل", "Google refresh token"),
     CUSTOM_API_KEY("sec_custom_key", "کلید سرویس دلخواه", "Custom service key"),
     MT_PASSWORD("sec_mt_password", "رمز حساب متاتریدر", "MetaTrader account password"),
     MT_BRIDGE_TOKEN("sec_mt_token", "توکن پل ارتباطی", "Bridge / gateway token");
