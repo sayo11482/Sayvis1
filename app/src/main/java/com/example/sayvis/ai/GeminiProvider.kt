@@ -103,15 +103,23 @@ class GeminiProvider(
         }
 
         runCatching {
+            // The API key goes in the x-goog-api-key header (recommended over ?key=,
+            // and immune to URL-encoding problems with pasted keys).
             val request = Request.Builder()
-                .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey")
+                .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent")
+                .header("x-goog-api-key", apiKey)
                 .post(body.toString().toRequestBody(JSON_MEDIA_TYPE))
                 .build()
 
             clientFor(settings).newCall(request).execute().use { response ->
                 val payload = response.body?.string() ?: ""
                 if (!response.isSuccessful) {
-                    return@withContext failure(model, start, "HTTP ${response.code}: ${summarise(payload)}")
+                    var reason = "HTTP ${response.code}: ${summarise(payload)}"
+                    if (response.code == 403 && payload.contains("location", ignoreCase = true)) {
+                        reason += " — سرویس جمینای از موقعیت مکانی فعلی (تحریم جغرافیایی گوگل) در دسترس نیست؛ VPN لازم است. / " +
+                            "Gemini blocks this region (HTTP 403). A VPN is required, or use the local core + web search."
+                    }
+                    return@withContext failure(model, start, reason)
                 }
                 val candidate = JSONObject(payload)
                     .optJSONArray("candidates")

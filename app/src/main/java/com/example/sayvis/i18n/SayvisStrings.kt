@@ -332,6 +332,24 @@ class SayvisStrings(val fa: Boolean) {
     }
 
     // -------------------------------------- floating avatar & ambient listening
+    val toolRobot get() = t("ربات سایویس (زنده)", "SAYVIS Robot (live)")
+    val toolRobotHint get() = t(
+        "چهرهٔ زندهٔ رباتِ لوگو: درخشش چشم‌ها، تنفس و رنگ بنفش دهان همراه تفکر عوض می‌شود",
+        "The logo robot, live: glowing eyes, breathing and the purple mouth glow shift while thinking"
+    )
+    val robotTitle get() = t("ربات سایویس — زنده", "SAYVIS Robot — Live")
+    val robotHintLive get() = t(
+        "رنگ چشم‌ها، تنفس کروم، دهان بنفش و هستهٔ سینه با وضعیت هوش و صدای محیط زنده تغییر می‌کنند.",
+        "Eye colours, the chrome breathing, the purple mouth vent and the chest core follow the AI state and ambient sound live."
+    )
+    val robotPreview get() = t("پیش‌نمایش وضعیت (لمس کنید)", "State preview (tap)")
+    val robotAsk get() = t("پرسش آزمایشی از دستیار", "Ask the assistant a test question")
+    val robotStateIdle get() = t("آماده", "Idle")
+    val robotStateThinking get() = t("در حال تفکر", "Thinking")
+    val robotStateSpeaking get() = t("در حال گفتار", "Speaking")
+    val robotStateAware get() = t("هوشیار", "Aware")
+    val robotStateLocked get() = t("قفل اضطراری", "Locked")
+    val robotStateOffline get() = t("آفلاین", "Offline")
     val toolAvatarListen get() = t("آواتار شناور و شنیدار", "Floating Avatar & Listening")
     val toolAvatarListenHint get() =
         t("حبابک همیشگی روی هوم گوشی، میکروفون زنده و شناسایی صدای شما", "A persistent bubble on your Home screen with a live mic that knows your voice")

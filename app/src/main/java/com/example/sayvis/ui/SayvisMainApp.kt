@@ -56,6 +56,7 @@ import com.example.sayvis.model.MissionStatus
 import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.ui.components.LocalTranslation
 import com.example.sayvis.ui.screens.AwareScreen
+import com.example.sayvis.ui.screens.RobotScreen
 import com.example.sayvis.ui.screens.AvatarListenScreen
 import com.example.sayvis.ui.screens.ChatScreen
 import com.example.sayvis.ui.screens.HomeScreen
@@ -478,6 +479,16 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                     SayvisScreen.AVATAR -> AvatarListenScreen(
                         isPersian = isPersian,
                         persianDigits = settings.localization.persianDigits
+                    )
+
+                    SayvisScreen.ROBOT -> RobotScreen(
+                        avatarState = avatarState,
+                        listenLevel = listenLevel,
+                        isPersian = isPersian,
+                        onAskAssistant = { message ->
+                            viewModel.navigateTo(SayvisScreen.ASSISTANT)
+                            viewModel.sendMessage(message)
+                        }
                     )
                 }
             }

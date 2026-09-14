@@ -14,6 +14,7 @@ import com.example.sayvis.ai.AIOrchestrator
 import com.example.sayvis.ai.AssistantCommand
 import com.example.sayvis.ai.AssistantCommandEngine
 import com.example.sayvis.ai.ChatTurn
+import com.example.sayvis.ai.WebSearchService
 import com.example.sayvis.ai.ProviderType
 import com.example.sayvis.ai.TranslationResult
 import com.example.sayvis.ai.TranslationService
@@ -114,7 +115,8 @@ enum class SayvisScreen(val titleEn: String, val titleFa: String) {
     SECURITY("Security & Devices", "امنیت و دستگاه‌ها"),
     GATEWAY("Trading Gateway", "درگاه معاملاتی"),
     SCRIPTS("Scripts & Automation", "اسکریپت و خودکارسازی"),
-    AVATAR("Floating Avatar & Listening", "آواتار شناور و شنیدار");
+    AVATAR("Floating Avatar & Listening", "آواتار شناور و شنیدار"),
+    ROBOT("SAYVIS Robot", "ربات سایویس");
 
     fun title(isPersian: Boolean): String = if (isPersian) titleFa else titleEn
 
@@ -177,6 +179,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val translationService = TranslationService(application)
     private val gateway = MetaTraderGateway()
     private val aiOrchestrator = AIOrchestrator()
+    private val webSearch = WebSearchService()
 
     val awareEngine = AwareEngine(repository)
 
@@ -376,11 +379,38 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
 
-            // 2) Otherwise: full AI provider round-trip (cloud when configured, local core otherwise).
+            // 2) Web grounding: questions (and explicit "search" commands) fetch fresh
+            //    public sources — keyless, read-only — that work even when the cloud
+            //    AI is blocked/unreachable, and even in forced-offline mode.
+            val searchDecision = WebSearchService.shouldSearch(AssistantCommandEngine.normalize(text))
+            var sources: List<WebSearchService.WebResult> = emptyList()
+            var sourcesBlock = ""
+            if (searchDecision != null && !current.emergencyLockActive) {
+                sources = runCatching { webSearch.search(searchDecision.query, persian) }.getOrDefault(emptyList())
+                if (sources.isNotEmpty()) {
+                    sourcesBlock = buildString {
+                        appendLine(if (persian) "منابع زندهٔ وب (تازه، به آن‌ها استناد کن):" else "LIVE WEB SOURCES (fresh; cite them):")
+                        sources.forEachIndexed { index, result ->
+                            appendLine("${index + 1}. ${result.title} — ${result.snippet.take(160)} (${result.url})")
+                        }
+                    }
+                    audit(
+                        actor = "SAYVIS_AGENT",
+                        action = "assistant.web_search",
+                        riskLevel = RiskLevel.LOW_RISK,
+                        auth = "OWNER_CONFIRMED",
+                        result = "SUCCESS",
+                        digest = "${sources.size} sources <- ${searchDecision.query.take(40)}"
+                    )
+                }
+            }
+
+            // 3) AI provider round-trip (cloud when configured, local core otherwise).
             val uicSummary = uicAttributes.value.joinToString("\n") {
                 "- [${it.category.name}] ${it.title}: ${it.value} (status ${it.status.name}, confidence ${it.confidence})"
             }
-            val systemContext = ContextLocalization.systemContextLine(contextSnapshot.value, persian)
+            val systemContext = ContextLocalization.systemContextLine(contextSnapshot.value, persian) +
+                (if (sourcesBlock.isNotBlank()) "\n$sourcesBlock" else "")
             val history = _chatMessages.value.takeLast(10).map { ChatTurn(it.sender, it.text) }
 
             val response = aiOrchestrator.querySAYVIS(
@@ -396,10 +426,27 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
 
             _avatarState.value = AvatarState.SPEAKING
 
-            val fallbackText = if (response.text.isBlank()) {
-                if (persian) "پاسخی تولید نشد. وضعیت سرویس هوش مصنوعی را در تنظیمات بررسی کنید."
-                else "No answer was produced. Check the AI provider status in Settings."
-            } else response.text
+            val providerAnswer = response.text
+            val sourcesFooter = if (sources.isNotEmpty()) {
+                "\n\n🌐 " + (if (persian) "منابع وب:" else "Web sources:") + "\n" +
+                    sources.take(4).mapIndexed { index, result -> "${index + 1}. ${result.title} (${result.source})" }
+                        .joinToString("\n")
+            } else ""
+
+            val fallbackText = when {
+                providerAnswer.isNotBlank() && response.providerUsed != ProviderType.LOCAL_COGNITIVE -> providerAnswer + sourcesFooter
+                sources.isNotEmpty() -> {
+                    // The cloud AI was unavailable — answer from the live sources directly.
+                    (if (persian) "بر اساس نتایج زندهٔ وب:\n\n" else "Based on live web results:\n\n") +
+                        sources.take(3).joinToString("\n\n") { result ->
+                            "• ${result.title}\n${result.snippet.take(200)}\n${result.url}"
+                        } + sourcesFooter
+                }
+                providerAnswer.isNotBlank() -> providerAnswer
+                else ->
+                    if (persian) "پاسخی تولید نشد. وضعیت سرویس هوش مصنوعی را در تنظیمات بررسی کنید."
+                    else "No answer was produced. Check the AI provider status in Settings."
+            }
 
             _chatMessages.value = _chatMessages.value + ChatMessage(
                 sender = "SAYVIS",
