@@ -148,6 +148,36 @@ class SayvisStrings(val fa: Boolean) {
     val showKey get() = t("نمایش", "Show")
     val hideKey get() = t("پنهان", "Hide")
     val clearKey get() = t("پاک کردن کلید", "Clear key")
+
+    // Google account link (sign in with Google -> AI Studio -> Gemini key)
+    val googleLinkTitle get() = t("اتصال با حساب گوگل (Gemini)", "Google account link (Gemini)")
+    val googleLinkHow get() = t(
+        "با حساب گوگل خود وارد Google AI Studio شوید، دکمهٔ «Create API key» را بزنید و کلید را کپی کنید؛ سایویس آن را خودکار تشخیص می‌دهد، آزمایش می‌کند و ذخیره می‌سازد.",
+        "Sign in to Google AI Studio with your Google account, tap “Create API key” and copy it; SAYVIS auto-detects, verifies and stores the key."
+    )
+    val googleLinkSignIn get() = t("ورود با گوگل و دریافت کلید", "Sign in with Google & get key")
+    val googleLinkFromClipboard get() = t("اتصال کلید کپی‌شده", "Connect copied key")
+    val googleLinkChecking get() = t("در حال بررسی کلید…", "Verifying key…")
+    val googleLinkSaved get() = t("کلید ذخیره شد و Gemini انتخاب شد ✅", "Key saved; Gemini selected ✅")
+    val googleLinkNoKey get() = t(
+        "کلیدی در کلیپ‌بورد پیدا نشد؛ ابتدا در AI Studio کلید بسازید و کپی کنید",
+        "No key found on the clipboard; create and copy a key in AI Studio first"
+    )
+    val googleLinkActiveKey get() = t("کلید فعال", "Active key")
+    val googleLinkKindAuth get() = t("کلید نوع Auth (AQ…)", "Auth key (AQ…)")
+    val googleLinkKindStandard get() = t("کلید استاندارد (AIza…)", "Standard key (AIza…)")
+    val googleLinkKindUnknown get() = t("کلید نوع نامشخص", "Key of unknown kind")
+    val googleLinkSelectionHint get() = t(
+        "راه میان‌بر: در صفحهٔ AI Studio کلید را با انگشت انتخاب کنید و «ذخیرهٔ کلید در سایویس» را بزنید.",
+        "Shortcut: select the key text in AI Studio and tap “Save key in SAYVIS”."
+    )
+    val captureConnect get() = t("اتصال به سایویس", "Link to SAYVIS")
+    val captureCancel get() = t("انصراف", "Cancel")
+    val captureNone get() = t(
+        "کلیدی در متن اشتراکی پیدا نشد. یک کلید Gemini از Google AI Studio بگیرید.",
+        "No key found in the shared text. Get a Gemini key from Google AI Studio."
+    )
+    val captureOpenStudio get() = t("ورود به Google AI Studio", "Open Google AI Studio")
     val saved get() = t("ذخیره شد", "Saved")
     val vaultHardware get() = t("کلیدها در تراشهٔ امن دستگاه رمزنگاری شده‌اند", "Keys are encrypted inside the device secure hardware")
     val vaultSoftware get() = t("هشدار: تراشهٔ امن در دسترس نیست؛ کلیدها فقط مبهم‌سازی شده‌اند", "Warning: secure hardware unavailable — keys are obfuscated only")

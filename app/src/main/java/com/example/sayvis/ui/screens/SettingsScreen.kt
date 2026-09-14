@@ -34,15 +34,22 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import com.example.sayvis.ai.GoogleLinkManager
 import com.example.sayvis.i18n.LocalStrings
 import com.example.sayvis.i18n.PersianFormat
 import com.example.sayvis.settings.AiProviderKind
@@ -67,12 +74,12 @@ import com.example.sayvis.ui.components.SayvisToggleRow
 import com.example.sayvis.ui.theme.SayvisCyan
 import com.example.sayvis.ui.components.pnlColor
 import com.example.sayvis.ui.theme.SayvisAmberWarning
-import com.example.sayvis.ui.theme.SayvisCyan
 import com.example.sayvis.ui.theme.SayvisGold
 import com.example.sayvis.ui.theme.SayvisGreenSuccess
 import com.example.sayvis.ui.theme.SayvisRedAlert
 import com.example.sayvis.ui.theme.SayvisSilver
 import com.example.sayvis.ui.theme.SayvisSilverMuted
+import kotlinx.coroutines.launch
 
 /**
  * The single place where every owner-editable control lives.
@@ -358,6 +365,23 @@ fun SettingsScreen(
                         onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(geminiModel = it.trim()))) },
                         hint = "gemini-2.5-flash / gemini-2.5-pro",
                         monospace = true
+                    )
+
+                    // Sign in with Google → AI Studio → automatic key capture,
+                    // live verification and vault storage.
+                    GoogleAccountLinkCard(
+                        activeKey = settings.ai.geminiApiKey,
+                        isPersian = isPersian,
+                        onKeyLinked = { linked ->
+                            onSettingsChange(
+                                settings.copy(
+                                    ai = settings.ai.copy(
+                                        geminiApiKey = linked,
+                                        provider = AiProviderKind.GEMINI
+                                    )
+                                )
+                            )
+                        }
                     )
                 }
 
@@ -745,6 +769,111 @@ fun SettingsScreen(
         )
     }
 }
+
+
+/**
+ * "Sign in with Google" → Gemini link card.
+ *
+ * Google has no in-app OAuth for the Gemini API; AI Studio (which works with
+ * any personal Google account) is the official Google-login surface for keys.
+ * This card opens AI Studio, then — once the owner copied the issued key —
+ * picks it from the clipboard, verifies it live against Google and stores it
+ * in the Keystore-backed vault, switching the brain to Gemini. For zero-typing
+ * linking, the text-selection menu / share sheet route lands in
+ * [com.example.sayvis.ui.GoogleLinkActivity].
+ */
+@Composable
+private fun GoogleAccountLinkCard(
+    activeKey: String,
+    isPersian: Boolean,
+    onKeyLinked: (String) -> Unit
+) {
+    val s = LocalStrings.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<Pair<GoogleLinkManager.CheckStatus, String>?>(null) }
+
+    SayvisDivider()
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Default.Link, contentDescription = null, tint = SayvisCyan, modifier = Modifier.size(16.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = s.googleLinkTitle, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = SayvisSilver)
+    }
+    Text(text = s.googleLinkHow, fontSize = 11.5.sp, color = SayvisSilverMuted)
+    Spacer(modifier = Modifier.height(8.dp))
+
+    if (activeKey.isNotBlank()) {
+        Text(
+            text = s.googleLinkActiveKey + ": " + GoogleLinkManager.redact(activeKey) +
+                "  (" + kindLabelOf(s, activeKey) + ")",
+            fontSize = 11.sp,
+            color = SayvisGreenSuccess,
+            modifier = Modifier.testTag("google_link_active_key")
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        SayvisButton(
+            label = s.googleLinkSignIn,
+            onClick = {
+                runCatching {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GoogleLinkManager.STUDIO_KEY_URL)))
+                }
+            },
+            tone = ButtonTone.PRIMARY,
+            modifier = Modifier.weight(1f).testTag("google_link_signin")
+        )
+        SayvisButton(
+            label = if (busy) s.googleLinkChecking else s.googleLinkFromClipboard,
+            onClick = {
+                if (busy) return@SayvisButton
+                val clip = (context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                    ?.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+                val key = GoogleLinkManager.extractKeyFromText(clip)
+                if (key == null) {
+                    status = GoogleLinkManager.CheckStatus.INVALID to s.googleLinkNoKey
+                    return@SayvisButton
+                }
+                busy = true
+                scope.launch {
+                    val check = GoogleLinkManager.validateKey(key)
+                    if (check.keyUsable || check.status == GoogleLinkManager.CheckStatus.NETWORK) {
+                        onKeyLinked(key)
+                    }
+                    status = check.status to (if (isPersian) check.messageFa else check.messageEn)
+                    busy = false
+                }
+            },
+            busy = busy,
+            tone = ButtonTone.SUCCESS,
+            modifier = Modifier.weight(1f).testTag("google_link_clipboard")
+        )
+    }
+    Text(text = s.googleLinkSelectionHint, fontSize = 10.5.sp, color = SayvisSilverMuted)
+    status?.let { (st, message) ->
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = message,
+            fontSize = 11.sp,
+            color = when (st) {
+                GoogleLinkManager.CheckStatus.VALID -> SayvisGreenSuccess
+                GoogleLinkManager.CheckStatus.INVALID -> SayvisRedAlert
+                else -> SayvisAmberWarning
+            },
+            modifier = Modifier.testTag("google_link_status")
+        )
+    }
+    Spacer(modifier = Modifier.height(10.dp))
+}
+
+private fun kindLabelOf(s: com.example.sayvis.i18n.SayvisStrings, key: String): String =
+    when (GoogleLinkManager.classify(key)) {
+        GoogleLinkManager.KeyKind.AUTH_AQ -> s.googleLinkKindAuth
+        GoogleLinkManager.KeyKind.STANDARD_AIZA -> s.googleLinkKindStandard
+        GoogleLinkManager.KeyKind.UNKNOWN -> s.googleLinkKindUnknown
+    }
 
 @Composable
 private fun SecretField(

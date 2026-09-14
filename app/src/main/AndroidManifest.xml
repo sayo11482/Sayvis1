@@ -52,6 +52,33 @@
         </activity>
 
         <!--
+            Google-account link: after the owner creates a Gemini key in Google
+            AI Studio (signed in with their Google account), SAYVIS appears in
+            the text-selection menu and the share sheet to capture the key,
+            verify it live and store it in the Keystore-backed vault.
+        -->
+        <activity
+            android:name="com.example.sayvis.ui.GoogleLinkActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <!--
             Floating avatar & ambient listening: keeps a small overlay avatar on the
             launcher after Home and runs the on-device owner-voice matcher.
         -->

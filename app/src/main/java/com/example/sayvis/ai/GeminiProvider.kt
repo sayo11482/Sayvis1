@@ -184,7 +184,8 @@ class GeminiProvider(
         // Distinguish "bad key / no network" from "key fine, generation hiccup".
         val keyReachable = runCatching {
             val request = Request.Builder()
-                .url("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=$apiKey")
+                .url("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1")
+                .header("x-goog-api-key", apiKey)
                 .get()
                 .build()
             clientFor(settings).newCall(request).execute().use { it.isSuccessful }
