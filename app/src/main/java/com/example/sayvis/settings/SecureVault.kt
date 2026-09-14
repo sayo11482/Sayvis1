@@ -118,7 +118,7 @@ class SecureVault(context: Context) {
      * This is obfuscation, not encryption, and the UI says so.
      */
     private fun softObfuscate(input: ByteArray): ByteArray =
-        input.mapIndexed { index, byte -> (byte.toInt() xor SOFT_MASK[index % SOFT_MASK.size]).toByte() }
+        input.mapIndexed { index, byte -> (byte.toInt() xor SOFT_MASK[index % SOFT_MASK.size].toInt()).toByte() }
             .toByteArray()
 
     private fun softObfuscate(input: String): ByteArray = softObfuscate(input.toByteArray(Charsets.UTF_8))
