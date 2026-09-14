@@ -211,8 +211,8 @@ data class AppSettings(
     val visualStyle: AiVisualStyle = AiVisualStyle.GEOMETRIC,
     /** Play the robotic chirp when SAYVIS answers a voice-originated message. */
     val roboticVoiceReplies: Boolean = true,
-    val onboardingCompleted: Boolean = false
-    val google: GoogleAccountSettings = GoogleAccountSettings(),,
+    val onboardingCompleted: Boolean = false,
+    val google: GoogleAccountSettings = GoogleAccountSettings(),
     val settingsSchemaVersion: Int = 3
 ) {
     /** Convenience: is the active language Persian? */

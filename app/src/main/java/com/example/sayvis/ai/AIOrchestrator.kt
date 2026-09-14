@@ -109,6 +109,8 @@ class AIOrchestrator(
         AiProviderKind.GEMINI -> geminiProvider.probe(settings)
         AiProviderKind.OPENROUTER -> openRouterProvider.probe(settings)
         AiProviderKind.GROQ -> groqProvider.probe(settings)
+        AiProviderKind.OPENAI -> openAiProvider.probe(settings)
+        AiProviderKind.XAI -> xaiProvider.probe(settings)
         AiProviderKind.CUSTOM -> customProvider.probe(settings)
         AiProviderKind.LOCAL -> ProbeOutcome(
             success = true,
