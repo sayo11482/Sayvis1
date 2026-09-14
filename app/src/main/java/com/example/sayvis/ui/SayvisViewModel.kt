@@ -351,7 +351,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         providerUsed = ProviderType.LOCAL_COGNITIVE
     )
 
-    fun sendMessage(text: String) {
+    fun sendMessage(text: String, fromVoice: Boolean = false) {
         if (text.isBlank()) return
         val current = settingsStore.current()
         val persian = current.isPersian(SayvisStrings.deviceIsPersian())
@@ -407,6 +407,11 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 providerUsed = response.providerUsed
             )
             updateAvatarState()
+
+            // Robotic chirp when the answer comes to a voice-originated question.
+            if (fromVoice && settingsStore.current().roboticVoiceReplies) {
+                com.example.sayvis.voice.RoboticAudio.playReply(getApplication())
+            }
 
             audit(
                 actor = "SAYVIS_AGENT",
@@ -1423,7 +1428,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                         if (persian) "🎤 گفتاری تشخیص داده نشد." else "🎤 No speech could be recognised."
                     )
                 } else {
-                    sendMessage(best)
+                    sendMessage(best, fromVoice = true)
                 }
             }
 

@@ -37,6 +37,25 @@ enum class AppearanceMode(val labelFa: String, val labelEn: String) {
     fun label(isPersian: Boolean): String = if (isPersian) labelFa else labelEn
 }
 
+/**
+ * The four professional multidimensional looks for the AI avatar: geometric
+ * wireframes, stereologic cross-sections, binary 0/1 code rain and hologram.
+ */
+enum class AiVisualStyle(val labelFa: String, val labelEn: String) {
+    GEOMETRIC("ژئومتریک", "Geometric"),
+    STEREOLOGY("استرولوژی", "Stereology"),
+    BINARY("دودویی ۰/۱", "Binary 0/1"),
+    HOLOGRAM("هولوگرام", "Hologram");
+
+    fun label(isPersian: Boolean): String = if (isPersian) labelFa else labelEn
+
+    companion object {
+        /** Lenient parser used by the settings store (unknown -> default). */
+        fun fromNameOrDefault(raw: String?): AiVisualStyle =
+            entries.firstOrNull { it.name.equals(raw, ignoreCase = true) } ?: GEOMETRIC
+    }
+}
+
 /** MetaTrader terminal generation. */
 enum class MtTerminalVersion(val labelFa: String, val labelEn: String) {
     MT5("متاتریدر ۵", "MetaTrader 5"),
@@ -163,6 +182,10 @@ data class AppSettings(
     val runAutomationScripts: Boolean = true,
     val hapticFeedback: Boolean = true,
     val compactBottomNav: Boolean = true,
+    /** Which of the four multidimensional AI views the avatar renders. */
+    val visualStyle: AiVisualStyle = AiVisualStyle.GEOMETRIC,
+    /** Play the robotic chirp when SAYVIS answers a voice-originated message. */
+    val roboticVoiceReplies: Boolean = true,
     val onboardingCompleted: Boolean = false,
     val settingsSchemaVersion: Int = 3
 ) {

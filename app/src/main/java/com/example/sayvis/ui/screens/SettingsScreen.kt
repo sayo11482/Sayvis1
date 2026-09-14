@@ -1,5 +1,6 @@
 package com.example.sayvis.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
@@ -28,12 +30,14 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -43,6 +47,7 @@ import com.example.sayvis.i18n.LocalStrings
 import com.example.sayvis.i18n.PersianFormat
 import com.example.sayvis.settings.AiProviderKind
 import com.example.sayvis.settings.AppLanguage
+import com.example.sayvis.settings.AiVisualStyle
 import com.example.sayvis.settings.AppSettings
 import com.example.sayvis.settings.AppearanceMode
 import com.example.sayvis.settings.ProviderProbe
@@ -57,7 +62,9 @@ import com.example.sayvis.ui.components.SayvisField
 import com.example.sayvis.ui.components.SayvisOptionRow
 import com.example.sayvis.ui.components.SayvisSectionHeader
 import com.example.sayvis.ui.components.SayvisStatusPill
+import com.example.sayvis.ui.components.AiStyleCanvas
 import com.example.sayvis.ui.components.SayvisToggleRow
+import com.example.sayvis.ui.theme.SayvisCyan
 import com.example.sayvis.ui.components.pnlColor
 import com.example.sayvis.ui.theme.SayvisAmberWarning
 import com.example.sayvis.ui.theme.SayvisCyan
@@ -95,6 +102,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val s = LocalStrings.current
+    val listenLevel by com.example.sayvis.voice.ListenBus.level.collectAsState()
     var showResetDialog by remember { mutableStateOf(false) }
     var revealKey by remember { mutableStateOf(false) }
     var maxTokensText by remember(settings.ai.maxOutputTokens) { mutableStateOf(settings.ai.maxOutputTokens.toString()) }
@@ -178,6 +186,76 @@ fun SettingsScreen(
                 hint = null,
                 checked = settings.hapticFeedback,
                 onCheckedChange = { onSettingsChange(settings.copy(hapticFeedback = it)) }
+            )
+        }
+
+        // ==================================================== AI VISUAL STYLE
+        SayvisSectionHeader(
+            title = s.sectionVisual,
+            subtitle = s.visualSubtitle,
+            icon = Icons.Default.AutoAwesome
+        )
+
+        SayvisCard {
+            // Live multidimensional preview of the selected style (voice-reactive).
+            AiStyleCanvas(
+                style = settings.visualStyle,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(150.dp)
+                    .testTag("ai_style_preview"),
+                level = listenLevel
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // The four selectable views.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AiVisualStyle.entries.forEach { style ->
+                    val selected = style == settings.visualStyle
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                            .clickable {
+                                onSettingsChange(settings.copy(visualStyle = style))
+                            }
+                            .background(
+                                if (selected) SayvisCyan.copy(alpha = 0.10f)
+                                else com.example.sayvis.ui.theme.SayvisSurface.copy(alpha = 0.6f)
+                            )
+                            .padding(vertical = 8.dp)
+                            .testTag("ai_style_" + style.name.lowercase()),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        AiStyleCanvas(
+                            style = style,
+                            modifier = Modifier.size(56.dp),
+                            animate = true,
+                            level = listenLevel
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = style.label(isPersian),
+                            fontSize = 9.5.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selected) SayvisCyan else SayvisSilverMuted,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+
+            SayvisDivider()
+
+            SayvisToggleRow(
+                label = s.roboticSound,
+                hint = s.roboticSoundHint,
+                checked = settings.roboticVoiceReplies,
+                onCheckedChange = { onSettingsChange(settings.copy(roboticVoiceReplies = it)) }
             )
         }
 

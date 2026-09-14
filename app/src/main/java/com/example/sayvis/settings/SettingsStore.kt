@@ -121,6 +121,8 @@ class SettingsStore private constructor(context: Context) {
         put("runScripts", s.runAutomationScripts)
         put("haptics", s.hapticFeedback)
         put("compactNav", s.compactBottomNav)
+        put("visualStyle", s.visualStyle.name)
+        put("roboticVoice", s.roboticVoiceReplies)
         put("onboardingDone", s.onboardingCompleted)
 
         put("loc", JSONObject().apply {
@@ -180,6 +182,8 @@ class SettingsStore private constructor(context: Context) {
             runAutomationScripts = root.optBoolean("runScripts", true),
             hapticFeedback = root.optBoolean("haptics", true),
             compactBottomNav = root.optBoolean("compactNav", true),
+            visualStyle = enumOr(root.optString("visualStyle"), AiVisualStyle.GEOMETRIC),
+            roboticVoiceReplies = root.optBoolean("roboticVoice", true),
             onboardingCompleted = root.optBoolean("onboardingDone", false),
             localization = LocalizationSettings(
                 language = enumOr(loc.optString("language"), AppLanguage.PERSIAN),

@@ -126,6 +126,7 @@ class FloatingAvatarService : Service() {
                 val at = System.currentTimeMillis()
                 store.addHistory(ListenBus.ListenEvent(at, score))
                 ListenBus.pushOwnerEvent(at, score)
+                com.example.sayvis.voice.RoboticAudio.playAck(this@FloatingAvatarService)
             }
         )
         if (listener.start()) {

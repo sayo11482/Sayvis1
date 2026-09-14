@@ -66,6 +66,8 @@ import com.example.sayvis.ui.theme.SayvisSurfaceVariant
 fun ChatScreen(
     messages: List<ChatMessage>,
     avatarState: AvatarState,
+    visualStyle: com.example.sayvis.settings.AiVisualStyle = com.example.sayvis.settings.AiVisualStyle.GEOMETRIC,
+    listenLevel: Float = 0f,
     isPersian: Boolean,
     onSendMessage: (String) -> Unit,
     pendingAction: com.example.sayvis.ui.AssistantAction? = null,
@@ -99,7 +101,7 @@ fun ChatScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            SayvisAvatar(state = avatarState, size = 42.dp)
+            SayvisAvatar(state = avatarState, size = 42.dp, style = visualStyle, level = listenLevel)
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(

@@ -76,6 +76,8 @@ import com.example.sayvis.ui.theme.SayvisSurfaceVariant
 @Composable
 fun HomeScreen(
     avatarState: AvatarState,
+    visualStyle: com.example.sayvis.settings.AiVisualStyle = com.example.sayvis.settings.AiVisualStyle.GEOMETRIC,
+    listenLevel: Float = 0f,
     contextSnapshot: ContextSnapshot,
     activeMission: Mission?,
     pendingOpportunities: List<AwareOpportunity>,
@@ -164,7 +166,7 @@ fun HomeScreen(
                     .padding(vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                SayvisAvatar(state = avatarState, size = 110.dp)
+                SayvisAvatar(state = avatarState, size = 110.dp, style = visualStyle, level = listenLevel)
 
                 Spacer(modifier = Modifier.height(14.dp))
 

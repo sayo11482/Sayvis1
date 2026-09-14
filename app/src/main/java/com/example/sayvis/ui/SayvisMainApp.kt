@@ -120,6 +120,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
 
     val probe by viewModel.probe.collectAsState()
     val isProbing by viewModel.isProbing.collectAsState()
+    val listenLevel by com.example.sayvis.voice.ListenBus.level.collectAsState()
 
     val strings = remember(isPersian) { SayvisStrings.of(isPersian) }
     val layoutDirection = if (isPersian && settings.localization.forceRtlForPersian) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -308,6 +309,8 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                 when (currentScreen) {
                     SayvisScreen.HOME -> HomeScreen(
                         avatarState = avatarState,
+                        visualStyle = settings.visualStyle,
+                        listenLevel = listenLevel,
                         contextSnapshot = contextSnapshot,
                         activeMission = missions.firstOrNull { it.status == MissionStatus.ACTIVE },
                         pendingOpportunities = awareOpportunities.filter { it.status == OpportunityStatus.PENDING },
@@ -324,6 +327,8 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                     SayvisScreen.ASSISTANT -> ChatScreen(
                         messages = chatMessages,
                         avatarState = avatarState,
+                        visualStyle = settings.visualStyle,
+                        listenLevel = listenLevel,
                         isPersian = isPersian,
                         onSendMessage = { viewModel.sendMessage(it) },
                         pendingAction = viewModel.pendingAction.collectAsState().value,

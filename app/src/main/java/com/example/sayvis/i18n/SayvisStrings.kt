@@ -65,6 +65,16 @@ class SayvisStrings(val fa: Boolean) {
     val settingsSubtitle get() =
         t("همهٔ کنترل‌های سیستم اینجا جمع شده‌اند.", "Every system control lives here.")
 
+    val sectionVisual get() = t("نمای گرافیکی هوش", "AI Visual Style")
+    val visualSubtitle get() = t(
+        "چهار نمای زندهٔ چندبعدی برای آواتار هوش: شکل‌های ژئومتریک، برش‌های استرولوژیک، باران کد دودویی ۰/۱ و هولوگرام — به صدای محیط واکنش نشان می‌دهند.",
+        "Four live multidimensional views for the AI avatar: geometric shapes, stereologic slices, 0/1 binary code rain and hologram — all react to ambient sound."
+    )
+    val roboticSound get() = t("صدای رباتیک پاسخ به ویس", "Robotic voice-reply sound")
+    val roboticSoundHint get() = t(
+        "وقتی سایویس به ورودی گفتاری شما پاسخ می‌دهد، بیپ رباتیک پخش می‌شود.",
+        "A robotic chirp plays whenever SAYVIS answers your voice input."
+    )
     val sectionLanguage get() = t("زبان و نمایش", "Language & Appearance")
     val sectionAi get() = t("هوش مصنوعی و API", "Artificial Intelligence & API")
     val sectionTrading get() = t("درگاه معاملاتی", "Trading Gateway")
