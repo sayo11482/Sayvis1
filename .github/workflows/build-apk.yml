@@ -65,7 +65,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          grep -E "^e: |error:|What went wrong|Caused by|Could not|FAILED|Unresolved|> Task .* FAILED" build.log | head -300 > errors.txt || true
+          grep -E "^e: |error:|What went wrong|Caused by|Could not|FAILED|Unresolved|> Task .* FAILED|java\.lang\.|Exception|at org\.robolectric" build.log | head -300 > errors.txt || true
           [ -s errors.txt ] || tail -n 200 build.log > errors.txt
           head -n 10 errors.txt | while IFS= read -r line; do echo "::error::${line}"; done
           {
