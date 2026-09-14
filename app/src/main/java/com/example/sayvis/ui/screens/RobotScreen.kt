@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sayvis.ai.ConnectivityProbe
 import com.example.sayvis.i18n.LocalStrings
-import com.example.sayvis.ui.SayvisViewModel.AvatarState
+import com.example.sayvis.ui.AvatarState
 import com.example.sayvis.ui.components.SayvisRobotFace
 import com.example.sayvis.ui.theme.SayvisDeepSpace
 import com.example.sayvis.ui.theme.SayvisGold

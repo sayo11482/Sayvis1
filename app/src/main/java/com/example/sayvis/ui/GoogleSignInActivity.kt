@@ -56,6 +56,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/** Lifecycle of the automatic connect pipeline (file-private). */
+private enum class Phase { EXCHANGING, OPENING_STUDIO, WAITING_COPY, CONNECTING, DONE, FAILED }
+
 /**
  * The fully automatic post-authentication pipeline. The owner only signs in
  * with Google once; from there SAYVIS takes over:
@@ -70,8 +73,6 @@ import kotlinx.coroutines.launch
 class GoogleSignInActivity : ComponentActivity() {
 
     private val scope = CoroutineScope(Dispatchers.Main)
-
-    private enum class Phase { EXCHANGING, OPENING_STUDIO, WAITING_COPY, CONNECTING, DONE, FAILED }
 
     private var phase by mutableStateOf(Phase.EXCHANGING)
     private var statusLine by mutableStateOf("")
