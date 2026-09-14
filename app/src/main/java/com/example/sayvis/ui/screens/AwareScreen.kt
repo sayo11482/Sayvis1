@@ -41,6 +41,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sayvis.model.AwareOpportunity
+import com.example.sayvis.i18n.ContextLocalization
+import com.example.sayvis.i18n.PersianFormat
+import com.example.sayvis.ui.components.SayvisText
 import com.example.sayvis.model.ContextSnapshot
 import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.model.PatternDetection
@@ -59,6 +62,7 @@ fun AwareScreen(
     opportunities: List<AwareOpportunity>,
     patterns: List<PatternDetection>,
     isPersian: Boolean,
+    persianDigits: Boolean = isPersian,
     onApproveOpportunity: (String) -> Unit,
     onDismissOpportunity: (String) -> Unit,
     onRunScan: () -> Unit,
@@ -144,15 +148,15 @@ fun AwareScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         TelemetryMetric(
-                            title = if (isPersian) "پنجره تمرکز" else "Focus Window",
-                            value = contextSnapshot.focusWindow.take(18) + "...",
+                            title = if (isPersian) "پنجرهٔ تمرکز" else "Focus window",
+                            value = ContextLocalization.focusWindow(contextSnapshot, isPersian, persianDigits),
                             icon = Icons.Default.Psychology,
                             tint = SayvisGold,
                             modifier = Modifier.weight(1f)
                         )
                         TelemetryMetric(
-                            title = if (isPersian) "بار شناختی" else "Cognitive Load",
-                            value = contextSnapshot.cognitiveLoad,
+                            title = if (isPersian) "بار شناختی" else "Cognitive load",
+                            value = ContextLocalization.cognitiveLoad(contextSnapshot, isPersian),
                             icon = Icons.Default.AutoGraph,
                             tint = if (contextSnapshot.blockedTasksCount > 0) SayvisAmberWarning else SayvisGreenSuccess,
                             modifier = Modifier.weight(1f)
@@ -166,17 +170,22 @@ fun AwareScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         TelemetryMetric(
-                            title = if (isPersian) "مأموریت‌های فعال" else "Active Missions",
-                            value = "${contextSnapshot.activeMissionsCount} active (${contextSnapshot.blockedTasksCount} blocked)",
+                            title = if (isPersian) "مأموریت‌های فعال" else "Active missions",
+                            value = if (isPersian) {
+                                "${PersianFormat.digits(contextSnapshot.activeMissionsCount.toString(), persianDigits)} فعال " +
+                                    "(${PersianFormat.digits(contextSnapshot.blockedTasksCount.toString(), persianDigits)} مسدود)"
+                            } else {
+                                "${contextSnapshot.activeMissionsCount} active (${contextSnapshot.blockedTasksCount} blocked)"
+                            },
                             icon = Icons.Default.Bolt,
                             tint = SayvisCyan,
                             modifier = Modifier.weight(1f)
                         )
                         TelemetryMetric(
-                            title = if (isPersian) "امنیت شبکه" else "Network Gateway",
-                            value = contextSnapshot.networkStatus.take(16) + "...",
+                            title = if (isPersian) "امنیت شبکه" else "Network gateway",
+                            value = ContextLocalization.network(contextSnapshot, isPersian),
                             icon = Icons.Default.Shield,
-                            tint = SayvisSilverMuted,
+                            tint = if (contextSnapshot.isOnline) SayvisGreenSuccess else SayvisSilverMuted,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -206,11 +215,30 @@ fun AwareScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(text = pat.title, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
-                            Text(text = "${(pat.confidence * 100).toInt()}% conf", fontSize = 11.sp, color = SayvisCyan)
+                            SayvisText(
+                                source = pat.title,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                markTranslated = true
+                            )
+                            Text(
+                                text = if (isPersian) {
+                                    "${PersianFormat.percent(pat.confidence.toDouble(), 0, persianDigits)} اطمینان"
+                                } else {
+                                    "${(pat.confidence * 100).toInt()}% conf"
+                                },
+                                fontSize = 11.sp,
+                                color = SayvisCyan
+                            )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(text = pat.description, fontSize = 12.sp, color = SayvisSilverMuted)
+                        SayvisText(
+                            source = pat.description,
+                            fontSize = 12.sp,
+                            color = SayvisSilverMuted,
+                            markTranslated = true
+                        )
                     }
                 }
             }
@@ -219,7 +247,11 @@ fun AwareScreen(
         // Pending Action Proposals
         item {
             Text(
-                text = "${if (isPersian) "فرصت‌های در انتظار تأیید" else "Pending Action Proposals"} (${pendingOpps.size})",
+                text = if (isPersian) {
+                    "فرصت‌های در انتظار تأیید (${PersianFormat.digits(pendingOpps.size.toString(), persianDigits)})"
+                } else {
+                    "Pending Action Proposals (${pendingOpps.size})"
+                },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color.White

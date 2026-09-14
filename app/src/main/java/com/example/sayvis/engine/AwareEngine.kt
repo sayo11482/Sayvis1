@@ -4,6 +4,7 @@ import com.example.sayvis.data.repository.SayvisRepository
 import com.example.sayvis.model.ActionType
 import com.example.sayvis.model.ActivityEventType
 import com.example.sayvis.model.AwareOpportunity
+import com.example.sayvis.model.CognitiveLoadLevel
 import com.example.sayvis.model.ContextSnapshot
 import com.example.sayvis.model.InterventionExecutionResult
 import com.example.sayvis.model.InterventionPermissionResult
@@ -375,11 +376,12 @@ class AwareEngine(
         }
 
         // Deep Work Focus Protection suggestion
-        if (snapshot.focusWindow.contains("Deep Work", ignoreCase = true) && snapshot.cognitiveLoad != "Fatigue Risk") {
+        if (snapshot.focusWindowActive && snapshot.cognitiveLoad != CognitiveLoadLevel.FATIGUE_RISK) {
+            val window = "${snapshot.focusWindowStart} - ${snapshot.focusWindowEnd}"
             val opp = AwareOpportunity(
                 id = "opp_focus_" + UUID.randomUUID().toString().take(6),
                 title = "Schedule Deep Work Shield",
-                description = "Currently within high-yield focus window (${snapshot.focusWindow}). Silencing non-critical companion alerts.",
+                description = "Currently inside the high-yield focus window ($window). Silencing non-critical companion alerts.",
                 triggerReason = "AWARE Cognitive Monitor: Focus window active with optimal cognitive load.",
                 proposedAction = ProposedAction(
                     actionType = ActionType.SCHEDULE_FOCUS_BLOCK,

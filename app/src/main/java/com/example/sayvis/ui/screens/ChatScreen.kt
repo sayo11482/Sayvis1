@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sayvis.ui.AvatarState
+import com.example.sayvis.ui.components.SayvisText
 import com.example.sayvis.ui.ChatMessage
 import com.example.sayvis.ui.components.SayvisAvatar
 import com.example.sayvis.ui.theme.SayvisBorder
@@ -153,18 +154,30 @@ fun ChatScreen(
                                 .background(if (isOwner) SayvisCyan else SayvisSurfaceVariant)
                                 .padding(12.dp)
                         ) {
-                            Text(
-                                text = msg.text,
-                                color = if (isOwner) Color.Black else Color.White,
-                                fontSize = 13.sp,
-                                lineHeight = 19.sp
-                            )
+                            if (isOwner) {
+                                Text(
+                                    text = msg.text,
+                                    color = Color.Black,
+                                    fontSize = 13.sp,
+                                    lineHeight = 19.sp
+                                )
+                            } else {
+                                // Assistant answers are routed through the hybrid translator so a
+                                // Persian UI never shows an English reply.
+                                SayvisText(
+                                    source = msg.text,
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    lineHeight = 19.sp,
+                                    markTranslated = true
+                                )
+                            }
                         }
 
                         if (msg.providerUsed != null) {
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "via ${msg.providerUsed.displayName}",
+                                text = "${if (isPersian) "از راهِ " else "via "}${msg.providerUsed.display(isPersian)}",
                                 fontSize = 10.sp,
                                 color = SayvisSilverMuted
                             )

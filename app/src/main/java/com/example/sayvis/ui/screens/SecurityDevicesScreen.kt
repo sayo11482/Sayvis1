@@ -27,6 +27,23 @@ import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
+import com.example.sayvis.identity.DevicePairing
+import com.example.sayvis.identity.OwnerAccount
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -53,6 +70,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sayvis.model.AuditEvent
+import com.example.sayvis.ui.components.SayvisText
+import com.example.sayvis.ui.components.offlineTranslate
 import com.example.sayvis.model.Device
 import com.example.sayvis.model.DeviceType
 import com.example.sayvis.model.RiskLevel
@@ -78,9 +97,21 @@ fun SecurityDevicesScreen(
     onToggleEmergencyLock: () -> Unit,
     onToggleDeviceTrust: (String, Boolean) -> Unit,
     onRevokeDevice: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    ownerAccount: OwnerAccount? = null,
+    ownerSignedIn: Boolean = false,
+    pairingOffer: DevicePairing.Offer? = null,
+    accountMessage: String? = null,
+    onClearAccountMessage: () -> Unit = {},
+    onRegisterOwner: (String, String) -> Unit = { _, _ -> },
+    onSignInOwner: (String, String) -> Unit = { _, _ -> },
+    onSignOutOwner: () -> Unit = {},
+    onChangePassword: (String, String) -> Unit = { _, _ -> },
+    onStartPairing: () -> Unit = {},
+    onCancelPairing: () -> Unit = {},
+    onCompletePairing: (String, DeviceType, String, String) -> Unit = { _, _, _, _ -> }
 ) {
-    var selectedTab by remember { mutableStateOf(0) } // 0: Devices & Lock, 1: Audit Log
+    var selectedTab by remember { mutableStateOf(0) } // 0: Devices & Lock, 1: Account & Pairing, 2: Audit Log
 
     Column(
         modifier = modifier
@@ -205,7 +236,17 @@ fun SecurityDevicesScreen(
                 onClick = { selectedTab = 1 },
                 text = {
                     Text(
-                        text = "${if (isPersian) "سیاهه ممیزی" else "Audit Log"} (${auditEvents.size})",
+                        text = if (isPersian) "حساب و جفت‌سازی" else "Account & Pairing",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            )
+            Tab(
+                selected = selectedTab == 2,
+                onClick = { selectedTab = 2 },
+                text = {
+                    Text(
+                        text = "${if (isPersian) "ممیزی" else "Audit"} (${auditEvents.size})",
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -230,6 +271,23 @@ fun SecurityDevicesScreen(
                 }
                 item { Spacer(modifier = Modifier.height(30.dp)) }
             }
+        } else if (selectedTab == 1) {
+            AccountPairingPane(
+                isPersian = isPersian,
+                account = ownerAccount,
+                signedIn = ownerSignedIn,
+                offer = pairingOffer,
+                message = accountMessage,
+                onClearMessage = onClearAccountMessage,
+                onRegister = onRegisterOwner,
+                onSignIn = onSignInOwner,
+                onSignOut = onSignOutOwner,
+                onChangePassword = onChangePassword,
+                onStartPairing = onStartPairing,
+                onCancelPairing = onCancelPairing,
+                onCompletePairing = onCompletePairing,
+                modifier = Modifier.weight(1f).fillMaxWidth()
+            )
         } else {
             // Audit Log List
             LazyColumn(
@@ -277,7 +335,13 @@ fun DeviceCard(
                     Icon(deviceIcon, contentDescription = null, tint = SayvisCyan, modifier = Modifier.size(22.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
-                        Text(text = device.name, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                        SayvisText(
+                            source = device.name,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            markTranslated = true
+                        )
                         Text(
                             text = if (isPersian) device.type.labelFa else device.type.labelEn,
                             fontSize = 10.sp,
@@ -317,20 +381,43 @@ fun DeviceCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = "Key: ${device.publicKeyFingerprint}",
-                fontSize = 10.sp,
-                fontFamily = FontFamily.Monospace,
-                color = SayvisSilverMuted
-            )
+            Row {
+                Text(
+                    text = if (isPersian) "کلید: " else "Key: ",
+                    fontSize = 10.sp,
+                    color = SayvisSilverMuted
+                )
+                Text(
+                    text = device.publicKeyFingerprint,
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
+                    color = SayvisSilverMuted
+                )
+            }
 
             if (device.capabilities.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${if (isPersian) "قابلیت‌ها: " else "Capabilities: "} ${device.capabilities.take(3).joinToString(", ")}",
-                    fontSize = 10.sp,
-                    color = SayvisCyan.copy(alpha = 0.8f)
-                )
+                Row {
+                    Text(
+                        text = if (isPersian) "قابلیت‌ها: " else "Capabilities: ",
+                        fontSize = 10.sp,
+                        color = SayvisCyan.copy(alpha = 0.8f)
+                    )
+                    device.capabilities.take(3).forEachIndexed { index, capability ->
+                        if (index > 0) {
+                            Text(
+                                text = if (isPersian) "، " else ", ",
+                                fontSize = 10.sp,
+                                color = SayvisCyan.copy(alpha = 0.8f)
+                            )
+                        }
+                        Text(
+                            text = offlineTranslate(capability),
+                            fontSize = 10.sp,
+                            color = SayvisCyan.copy(alpha = 0.8f)
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -399,19 +486,331 @@ fun AuditEventCard(event: AuditEvent, isPersian: Boolean) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(text = event.action, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.White)
+                    SayvisText(
+                        source = event.action,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = Color.White,
+                        maxLines = 1
+                    )
                     Text(text = dateStr, fontSize = 10.sp, color = SayvisSilverMuted)
                 }
 
                 Spacer(modifier = Modifier.height(2.dp))
 
-                Text(
-                    text = "${event.actor} • ${event.authorization} • ${event.payloadDigest}",
-                    fontSize = 10.sp,
-                    color = SayvisSilverMuted,
-                    maxLines = 1
-                )
+                Row {
+                    Text(text = offlineTranslate(event.actor), fontSize = 10.sp, color = SayvisSilverMuted)
+                    Text(text = " • ", fontSize = 10.sp, color = SayvisSilverMuted)
+                    Text(text = offlineTranslate(event.authorization), fontSize = 10.sp, color = SayvisSilverMuted)
+                    Text(text = " • ", fontSize = 10.sp, color = SayvisSilverMuted)
+                    Text(
+                        text = event.payloadDigest,
+                        fontSize = 10.sp,
+                        color = SayvisSilverMuted,
+                        maxLines = 1
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun AccountPairingPane(
+    isPersian: Boolean,
+    account: OwnerAccount?,
+    signedIn: Boolean,
+    offer: DevicePairing.Offer?,
+    message: String?,
+    onClearMessage: () -> Unit,
+    onRegister: (String, String) -> Unit,
+    onSignIn: (String, String) -> Unit,
+    onSignOut: () -> Unit,
+    onChangePassword: (String, String) -> Unit,
+    onStartPairing: () -> Unit,
+    onCancelPairing: () -> Unit,
+    onCompletePairing: (String, DeviceType, String, String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var email by remember { mutableStateOf(account?.email ?: "") }
+    var password by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var deviceName by remember { mutableStateOf("") }
+    var deviceType by remember { mutableStateOf(DeviceType.WINDOWS_PC) }
+    var fingerprint by remember { mutableStateOf("") }
+    var proof by remember { mutableStateOf("") }
+    var typeMenu by remember { mutableStateOf(false) }
+
+    LaunchedEffect(message) {
+        if (message != null) {
+            kotlinx.coroutines.delay(6000)
+            onClearMessage()
+        }
+    }
+
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = SayvisCyan,
+        unfocusedBorderColor = SayvisBorder,
+        focusedTextColor = Color.White,
+        unfocusedTextColor = Color.White,
+        cursorColor = SayvisCyan
+    )
+
+    Column(
+        modifier = modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (message != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = SayvisCyan.copy(alpha = 0.12f)),
+                border = BorderStroke(1.dp, SayvisCyan.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text(message, modifier = Modifier.padding(12.dp), fontSize = 12.sp, color = Color.White)
+            }
+        }
+
+        // ---- Owner account card
+        Card(
+            modifier = Modifier.fillMaxWidth().testTag("owner_account_card"),
+            colors = CardDefaults.cardColors(containerColor = SayvisSurfaceVariant),
+            border = BorderStroke(1.dp, SayvisBorder),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.AccountCircle, contentDescription = null, tint = SayvisGold, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (isPersian) "حساب مالک سایویس" else "SAYVIS Owner Account",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontSize = 14.sp
+                    )
+                }
+                Text(
+                    text = if (isPersian)
+                        "با همین ایمیل و رمز عبور روی رایانه و سایر دستگاه‌ها وارد می‌شوید. رمز عبور هرگز ذخیره نمی‌شود؛ فقط اثر PBKDF2 آن در Keystore نگهداری می‌شود."
+                    else
+                        "Use the same e-mail and password on your PC and other devices. The password itself is never stored; only a PBKDF2 verifier inside the Keystore.",
+                    fontSize = 11.sp,
+                    color = SayvisSilverMuted
+                )
+
+                if (account != null && signedIn) {
+                    Text(
+                        text = (if (isPersian) "وارد شده: " else "Signed in: ") + account.email,
+                        fontSize = 12.sp,
+                        color = SayvisGreenSuccess,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = (if (isPersian) "شناسهٔ حساب: " else "Account ID: ") + account.accountId,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = SayvisSilverMuted
+                    )
+                    Text(
+                        text = (if (isPersian) "اثر انگشت این گوشی: " else "This phone's fingerprint: ") + account.thisDeviceFingerprint,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = SayvisSilverMuted
+                    )
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text(if (isPersian) "رمز فعلی" else "Current password", fontSize = 11.sp) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true,
+                        colors = fieldColors,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = newPassword,
+                        onValueChange = { newPassword = it },
+                        label = { Text(if (isPersian) "رمز جدید" else "New password", fontSize = 11.sp) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true,
+                        colors = fieldColors,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = { onChangePassword(password, newPassword); password = ""; newPassword = "" },
+                            border = BorderStroke(1.dp, SayvisBorder)
+                        ) { Text(if (isPersian) "تغییر رمز" else "Change password", fontSize = 11.sp, color = Color.White) }
+                        OutlinedButton(
+                            onClick = onSignOut,
+                            border = BorderStroke(1.dp, SayvisAmberWarning.copy(alpha = 0.7f)),
+                            modifier = Modifier.testTag("owner_sign_out_btn")
+                        ) {
+                            Icon(Icons.Default.Logout, contentDescription = null, tint = SayvisAmberWarning, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(if (isPersian) "خروج" else "Sign out", fontSize = 11.sp, color = SayvisAmberWarning)
+                        }
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text(if (isPersian) "ایمیل" else "E-mail", fontSize = 11.sp) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        singleLine = true,
+                        colors = fieldColors,
+                        modifier = Modifier.fillMaxWidth().testTag("owner_email_field")
+                    )
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text(if (isPersian) "رمز عبور" else "Password", fontSize = 11.sp) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true,
+                        colors = fieldColors,
+                        modifier = Modifier.fillMaxWidth().testTag("owner_password_field")
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (account == null) {
+                            Button(
+                                onClick = { onRegister(email, password); password = "" },
+                                colors = ButtonDefaults.buttonColors(containerColor = SayvisCyan, contentColor = Color.Black),
+                                modifier = Modifier.testTag("owner_register_btn")
+                            ) { Text(if (isPersian) "ساخت حساب مالک" else "Create owner account", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                        } else {
+                            Button(
+                                onClick = { onSignIn(email, password); password = "" },
+                                colors = ButtonDefaults.buttonColors(containerColor = SayvisCyan, contentColor = Color.Black),
+                                modifier = Modifier.testTag("owner_sign_in_btn")
+                            ) { Text(if (isPersian) "ورود" else "Sign in", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---- Pairing card
+        Card(
+            modifier = Modifier.fillMaxWidth().testTag("pairing_card"),
+            colors = CardDefaults.cardColors(containerColor = SayvisSurfaceVariant),
+            border = BorderStroke(1.dp, SayvisBorder),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Link, contentDescription = null, tint = SayvisCyan, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (isPersian) "جفت‌سازی رایانه / دستگاه جدید" else "Pair a PC / new device",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontSize = 14.sp
+                    )
+                }
+                Text(
+                    text = if (isPersian)
+                        "۱) روی گوشی «ایجاد کد جفت‌سازی» را بزنید. ۲) روی رایانه با همان ایمیل و رمز وارد شوید و کد را وارد کنید؛ رایانه یک «کد تأیید» می‌سازد. ۳) اثر انگشت و کد تأیید رایانه را این‌جا وارد کنید. دستگاه ابتدا «محدود» است تا شما اعتماد را اعطا کنید. کد ۵ دقیقه اعتبار دارد."
+                    else
+                        "1) Tap “Create pairing code” on the phone. 2) On the PC sign in with the same e-mail/password and enter the code; the PC produces a proof. 3) Enter the PC's fingerprint and proof here. The device starts UNTRUSTED until you grant trust. Codes expire after 5 minutes.",
+                    fontSize = 11.sp,
+                    color = SayvisSilverMuted
+                )
+
+                if (!signedIn) {
+                    Text(
+                        text = if (isPersian) "برای جفت‌سازی ابتدا وارد حساب شوید." else "Sign in first to pair devices.",
+                        fontSize = 11.sp,
+                        color = SayvisAmberWarning
+                    )
+                } else if (offer == null) {
+                    Button(
+                        onClick = onStartPairing,
+                        colors = ButtonDefaults.buttonColors(containerColor = SayvisCyan, contentColor = Color.Black),
+                        modifier = Modifier.testTag("pairing_start_btn")
+                    ) { Text(if (isPersian) "ایجاد کد جفت‌سازی" else "Create pairing code", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(SayvisSurface)
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = offer.sharedPayload(),
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 18.sp,
+                                color = SayvisGold
+                            )
+                            Text(
+                                text = if (isPersian) "این کد را روی رایانه وارد کنید" else "Enter this code on the PC",
+                                fontSize = 10.sp,
+                                color = SayvisSilverMuted
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = deviceName,
+                        onValueChange = { deviceName = it },
+                        label = { Text(if (isPersian) "نام دستگاه" else "Device name", fontSize = 11.sp) },
+                        singleLine = true,
+                        colors = fieldColors,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Box {
+                        OutlinedButton(onClick = { typeMenu = true }, border = BorderStroke(1.dp, SayvisBorder)) {
+                            Text(
+                                (if (isPersian) "نوع: " else "Type: ") + (if (isPersian) deviceType.labelFa else deviceType.labelEn),
+                                fontSize = 11.sp, color = Color.White
+                            )
+                        }
+                        DropdownMenu(expanded = typeMenu, onDismissRequest = { typeMenu = false }) {
+                            DeviceType.values().forEach { t ->
+                                DropdownMenuItem(
+                                    text = { Text(if (isPersian) t.labelFa else t.labelEn) },
+                                    onClick = { deviceType = t; typeMenu = false }
+                                )
+                            }
+                        }
+                    }
+                    OutlinedTextField(
+                        value = fingerprint,
+                        onValueChange = { fingerprint = it },
+                        label = { Text(if (isPersian) "اثر انگشت دستگاه (SHA256)" else "Device fingerprint (SHA256)", fontSize = 11.sp) },
+                        singleLine = true,
+                        colors = fieldColors,
+                        modifier = Modifier.fillMaxWidth().testTag("pairing_fingerprint_field")
+                    )
+                    OutlinedTextField(
+                        value = proof,
+                        onValueChange = { proof = it },
+                        label = { Text(if (isPersian) "کد تأیید دستگاه" else "Device proof", fontSize = 11.sp) },
+                        singleLine = true,
+                        colors = fieldColors,
+                        modifier = Modifier.fillMaxWidth().testTag("pairing_proof_field")
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = {
+                                onCompletePairing(deviceName, deviceType, fingerprint, proof)
+                                fingerprint = ""; proof = ""; deviceName = ""
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = SayvisGreenSuccess, contentColor = Color.Black),
+                            modifier = Modifier.testTag("pairing_complete_btn")
+                        ) { Text(if (isPersian) "تأیید جفت‌سازی" else "Confirm pairing", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                        TextButton(onClick = onCancelPairing) {
+                            Text(if (isPersian) "لغو" else "Cancel", fontSize = 12.sp, color = SayvisRedAlert)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(30.dp))
     }
 }

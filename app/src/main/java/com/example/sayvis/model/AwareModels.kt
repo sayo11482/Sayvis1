@@ -43,18 +43,45 @@ data class ProposedAction(
     val executionSummary: String
 )
 
+/** Cognitive load buckets. Language-neutral so the UI can localise them. */
+enum class CognitiveLoadLevel(val labelEn: String, val labelFa: String) {
+    OPTIMAL("Optimal flow", "تمرکز بهینه"),
+    ELEVATED("Elevated load", "بار کاری بالا"),
+    FATIGUE_RISK("Fatigue risk", "خطر خستگی شناختی")
+}
+
+/** What the owner is currently doing, as far as AWARE can tell. */
+enum class FocusActivity(val labelEn: String, val labelFa: String) {
+    BOOTING("System booting", "در حال راه‌اندازی سامانه"),
+    STRATEGIC_EXECUTION("Strategic execution & architecture work", "اجرای راهبردی و کار معماری"),
+    DEEP_WORK("Deep focus work", "کار عمیق و متمرکز"),
+    REVIEW("Review & reconciliation", "بازبینی و جمع‌بندی"),
+    RECOVERY("Recovery & rest", "استراحت و بازیابی"),
+    IDLE("Idle", "بی‌فعالیت")
+}
+
 /**
  * Live snapshot of current context evaluated by AWARE.
+ *
+ * Deliberately language-neutral: it carries enum keys and raw values instead of
+ * pre-rendered English prose, so the same snapshot can be presented fully in Persian
+ * or fully in English. Rendering helpers live in
+ * `com.example.sayvis.i18n.ContextLocalization`.
  */
 data class ContextSnapshot(
     val timestamp: Long = System.currentTimeMillis(),
-    val focusWindow: String, // e.g., "Deep Work (09:00 - 11:30)"
-    val currentActivity: String,
-    val cognitiveLoad: String, // "Optimal", "High", "Fatigue Risk"
-    val activeMissionsCount: Int,
-    val blockedTasksCount: Int,
-    val networkStatus: String, // "Online - Secure Gateway", "Offline Local Safe Mode"
-    val emergencyLockActive: Boolean = false
+    val focusWindowActive: Boolean = false,
+    val focusWindowStart: String = "09:00",
+    val focusWindowEnd: String = "11:30",
+    val currentActivity: FocusActivity = FocusActivity.IDLE,
+    val cognitiveLoad: CognitiveLoadLevel = CognitiveLoadLevel.OPTIMAL,
+    val activeMissionsCount: Int = 0,
+    val blockedTasksCount: Int = 0,
+    val isOnline: Boolean = true,
+    val gatewaySecure: Boolean = true,
+    val emergencyLockActive: Boolean = false,
+    val batteryPercent: Int = 100,
+    val isCharging: Boolean = false
 )
 
 /**

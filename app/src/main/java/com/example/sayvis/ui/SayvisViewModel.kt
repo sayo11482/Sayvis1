@@ -4,44 +4,113 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sayvis.ai.AIOrchestrator
-import com.example.sayvis.ai.AIResponse
+import com.example.sayvis.ai.ChatTurn
 import com.example.sayvis.ai.ProviderType
+import com.example.sayvis.ai.TranslationResult
+import com.example.sayvis.ai.TranslationService
 import com.example.sayvis.data.local.SayvisDatabase
 import com.example.sayvis.data.repository.SayvisRepository
 import com.example.sayvis.engine.AwareEngine
+import com.example.sayvis.i18n.ContextLocalization
+import com.example.sayvis.i18n.SayvisStrings
 import com.example.sayvis.model.AuditEvent
 import com.example.sayvis.model.AwareOpportunity
 import com.example.sayvis.model.ContextSnapshot
 import com.example.sayvis.model.Device
+import com.example.sayvis.model.FocusActivity
 import com.example.sayvis.model.LifeDomain
 import com.example.sayvis.model.LifeScenario
 import com.example.sayvis.model.LitAnalysisSignal
 import com.example.sayvis.model.LitSignalType
 import com.example.sayvis.model.Mission
+import com.example.sayvis.model.MissionStatus
 import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.model.PrivacyLevel
 import com.example.sayvis.model.RiskLevel
-import com.example.sayvis.model.TradingGateState
+import com.example.sayvis.model.SystemState
 import com.example.sayvis.model.UicAttribute
 import com.example.sayvis.model.UicCategory
 import com.example.sayvis.model.UicStatus
+import com.example.sayvis.scripts.AutomationScript
+import com.example.sayvis.scripts.ScriptContext
+import com.example.sayvis.scripts.ScriptEffect
+import com.example.sayvis.scripts.ScriptEngine
+import com.example.sayvis.scripts.ScriptRunResult
+import com.example.sayvis.scripts.ScriptStore
+import com.example.sayvis.scripts.ScriptTrigger
+import com.example.sayvis.settings.AiProviderKind
+import com.example.sayvis.settings.AppLanguage
+import com.example.sayvis.settings.AppSettings
+import com.example.sayvis.settings.MtGatewayProfile
+import com.example.sayvis.settings.ProviderProbe
+import com.example.sayvis.settings.SettingsStore
+import com.example.sayvis.identity.AccountResult
+import com.example.sayvis.identity.DevicePairing
+import com.example.sayvis.identity.OwnerAccount
+import com.example.sayvis.identity.OwnerAccountStore
+import com.example.sayvis.model.DeviceType
+import com.example.sayvis.settings.TradingExecutionMode
+import com.example.sayvis.trading.MetaTraderGateway
+import com.example.sayvis.trading.MtConnectionPhase
+import com.example.sayvis.trading.MtGatewayState
+import com.example.sayvis.trading.MtOrderRequest
+import com.example.sayvis.trading.MtOrderResult
+import com.example.sayvis.ui.components.TranslationBridge
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.Calendar
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
+/**
+ * Navigation model.
+ *
+ * Only four destinations are *primary* — they are the ones the bottom bar shows.
+ * Everything else is a secondary screen reached from Tools or Settings, and reports the
+ * primary tab it belongs to so the bar can keep the right item highlighted.
+ */
 enum class SayvisScreen(val titleEn: String, val titleFa: String) {
-    HOME("Overview", "نمای کلی"),
-    CHAT("SAYVIS AI", "هوش مصنوعی سایو"),
-    UIC("Cognitive (UIC)", "مدل شناختی"),
-    AWARE("AWARE Engine", "موتور ادراک AWARE"),
+    // ---- primary (bottom bar) ----
+    HOME("Home", "خانه"),
+    ASSISTANT("SAYO Assistant", "دستیار سایو"),
+    TOOLS("Tools", "ابزارها"),
+    SETTINGS("Settings", "تنظیمات"),
+
+    // ---- secondary ----
     MISSIONS("Missions", "مأموریت‌ها"),
+    UIC("Cognitive Profile", "پروندهٔ شناختی"),
+    AWARE("Smart Suggestions", "پیشنهادهای هوشمند"),
+    TRADING("Trading & Markets", "معاملات و بازار"),
+    SIMULATION("Decision Simulator", "شبیه‌سازی تصمیم"),
     SECURITY("Security & Devices", "امنیت و دستگاه‌ها"),
-    SIMULATION("Life & Trading", "شبیه‌سازی و تحلیل")
+    GATEWAY("Trading Gateway", "درگاه معاملاتی"),
+    SCRIPTS("Scripts & Automation", "اسکریپت و خودکارسازی");
+
+    fun title(isPersian: Boolean): String = if (isPersian) titleFa else titleEn
+
+    fun isPrimary(): Boolean = when (this) {
+        HOME, ASSISTANT, TOOLS, SETTINGS -> true
+        else -> false
+    }
+
+    /** Which bottom-bar item stays highlighted while this screen is open. */
+    fun primaryTab(): SayvisScreen = when (this) {
+        HOME, ASSISTANT, TOOLS, SETTINGS -> this
+        GATEWAY, SCRIPTS -> TOOLS
+        else -> TOOLS
+    }
 }
 
 enum class AvatarState {
@@ -67,57 +136,239 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
 
     private val database = SayvisDatabase.getDatabase(application, viewModelScope)
     val repository = SayvisRepository(database)
+
+    private val settingsStore = SettingsStore.get(application)
+    private val accountStore = OwnerAccountStore.get(application)
+    private val scriptStore = ScriptStore.get(application).apply { ensureStarters() }
+    private val scriptEngine = ScriptEngine()
+    private val translationService = TranslationService(application)
+    private val gateway = MetaTraderGateway()
     private val aiOrchestrator = AIOrchestrator()
+
     val awareEngine = AwareEngine(repository)
 
-    init {
-        viewModelScope.launch {
-            contextSnapshot.collect { snap ->
-                awareEngine.onSystemStateChanged(
-                    com.example.sayvis.model.SystemState(
-                        batteryLevel = if (snap.cognitiveLoad == "Fatigue Risk") 18 else 85,
-                        isCharging = false,
-                        networkType = if (snap.networkStatus.contains("Offline")) "NONE" else "WIFI",
-                        activeMissionsCount = snap.activeMissionsCount,
-                        blockedTasksCount = snap.blockedTasksCount,
-                        emergencyLockActive = snap.emergencyLockActive,
-                        focusWindowActive = snap.focusWindow.contains("Deep Work", ignoreCase = true)
-                    )
-                )
-            }
-        }
-    }
-
-    // Screen navigation
+    // ------------------------------------------------------------ navigation
     private val _currentScreen = MutableStateFlow(SayvisScreen.HOME)
     val currentScreen: StateFlow<SayvisScreen> = _currentScreen.asStateFlow()
 
-    // Global settings & toggles
-    private val _isPersian = MutableStateFlow(false) // Toggle Persian/English
-    val isPersian: StateFlow<Boolean> = _isPersian.asStateFlow()
+    fun navigateTo(screen: SayvisScreen) {
+        _currentScreen.value = screen
+    }
 
-    private val _emergencyLockActive = MutableStateFlow(false)
-    val emergencyLockActive: StateFlow<Boolean> = _emergencyLockActive.asStateFlow()
+    /** Returns to the primary tab that owns the current secondary screen. */
+    fun navigateBack() {
+        val current = _currentScreen.value
+        _currentScreen.value = if (current.isPrimary()) SayvisScreen.HOME else current.primaryTab()
+    }
 
-    private val _forceOfflineMode = MutableStateFlow(false)
-    val forceOfflineMode: StateFlow<Boolean> = _forceOfflineMode.asStateFlow()
+    // -------------------------------------------------------------- settings
+    val settings: StateFlow<AppSettings> = settingsStore.settings
+
+    val isPersian: StateFlow<Boolean> = settings
+        .map { it.isPersian(SayvisStrings.deviceIsPersian()) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings().isPersian(SayvisStrings.deviceIsPersian()))
+
+    val emergencyLockActive: StateFlow<Boolean> = settings
+        .map { it.emergencyLockActive }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val forceOfflineMode: StateFlow<Boolean> = settings
+        .map { it.forceOfflineMode }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun updateSettings(mutator: (AppSettings) -> AppSettings) {
+        settingsStore.update(mutator)
+    }
+
+    fun toggleLanguage() {
+        settingsStore.update { current ->
+            val next = if (current.isPersian(SayvisStrings.deviceIsPersian())) AppLanguage.ENGLISH else AppLanguage.PERSIAN
+            current.copy(localization = current.localization.copy(language = next))
+        }
+    }
+
+    fun setLanguage(language: AppLanguage) = settingsStore.setLanguage(language)
+
+    fun toggleOfflineMode() {
+        settingsStore.update { it.copy(forceOfflineMode = !it.forceOfflineMode) }
+        updateAvatarState()
+    }
+
+    fun toggleEmergencyLock() {
+        val newState = !settingsStore.current().emergencyLockActive
+        settingsStore.setEmergencyLock(newState)
+        audit(
+            actor = "OWNER",
+            action = if (newState) "security.emergency_lock.engage" else "security.emergency_lock.disengage",
+            riskLevel = RiskLevel.CRITICAL,
+            auth = "OWNER_BIOMETRIC_CONFIRMED",
+            result = "SUCCESS",
+            digest = "Emergency lock state updated to: $newState"
+        )
+        updateAvatarState()
+    }
+
+    fun resetAllSettings() {
+        settingsStore.resetToDefaults()
+        _gatewayState.value = MtGatewayState()
+        translationService.clearCache()
+        audit(
+            actor = "OWNER",
+            action = "settings.reset_all",
+            riskLevel = RiskLevel.HIGHER_RISK,
+            auth = "OWNER_CONFIRMED",
+            result = "SUCCESS",
+            digest = "All owner settings, API keys and the trading profile were cleared"
+        )
+        updateAvatarState()
+    }
+
+    val vaultHardwareBacked: Boolean get() = settingsStore.vault.isHardwareBacked
+    val translationCacheSize: Int get() = translationService.cacheSize()
+
+    fun clearTranslationCache() = translationService.clearCache()
+
+    // --------------------------------------------------------------- AI / API
+    private val _probe = MutableStateFlow<ProviderProbe?>(null)
+    val probe: StateFlow<ProviderProbe?> = _probe.asStateFlow()
+
+    private val _isProbing = MutableStateFlow(false)
+    val isProbing: StateFlow<Boolean> = _isProbing.asStateFlow()
+
+    /** True when the selected provider can actually serve requests right now. */
+    val aiReady: StateFlow<Boolean> = combine(settings, forceOfflineMode) { current, offline ->
+        aiOrchestrator.isCloudReady(current.ai, offline) || current.ai.provider == AiProviderKind.LOCAL
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun testAiConnection() {
+        if (_isProbing.value) return
+        _isProbing.value = true
+        viewModelScope.launch {
+            val outcome = runCatching { aiOrchestrator.probe(settingsStore.current().ai) }
+                .getOrElse {
+                    com.example.sayvis.ai.ProbeOutcome(
+                        success = false,
+                        latencyMs = 0,
+                        model = "",
+                        messageFa = it.message ?: "خطای ناشناخته",
+                        messageEn = it.message ?: "Unknown error"
+                    )
+                }
+            _probe.value = ProviderProbe(
+                provider = settingsStore.current().ai.provider,
+                model = outcome.model,
+                success = outcome.success,
+                latencyMs = outcome.latencyMs,
+                messageFa = outcome.messageFa,
+                messageEn = outcome.messageEn
+            )
+            _isProbing.value = false
+            audit(
+                actor = "OWNER",
+                action = "ai.provider.probe",
+                riskLevel = RiskLevel.LOW_RISK,
+                auth = "SESSION_VALIDATED",
+                result = if (outcome.success) "SUCCESS" else "FAILED",
+                digest = "Provider ${_probe.value?.provider?.name} model ${outcome.model}"
+            )
+        }
+    }
+
+    /** Bridge handed to Compose so any text can resolve itself through the hybrid pipeline. */
+    val translationBridge: TranslationBridge = object : TranslationBridge {
+        override val isPersian: Boolean get() = settingsStore.current().isPersian(SayvisStrings.deviceIsPersian())
+        override val autoTranslate: Boolean
+            get() {
+                val current = settingsStore.current()
+                return current.localization.autoTranslateFreeText && !current.forceOfflineMode
+            }
+
+        override val persianDigits: Boolean get() = settingsStore.current().localization.persianDigits
+
+        override fun resolve(text: String, persianDigits: Boolean): TranslationResult =
+            translationService.resolveOffline(text, persianDigits)
+
+        override suspend fun online(text: String): String? = translationService.translateOnline(
+            text = text,
+            orchestrator = aiOrchestrator,
+            settings = settingsStore.current().ai,
+            forceOffline = settingsStore.current().forceOfflineMode
+        )
+    }
+
+    // ------------------------------------------------------------------ chat
+    private val _chatMessages = MutableStateFlow<List<ChatMessage>>(listOf(greeting(false)))
+    val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
 
     private val _avatarState = MutableStateFlow(AvatarState.IDLE)
     val avatarState: StateFlow<AvatarState> = _avatarState.asStateFlow()
 
-    // Chat Conversation
-    private val _chatMessages = MutableStateFlow<List<ChatMessage>>(
-        listOf(
-            ChatMessage(
-                sender = "SAYVIS",
-                text = "Welcome, Commander. SAYVIS Personal Operating Layer online.\nCognitive Model (UIC) initialized, Zero-Trust security active, 3 devices paired. How may I augment your agency today?",
-                providerUsed = ProviderType.LOCAL_COGNITIVE
-            )
-        )
+    private fun greeting(persian: Boolean) = ChatMessage(
+        sender = "SAYVIS",
+        text = if (persian) {
+            "سلام. من سایو هستم، دستیار شخصی سایویس.\n" +
+                "پروندهٔ شناختی شما بارگذاری شد، امنیت «اعتماد صفر» فعال است و ۳ دستگاه جفت شده‌اند.\n" +
+                "از تب «ابزارها» به مأموریت‌ها، معاملات و اسکریپت‌نویسی دسترسی دارید و همهٔ تنظیمات — از جمله کلید API و درگاه متاتریدر — در تب «تنظیمات» است."
+        } else {
+            "Hello. I am SAYO, your SAYVIS personal assistant.\n" +
+                "Your cognitive profile is loaded, zero-trust security is active and 3 devices are paired.\n" +
+                "Use the Tools tab for missions, trading and scripting; every setting — including the API key and the MetaTrader gateway — lives in the Settings tab."
+        },
+        providerUsed = ProviderType.LOCAL_COGNITIVE
     )
-    val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
 
-    // Database reactive streams
+    fun sendMessage(text: String) {
+        if (text.isBlank()) return
+        val current = settingsStore.current()
+        val persian = current.isPersian(SayvisStrings.deviceIsPersian())
+
+        _chatMessages.value = _chatMessages.value + ChatMessage(sender = "OWNER", text = text)
+        _avatarState.value = AvatarState.THINKING
+
+        viewModelScope.launch {
+            val uicSummary = uicAttributes.value.joinToString("\n") {
+                "- [${it.category.name}] ${it.title}: ${it.value} (status ${it.status.name}, confidence ${it.confidence})"
+            }
+            val systemContext = ContextLocalization.systemContextLine(contextSnapshot.value, persian)
+            val history = _chatMessages.value.takeLast(10).map { ChatTurn(it.sender, it.text) }
+
+            val response = aiOrchestrator.querySAYVIS(
+                prompt = text,
+                uicContext = uicSummary,
+                systemContext = systemContext,
+                languageFa = persian,
+                emergencyLockActive = current.emergencyLockActive,
+                forceOffline = current.forceOfflineMode,
+                settings = current.ai,
+                history = history
+            )
+
+            _avatarState.value = AvatarState.SPEAKING
+
+            val fallbackText = if (response.text.isBlank()) {
+                if (persian) "پاسخی تولید نشد. وضعیت سرویس هوش مصنوعی را در تنظیمات بررسی کنید."
+                else "No answer was produced. Check the AI provider status in Settings."
+            } else response.text
+
+            _chatMessages.value = _chatMessages.value + ChatMessage(
+                sender = "SAYVIS",
+                text = fallbackText,
+                providerUsed = response.providerUsed
+            )
+            updateAvatarState()
+
+            audit(
+                actor = "SAYVIS_AGENT",
+                action = "ai.query.respond",
+                riskLevel = RiskLevel.LOW_RISK,
+                auth = "SESSION_VALIDATED",
+                result = if (response.isSuccess) "SUCCESS" else "FAILED",
+                digest = "Provider ${response.providerUsed.displayName} model ${response.model} (${text.take(30)})"
+            )
+        }
+    }
+
+    // -------------------------------------------------------------- database
     val uicAttributes: StateFlow<List<UicAttribute>> = repository.allUicAttributes.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
     )
@@ -138,9 +389,132 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
     )
 
-    // LIT Trading State (strictly analysis first, live execution blocked)
-    private val _tradingGate = MutableStateFlow(TradingGateState())
-    val tradingGate: StateFlow<TradingGateState> = _tradingGate.asStateFlow()
+    // ------------------------------------------------------- trading gateway
+    private val _gatewayState = MutableStateFlow(MtGatewayState())
+    val gatewayState: StateFlow<MtGatewayState> = _gatewayState.asStateFlow()
+
+    private val _gatewayBusy = MutableStateFlow(false)
+    val gatewayBusy: StateFlow<Boolean> = _gatewayBusy.asStateFlow()
+
+    private val _lastOrder = MutableStateFlow<MtOrderResult?>(null)
+    val lastOrder: StateFlow<MtOrderResult?> = _lastOrder.asStateFlow()
+
+    /** Re-confirmed per session; never persisted, so a restart always drops to paper. */
+    private var liveExecutionConfirmed = false
+
+    fun saveGatewayProfile(profile: MtGatewayProfile) {
+        settingsStore.update { it.copy(trading = profile) }
+    }
+
+    fun connectGateway(profile: MtGatewayProfile) {
+        if (_gatewayBusy.value) return
+        _gatewayBusy.value = true
+        saveGatewayProfile(profile)
+        viewModelScope.launch {
+            val state = runCatching { gateway.connect(profile) }
+                .getOrElse { error ->
+                    MtGatewayState(
+                        phase = MtConnectionPhase.ERROR,
+                        profile = profile,
+                        lastErrorFa = error.message ?: "خطای ناشناخته",
+                        lastErrorEn = error.message ?: "Unknown error"
+                    )
+                }
+            _gatewayState.value = state
+            _gatewayBusy.value = false
+            auditGateway(profile, "trading.gateway.connect", state.phase.name)
+        }
+    }
+
+    fun testGateway(profile: MtGatewayProfile) = connectGateway(profile)
+
+    fun disconnectGateway() {
+        val profile = settingsStore.current().trading
+        _gatewayState.value = gateway.disconnect(profile)
+        liveExecutionConfirmed = false
+        auditGateway(profile, "trading.gateway.disconnect", "DISCONNECTED")
+    }
+
+    fun refreshGateway() {
+        if (_gatewayBusy.value) return
+        _gatewayBusy.value = true
+        viewModelScope.launch {
+            _gatewayState.value = gateway.refresh(_gatewayState.value)
+            _gatewayBusy.value = false
+        }
+    }
+
+    fun changeExecutionMode(mode: TradingExecutionMode) {
+        liveExecutionConfirmed = mode == TradingExecutionMode.LIVE_EXECUTION
+        settingsStore.setExecutionMode(mode)
+        _gatewayState.value = _gatewayState.value.copy(
+            profile = _gatewayState.value.profile.copy(executionMode = mode)
+        )
+        audit(
+            actor = "OWNER",
+            action = "trading.execution_mode.change",
+            riskLevel = if (mode == TradingExecutionMode.LIVE_EXECUTION) RiskLevel.CRITICAL else RiskLevel.MEDIUM_RISK,
+            auth = "OWNER_CONFIRMED",
+            result = "SUCCESS",
+            digest = "Execution mode set to ${mode.name}"
+        )
+    }
+
+    fun placeOrder(request: MtOrderRequest) {
+        viewModelScope.launch {
+            val current = settingsStore.current()
+            val result = gateway.placeOrder(
+                request = request,
+                state = _gatewayState.value,
+                emergencyLockActive = current.emergencyLockActive,
+                liveConfirmed = liveExecutionConfirmed
+            )
+            _lastOrder.value = result
+            audit(
+                actor = "OWNER",
+                action = if (result.accepted) "trading.order.submit" else "trading.order.blocked",
+                riskLevel = if (result.accepted) RiskLevel.CRITICAL else RiskLevel.MEDIUM_RISK,
+                auth = if (result.accepted) "OWNER_CONFIRMED" else (result.blockedBy?.name ?: "POLICY"),
+                result = if (result.accepted) "SUCCESS" else "BLOCKED",
+                digest = "${request.side.name} ${request.volume} ${request.symbol} -> ${result.ticket ?: result.blockedBy?.name}"
+            )
+        }
+    }
+
+    fun closePosition(ticket: String) {
+        viewModelScope.launch {
+            val result = gateway.closePosition(ticket, _gatewayState.value)
+            _lastOrder.value = result
+            audit(
+                actor = "OWNER",
+                action = "trading.position.close",
+                riskLevel = RiskLevel.HIGHER_RISK,
+                auth = "OWNER_CONFIRMED",
+                result = if (result.accepted) "SUCCESS" else "BLOCKED",
+                digest = "Close ticket $ticket"
+            )
+        }
+    }
+
+    private fun auditGateway(profile: MtGatewayProfile, action: String, detail: String) {
+        audit(
+            actor = "OWNER",
+            action = action,
+            riskLevel = if (profile.accountType.name == "REAL") RiskLevel.CRITICAL else RiskLevel.MEDIUM_RISK,
+            auth = "OWNER_CONFIRMED",
+            result = "SUCCESS",
+            digest = "${profile.terminalVersion.name} ${profile.bridgeKind.name} $detail"
+        )
+    }
+
+    // ------------------------------------------------- simulation & signals
+    val tradingGate get() = com.example.sayvis.model.TradingGateState(
+        liveTradingBlocked = settingsStore.current().trading.executionMode == TradingExecutionMode.PAPER_SIMULATION,
+        paperTradingMode = settingsStore.current().trading.executionMode == TradingExecutionMode.PAPER_SIMULATION,
+        killSwitchEngaged = settingsStore.current().emergencyLockActive,
+        maxDailyDrawdownLimitUsd = settingsStore.current().trading.maxDailyLossUsd,
+        activePositionsCount = _gatewayState.value.positions.size
+    )
 
     val litSignals: List<LitAnalysisSignal> = listOf(
         LitAnalysisSignal(
@@ -167,7 +541,6 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         )
     )
 
-    // Life Simulation Scenarios
     val lifeScenarios: List<LifeScenario> = listOf(
         LifeScenario(
             id = "scen_career_01",
@@ -189,171 +562,245 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         )
     )
 
-    // Live combined context snapshot
+    // ------------------------------------------------------- context snapshot
     val contextSnapshot: StateFlow<ContextSnapshot> = combine(
         missions,
-        emergencyLockActive,
-        forceOfflineMode
-    ) { missionList, lockActive, offlineForced ->
+        settings
+    ) { missionList, current ->
         val blockedCount = missionList.flatMap { it.tasks }.count { it.isBlocked }
+        val now = Calendar.getInstance()
+        val hour = now.get(Calendar.HOUR_OF_DAY)
+        val minute = now.get(Calendar.MINUTE)
+        val focusActive = hour in 9..11 && !(hour == 11 && minute > 30)
         repository.getContextSnapshot(
-            activeMissionsCount = missionList.count { it.status == com.example.sayvis.model.MissionStatus.ACTIVE },
+            activeMissionsCount = missionList.count { it.status == MissionStatus.ACTIVE },
             blockedTasksCount = blockedCount,
-            emergencyLockActive = lockActive,
-            isOnline = !offlineForced
+            emergencyLockActive = current.emergencyLockActive,
+            isOnline = !current.forceOfflineMode,
+            focusWindowActive = focusActive,
+            currentActivity = when {
+                focusActive -> FocusActivity.DEEP_WORK
+                hour in 22..23 || hour in 0..6 -> FocusActivity.RECOVERY
+                blockedCount > 0 -> FocusActivity.REVIEW
+                else -> FocusActivity.STRATEGIC_EXECUTION
+            }
         )
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
         ContextSnapshot(
-            focusWindow = "Deep Work Window",
-            currentActivity = "System Booting",
-            cognitiveLoad = "Optimal",
-            activeMissionsCount = 2,
-            blockedTasksCount = 1,
-            networkStatus = "Online"
+            focusWindowActive = false,
+            currentActivity = FocusActivity.BOOTING,
+            activeMissionsCount = 0,
+            blockedTasksCount = 0,
+            isOnline = true
         )
     )
 
-    fun navigateTo(screen: SayvisScreen) {
-        _currentScreen.value = screen
+    // -------------------------------------------------------------- scripts
+    val scripts: StateFlow<List<AutomationScript>> = scriptStore.scripts
+    val lastScriptRun: StateFlow<ScriptRunResult?> = scriptStore.lastRun
+
+    fun saveScript(script: AutomationScript) = scriptStore.upsert(script)
+    fun deleteScript(id: String) = scriptStore.delete(id)
+    fun toggleScript(id: String, enabled: Boolean) = scriptStore.setEnabled(id, enabled)
+
+    /** Sends a natural-language idea to the assistant so it can author the script. */
+    fun askAssistantToScript(prompt: String) {
+        _currentScreen.value = SayvisScreen.ASSISTANT
+        if (prompt.isNotBlank()) sendMessage(prompt)
     }
 
-    fun toggleLanguage() {
-        _isPersian.value = !_isPersian.value
-    }
-
-    fun toggleOfflineMode() {
-        _forceOfflineMode.value = !_forceOfflineMode.value
-        updateAvatarState()
-    }
-
-    fun toggleEmergencyLock() {
-        val newState = !_emergencyLockActive.value
-        _emergencyLockActive.value = newState
-        viewModelScope.launch {
-            repository.recordAuditEvent(
-                actor = "OWNER",
-                action = if (newState) "security.emergency_lock.engage" else "security.emergency_lock.disengage",
-                riskLevel = RiskLevel.CRITICAL,
-                auth = "OWNER_BIOMETRIC_CONFIRMED",
-                result = "SUCCESS",
-                digest = "Emergency lock state updated to: $newState"
+    fun runScript(script: AutomationScript, trigger: String = script.trigger.name) {
+        val current = settingsStore.current()
+        val persian = current.isPersian(SayvisStrings.deviceIsPersian())
+        if (!current.runAutomationScripts && trigger != ScriptTrigger.MANUAL.name) {
+            scriptStore.recordRun(
+                script.id,
+                ScriptRunResult(
+                    success = false,
+                    errorFa = "اجرای خودکار اسکریپت‌ها در تنظیمات غیرفعال است.",
+                    errorEn = "Automatic script execution is disabled in settings."
+                ),
+                persian
             )
+            return
         }
-        updateAvatarState()
+
+        val snapshot = contextSnapshot.value
+        val gatewaySnapshot = _gatewayState.value
+        val quotes = gatewaySnapshot.quotes.associate { it.symbol to it.bid }
+
+        val context = ScriptContext(
+            batteryPercent = snapshot.batteryPercent,
+            isCharging = snapshot.isCharging,
+            networkOnline = snapshot.isOnline,
+            emergencyLockActive = current.emergencyLockActive,
+            activeMissions = snapshot.activeMissionsCount,
+            blockedTasks = snapshot.blockedTasksCount,
+            focusWindowActive = snapshot.focusWindowActive,
+            cognitiveLoad = snapshot.cognitiveLoad.name,
+            hourOfDay = Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
+            minuteOfHour = Calendar.getInstance().get(Calendar.MINUTE),
+            quotes = quotes,
+            accountBalance = gatewaySnapshot.account?.balance ?: 0.0,
+            accountEquity = gatewaySnapshot.account?.equity ?: 0.0,
+            dailyPnl = gatewaySnapshot.dailyPnl
+        )
+
+        val result = scriptEngine.run(script.source, context, trigger)
+        scriptStore.recordRun(script.id, result, persian)
+
+        result.effects.forEach { effect -> applyEffect(effect, script, current, persian) }
+
+        audit(
+            actor = "SCRIPT_ENGINE",
+            action = "automation.script.run",
+            riskLevel = if (result.success) RiskLevel.LOW_RISK else RiskLevel.MEDIUM_RISK,
+            auth = "OWNER_CONFIRMED",
+            result = if (result.success) "SUCCESS" else "FAILED",
+            digest = "Script '${script.name}' produced ${result.effects.size} effect(s)"
+        )
     }
 
-    private fun updateAvatarState() {
-        when {
-            _emergencyLockActive.value -> _avatarState.value = AvatarState.EMERGENCY_LOCKED
-            _forceOfflineMode.value -> _avatarState.value = AvatarState.OFFLINE
-            else -> _avatarState.value = AvatarState.IDLE
-        }
-    }
+    /**
+     * Executes one script effect through the zero-trust gate.
+     *
+     * Notifications and logs are harmless and run immediately. Anything that leaves the
+     * device (a webhook) or changes a privileged mode requires an enabled automation
+     * switch and a disengaged emergency lock, and is always written to the audit log.
+     */
+    private fun applyEffect(effect: ScriptEffect, script: AutomationScript, current: AppSettings, persian: Boolean) {
+        when (effect) {
+            is ScriptEffect.Log -> { /* already surfaced in the console */ }
 
-    // --- Chat & AI Interaction ---
-    fun sendMessage(text: String) {
-        if (text.isBlank()) return
+            is ScriptEffect.Notify -> pushAssistantMessage(
+                if (persian) "🔔 ${script.name}: ${effect.message}" else "🔔 ${script.name}: ${effect.message}"
+            )
 
-        val userMsg = ChatMessage(sender = "OWNER", text = text)
-        _chatMessages.value = _chatMessages.value + userMsg
-
-        _avatarState.value = AvatarState.THINKING
-
-        viewModelScope.launch {
-            val uicSummary = uicAttributes.value.joinToString("\n") {
-                "- [${it.category.name}] ${it.title}: ${it.value} (Status: ${it.status.name}, Confidence: ${it.confidence})"
+            is ScriptEffect.Propose -> {
+                pushAssistantMessage(
+                    if (persian) "📌 پیشنهاد اجرایی از اسکریپت «${script.name}»: ${effect.summary}"
+                    else "📌 Action proposal from script \"${script.name}\": ${effect.summary}",
+                    isProposal = true
+                )
+                audit("SCRIPT_ENGINE", "automation.proposal.create", RiskLevel.MEDIUM_RISK, "OWNER_CONFIRMED", "SUCCESS", effect.summary)
             }
-            val sysSnapshot = contextSnapshot.value
-            val sysContext = "Focus: ${sysSnapshot.focusWindow}, Load: ${sysSnapshot.cognitiveLoad}, Blocked: ${sysSnapshot.blockedTasksCount}, Lock: ${_emergencyLockActive.value}"
 
-            val response = aiOrchestrator.querySAYVIS(
-                prompt = text,
-                uicContext = uicSummary,
-                systemContext = sysContext,
-                languageFa = _isPersian.value,
-                emergencyLockActive = _emergencyLockActive.value,
-                forceOffline = _forceOfflineMode.value
-            )
+            is ScriptEffect.Block -> {
+                pushAssistantMessage(
+                    if (persian) "⛔ اسکریپت «${script.name}» اقدام را مسدود کرد: ${effect.reason}"
+                    else "⛔ Script \"${script.name}\" blocked an action: ${effect.reason}"
+                )
+                audit("SCRIPT_ENGINE", "automation.block", RiskLevel.HIGHER_RISK, "POLICY_PERMITTED", "BLOCKED", effect.reason)
+            }
 
-            _avatarState.value = AvatarState.SPEAKING
+            is ScriptEffect.Webhook -> {
+                if (current.emergencyLockActive || !current.runAutomationScripts) {
+                    audit("SCRIPT_ENGINE", "automation.webhook.blocked", RiskLevel.HIGHER_RISK, "BLOCKED_EMERGENCY_LOCK", "BLOCKED", effect.url)
+                    return
+                }
+                viewModelScope.launch {
+                    val outcome = runCatching { postWebhook(effect.url, effect.payload) }
+                    audit(
+                        "SCRIPT_ENGINE",
+                        "automation.webhook.send",
+                        RiskLevel.HIGHER_RISK,
+                        "OWNER_CONFIRMED",
+                        if (outcome.isSuccess) "SUCCESS" else "FAILED",
+                        effect.url
+                    )
+                }
+            }
 
-            val aiMsg = ChatMessage(
-                sender = "SAYVIS",
-                text = response.text,
-                providerUsed = response.providerUsed
-            )
-            _chatMessages.value = _chatMessages.value + aiMsg
+            is ScriptEffect.SetVariable -> { /* variable lifetime is one run */ }
 
-            _avatarState.value = if (_emergencyLockActive.value) AvatarState.EMERGENCY_LOCKED else AvatarState.IDLE
-
-            // Record audit
-            repository.recordAuditEvent(
-                actor = "SAYVIS_AGENT",
-                action = "ai.query.respond",
-                riskLevel = RiskLevel.LOW_RISK,
-                auth = "SESSION_VALIDATED",
-                result = "SUCCESS",
-                digest = "Provider: ${response.providerUsed.displayName} (Prompt: ${text.take(30)}...)"
-            )
+            is ScriptEffect.SetExecutionMode -> {
+                val mode = runCatching { TradingExecutionMode.valueOf(effect.modeName) }.getOrNull()
+                if (mode != null && current.emergencyLockActive.not()) {
+                    audit("SCRIPT_ENGINE", "automation.execution_mode.request", RiskLevel.CRITICAL, "OWNER_CONFIRMED", "SUCCESS", mode.name)
+                    pushAssistantMessage(
+                        if (persian) "⚠️ اسکریپت درخواست تغییر سطح اجرا به «${mode.label(true)}» داد. تغییر سطح فقط با تأیید دستی شما در درگاه معاملاتی انجام می‌شود."
+                        else "⚠️ A script requested execution mode \"${mode.label(false)}\". Mode changes only happen with your manual confirmation in the trading gateway."
+                    )
+                }
+            }
         }
     }
 
-    // --- UIC Actions ---
+    /**
+     * Fires a script's webhook. Always on the IO dispatcher, always time-bounded, and
+     * always audited by the caller.
+     */
+    private suspend fun postWebhook(url: String, payload: String): Boolean = withContext(Dispatchers.IO) {
+        if (url.isBlank() || (!url.startsWith("http://") && !url.startsWith("https://"))) return@withContext false
+        runCatching {
+            val client = OkHttpClient.Builder()
+                .connectTimeout(10, TimeUnit.SECONDS)
+                .readTimeout(15, TimeUnit.SECONDS)
+                .build()
+            val request = Request.Builder()
+                .url(url)
+                .post(payload.ifBlank { "{}" }.toRequestBody(JSON_MEDIA_TYPE))
+                .build()
+            client.newCall(request).execute().use { it.isSuccessful }
+        }.getOrDefault(false)
+    }
+
+    private fun pushAssistantMessage(text: String, isProposal: Boolean = false) {
+        _chatMessages.value = _chatMessages.value + ChatMessage(
+            sender = "SAYVIS",
+            text = text,
+            isActionProposal = isProposal,
+            providerUsed = ProviderType.LOCAL_COGNITIVE
+        )
+    }
+
+    // ------------------------------------------------------------------ UIC
     fun confirmUicAttribute(id: String) {
-        viewModelScope.launch {
-            repository.updateUicStatus(id, UicStatus.CONFIRMED)
-        }
+        viewModelScope.launch { repository.updateUicStatus(id, UicStatus.CONFIRMED) }
     }
 
     fun revokeUicAttribute(id: String) {
-        viewModelScope.launch {
-            repository.updateUicStatus(id, UicStatus.REVOKED)
-        }
+        viewModelScope.launch { repository.updateUicStatus(id, UicStatus.REVOKED) }
     }
 
     fun addCustomUicAttribute(category: UicCategory, title: String, key: String, value: String) {
-        val attr = UicAttribute(
+        val persian = settingsStore.current().isPersian(SayvisStrings.deviceIsPersian())
+        val attribute = UicAttribute(
             id = "uic_custom_" + UUID.randomUUID().toString().take(6),
             category = category,
             key = key,
             title = title,
             value = value,
-            provenance = "Explicit Owner Entry",
+            provenance = if (persian) "ورود صریح توسط مالک" else "Explicit Owner Entry",
             confidence = 1.0f,
             status = UicStatus.CONFIRMED,
             privacyLevel = PrivacyLevel.STANDARD
         )
-        viewModelScope.launch {
-            repository.addUicAttribute(attr)
-        }
+        viewModelScope.launch { repository.addUicAttribute(attribute) }
     }
 
     fun deleteUicAttribute(id: String) {
-        viewModelScope.launch {
-            repository.deleteUicAttribute(id)
-        }
+        viewModelScope.launch { repository.deleteUicAttribute(id) }
     }
 
-    // --- AWARE Opportunities Actions ---
+    // ---------------------------------------------------------------- AWARE
     fun approveOpportunity(opportunityId: String) {
         viewModelScope.launch {
-            val success = repository.approveAndExecuteOpportunity(opportunityId, _emergencyLockActive.value)
+            val success = repository.approveAndExecuteOpportunity(opportunityId, settingsStore.current().emergencyLockActive)
             if (!success) {
-                // Post warning to chat
-                _chatMessages.value = _chatMessages.value + ChatMessage(
-                    sender = "SAYVIS",
-                    text = "⚠️ Execution blocked: Emergency Lock is active. Disengage emergency lock in Security settings to permit action execution."
+                val persian = settingsStore.current().isPersian(SayvisStrings.deviceIsPersian())
+                pushAssistantMessage(
+                    if (persian) "⚠️ اجرا مسدود شد: قفل اضطراری فعال است. برای اجازهٔ اجرا، قفل را در «تنظیمات ← امنیت» غیرفعال کنید."
+                    else "⚠️ Execution blocked: the emergency lock is active. Disengage it under Settings → Security to permit execution."
                 )
             }
         }
     }
 
     fun dismissOpportunity(opportunityId: String) {
-        viewModelScope.launch {
-            repository.dismissOpportunity(opportunityId)
-        }
+        viewModelScope.launch { repository.dismissOpportunity(opportunityId) }
     }
 
     fun runAwareScan() {
@@ -362,35 +809,216 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 snapshot = contextSnapshot.value,
                 missions = missions.value
             )
-            if (generated.isNotEmpty()) {
-                _avatarState.value = AvatarState.OPPORTUNITY_AWARE
+            if (generated.isNotEmpty()) _avatarState.value = AvatarState.OPPORTUNITY_AWARE
+        }
+    }
+
+    // ------------------------------------------------------------- missions
+    fun toggleMissionTask(missionId: String, taskId: String, currentCompleted: Boolean) {
+        viewModelScope.launch { repository.updateTaskCompletion(missionId, taskId, !currentCompleted) }
+    }
+
+    fun addMission(mission: Mission) {
+        viewModelScope.launch { repository.addMission(mission) }
+    }
+
+    // ------------------------------------------------------ owner account
+    val ownerAccount: StateFlow<OwnerAccount?> = accountStore.account
+    val ownerSignedIn: StateFlow<Boolean> = accountStore.signedIn
+    val pairingOffer: StateFlow<DevicePairing.Offer?> = accountStore.activeOffer
+
+    private val _accountMessage = MutableStateFlow<String?>(null)
+    val accountMessage: StateFlow<String?> = _accountMessage.asStateFlow()
+
+    fun clearAccountMessage() { _accountMessage.value = null }
+
+    fun registerOwner(email: String, password: String) {
+        val persian = isPersian.value
+        when (val r = accountStore.register(email, password, persian)) {
+            is AccountResult.Success -> {
+                _accountMessage.value = if (persian) "حساب مالک ساخته شد و وارد شدید." else "Owner account created and signed in."
+                audit("OWNER", "account.register", RiskLevel.HIGHER_RISK, "OWNER_PASSWORD", "SUCCESS", "account=${r.account.accountId}")
+            }
+            is AccountResult.Failure -> _accountMessage.value = r.message(persian)
+        }
+    }
+
+    fun signInOwner(email: String, password: String) {
+        val persian = isPersian.value
+        when (val r = accountStore.signIn(email, password)) {
+            is AccountResult.Success -> {
+                _accountMessage.value = if (persian) "ورود موفق." else "Signed in."
+                audit("OWNER", "account.sign_in", RiskLevel.MEDIUM_RISK, "OWNER_PASSWORD", "SUCCESS", "account=${r.account.accountId}")
+            }
+            is AccountResult.Failure -> {
+                _accountMessage.value = r.message(persian)
+                audit("OWNER", "account.sign_in", RiskLevel.MEDIUM_RISK, "OWNER_PASSWORD", "REJECTED", "attempts=${accountStore.failedAttempts()}")
             }
         }
     }
 
-    // --- Missions Actions ---
-    fun toggleMissionTask(missionId: String, taskId: String, currentCompleted: Boolean) {
-        viewModelScope.launch {
-            repository.updateTaskCompletion(missionId, taskId, !currentCompleted)
+    fun signOutOwner() {
+        accountStore.signOut()
+        audit("OWNER", "account.sign_out", RiskLevel.LOW_RISK, "OWNER", "SUCCESS", "")
+    }
+
+    fun changeOwnerPassword(current: String, new: String) {
+        val persian = isPersian.value
+        when (val r = accountStore.changePassword(current, new, persian)) {
+            is AccountResult.Success -> {
+                _accountMessage.value = if (persian) "رمز عبور تغییر کرد." else "Password changed."
+                audit("OWNER", "account.password_change", RiskLevel.HIGHER_RISK, "OWNER_PASSWORD", "SUCCESS", "")
+            }
+            is AccountResult.Failure -> _accountMessage.value = r.message(persian)
         }
     }
 
-    fun addMission(mission: Mission) {
-        viewModelScope.launch {
-            repository.addMission(mission)
+    fun deleteOwnerAccount() {
+        accountStore.deleteAccount()
+        audit("OWNER", "account.delete", RiskLevel.CRITICAL, "OWNER_CONFIRMED", "SUCCESS", "")
+    }
+
+    fun startPairing() {
+        if (emergencyLockActive.value) {
+            _accountMessage.value = if (isPersian.value) "در حالت قفل اضطراری جفت‌سازی ممکن نیست." else "Pairing is blocked while the emergency lock is active."
+            return
+        }
+        val offer = accountStore.startPairingOffer()
+        if (offer == null) {
+            _accountMessage.value = if (isPersian.value) "ابتدا با ایمیل و رمز عبور وارد شوید." else "Sign in with e-mail and password first."
+        } else {
+            audit("OWNER", "device.pair.offer", RiskLevel.MEDIUM_RISK, "OWNER_SESSION", "SUCCESS", "code=${offer.code}")
         }
     }
 
-    // --- Device Management Actions ---
+    fun cancelPairing() = accountStore.cancelPairingOffer()
+
+    fun completePairing(deviceName: String, type: DeviceType, fingerprint: String, proof: String) {
+        val persian = isPersian.value
+        val ok = accountStore.completePairing(fingerprint, proof)
+        if (!ok) {
+            _accountMessage.value = if (persian) "کد تأیید دستگاه نامعتبر یا منقضی است." else "Device proof is invalid or the code expired."
+            audit("OWNER", "device.pair", RiskLevel.HIGHER_RISK, "PAIRING_PROOF", "REJECTED", "fp=$fingerprint")
+            return
+        }
+        val device = Device(
+            id = "dev_" + DevicePairing.normalizeFingerprint(fingerprint).take(12),
+            name = deviceName.ifBlank { type.labelEn },
+            type = type,
+            publicKeyFingerprint = DevicePairing.prettyFingerprint(fingerprint),
+            isTrusted = false,
+            isRevoked = false,
+            lastActiveAt = System.currentTimeMillis(),
+            capabilities = when (type) {
+                DeviceType.WINDOWS_PC, DeviceType.SECURE_LAPTOP -> listOf("filesystem", "controlled_powershell", "local_llm")
+                DeviceType.WEB_CLIENT -> listOf("dashboard", "read_only")
+                else -> emptyList()
+            }
+        )
+        viewModelScope.launch { repository.registerPairedDevice(device) }
+        _accountMessage.value = if (persian) "دستگاه جفت شد (وضعیت: محدود). برای اعطای اختیار روی «اعتماد» بزنید." else "Device paired (untrusted). Tap Trust to grant authority."
+    }
+
+    // -------------------------------------------------------------- devices
     fun toggleDeviceTrust(deviceId: String, currentTrust: Boolean) {
-        viewModelScope.launch {
-            repository.toggleDeviceTrust(deviceId, currentTrust)
-        }
+        viewModelScope.launch { repository.toggleDeviceTrust(deviceId, currentTrust) }
     }
 
     fun revokeDevice(deviceId: String) {
+        viewModelScope.launch { repository.revokeDevice(deviceId) }
+    }
+
+    // ---------------------------------------------------------------- misc
+    private fun updateAvatarState() {
+        val current = settingsStore.current()
+        _avatarState.value = when {
+            current.emergencyLockActive -> AvatarState.EMERGENCY_LOCKED
+            current.forceOfflineMode -> AvatarState.OFFLINE
+            else -> AvatarState.IDLE
+        }
+    }
+
+    private fun audit(
+        actor: String,
+        action: String,
+        riskLevel: RiskLevel,
+        auth: String,
+        result: String,
+        digest: String
+    ) {
+        if (!settingsStore.current().keepAuditLogOnDevice) return
         viewModelScope.launch {
-            repository.revokeDevice(deviceId)
+            repository.recordAuditEvent(
+                actor = actor,
+                action = action,
+                riskLevel = riskLevel,
+                auth = auth,
+                result = result,
+                digest = digest
+            )
+        }
+    }
+
+    /**
+     * Reactive wiring.
+     *
+     * Deliberately placed at the END of the class: every property initializer must have
+     * run before these collectors start, otherwise `viewModelScope` (which uses
+     * Main.immediate) can touch a not-yet-initialized StateFlow during construction.
+     */
+    init {
+        viewModelScope.launch {
+            contextSnapshot.collect { snap ->
+                awareEngine.onSystemStateChanged(
+                    SystemState(
+                        batteryLevel = snap.batteryPercent,
+                        isCharging = snap.isCharging,
+                        networkType = if (snap.isOnline) "WIFI" else "NONE",
+                        activeMissionsCount = snap.activeMissionsCount,
+                        blockedTasksCount = snap.blockedTasksCount,
+                        emergencyLockActive = snap.emergencyLockActive,
+                        focusWindowActive = snap.focusWindowActive
+                    )
+                )
+            }
+        }
+
+        // Keep the greeting in the active language while the conversation still holds
+        // nothing but that greeting. Once the owner has spoken, history is left untouched.
+        viewModelScope.launch {
+            isPersian.collect { persian ->
+                if (_chatMessages.value.size <= 1) {
+                    _chatMessages.value = listOf(greeting(persian))
+                }
+            }
+        }
+
+        // Re-apply the persisted avatar state (emergency lock / offline) after a restart.
+        updateAvatarState()
+    }
+
+    companion object {
+        private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+    }
+
+    /** Diagnostic bundle the owner can copy when asking for support. */
+    fun diagnosticSummary(): String {
+        val current = settingsStore.current()
+        val gw = _gatewayState.value
+        return buildString {
+            appendLine("SAYVIS diagnostics")
+            appendLine("version: 1.1.0")
+            appendLine("language: ${current.localization.language.name}")
+            appendLine("ai provider: ${current.ai.provider.name} configured=${current.ai.isProviderConfigured()}")
+            appendLine("ai model: ${current.ai.activeModel()}")
+            appendLine("force offline: ${current.forceOfflineMode}")
+            appendLine("emergency lock: ${current.emergencyLockActive}")
+            appendLine("vault hardware backed: ${settingsStore.vault.isHardwareBacked}")
+            appendLine("gateway phase: ${gw.phase.name}")
+            appendLine("gateway bridge: ${current.trading.bridgeKind.name} ${current.trading.terminalVersion.name}")
+            appendLine("execution mode: ${current.trading.executionMode.name}")
+            appendLine("scripts: ${scriptStore.all().size} (enabled ${scriptStore.enabled().size})")
+            appendLine("translation cache: ${translationService.cacheSize()}")
         }
     }
 }

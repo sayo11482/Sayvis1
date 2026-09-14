@@ -1,0 +1,110 @@
+name: Build APK
+
+# Builds the installable debug APK for every push to the working branch and to
+# main, and publishes it as a workflow artifact so the owner can download the
+# installer without touching Android Studio.
+on:
+  push:
+    branches:
+      - arena/01a09a63-sayvis1
+      - main
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # The debug signing config points at <root>/debug.keystore, which is
+      # deliberately gitignored. Regenerate a standard Android debug keystore
+      # when it is absent so assembleDebug can sign the installer.
+      - name: Provide debug keystore
+        run: |
+          if [ ! -f debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug, O=Android, C=US"
+          fi
+
+      # The repository ships gradle-wrapper.properties but not the wrapper jar,
+      # so install the exact Gradle version the wrapper declares.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Assemble debug APK
+        id: build
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee build.log
+
+      # When compilation fails, surface the actual errors in a place that is
+      # readable through the GitHub API (annotations + a PR comment) so they can
+      # be fixed without opening the raw log viewer.
+      - name: Report build errors
+        if: failure() && steps.build.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          grep -E "^e: |error:|What went wrong|Caused by|Could not|FAILED|Unresolved|> Task .* FAILED" build.log | head -300 > errors.txt || true
+          [ -s errors.txt ] || tail -n 200 build.log > errors.txt
+          head -n 10 errors.txt | while IFS= read -r line; do echo "::error::${line}"; done
+          {
+            echo "### ❌ Build failed for \`${GITHUB_SHA::7}\`"
+            echo
+            echo '```'
+            head -c 60000 errors.txt
+            echo '```'
+          } > comment.md
+          PR=$(gh pr list --head "${GITHUB_REF_NAME}" --json number --jq '.[0].number' || true)
+          if [ -n "$PR" ]; then gh pr comment "$PR" --body-file comment.md; fi
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sayvis-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      # Publish the installer as a GitHub Release so the owner has a permanent,
+      # directly downloadable link (artifacts expire and need a login).
+      - name: Publish APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          TAG="v${VERSION}-build.${GITHUB_RUN_NUMBER}"
+          OUT="SAYVIS-${VERSION}-debug.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$OUT"
+          sha256sum "$OUT" > "$OUT.sha256"
+          gh release create "$TAG" "$OUT" "$OUT.sha256" \
+            --target "$GITHUB_SHA" \
+            --title "SAYVIS ${VERSION} (build ${GITHUB_RUN_NUMBER})" \
+            --notes "نسخهٔ نصبی SAYVIS ${VERSION} — ساخته‌شده به‌صورت خودکار از کامیت ${GITHUB_SHA::7} روی شاخهٔ ${GITHUB_REF_NAME}. امضای debug؛ برای نصب باید «نصب از منابع ناشناس» فعال باشد." \
+            --prerelease

@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -51,6 +53,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sayvis.model.AwareOpportunity
+import com.example.sayvis.i18n.ContextLocalization
+import com.example.sayvis.i18n.PersianFormat
+import com.example.sayvis.ui.components.SayvisText
 import com.example.sayvis.model.ContextSnapshot
 import com.example.sayvis.model.Mission
 import com.example.sayvis.model.OpportunityStatus
@@ -76,6 +81,7 @@ fun HomeScreen(
     pendingOpportunities: List<AwareOpportunity>,
     isPersian: Boolean,
     emergencyLockActive: Boolean,
+    persianDigits: Boolean = isPersian,
     onNavigate: (SayvisScreen) -> Unit,
     onSendMessage: (String) -> Unit,
     onApproveOpportunity: (String) -> Unit,
@@ -107,12 +113,12 @@ fun HomeScreen(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(if (contextSnapshot.networkStatus.contains("Online")) SayvisGreenSuccess else SayvisAmberWarning)
+                            .background(if (contextSnapshot.isOnline) SayvisGreenSuccess else SayvisAmberWarning)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (isPersian) "دروازه امن سایویس" else "SAYVIS Gateway Enclave",
-                        fontSize = 12.sp,
+                        text = ContextLocalization.network(contextSnapshot, isPersian),
+                        fontSize = 11.5.sp,
                         color = SayvisSilverMuted
                     )
                 }
@@ -136,7 +142,11 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (emergencyLockActive) (if (isPersian) "قفل اضطراری فعال" else "LOCKED") else (if (isPersian) "قفل امن" else "SAFE"),
+                            text = if (emergencyLockActive) {
+                                if (isPersian) "قفل اضطراری فعال" else "Locked"
+                            } else {
+                                if (isPersian) "امنیت عادی" else "Safe"
+                            },
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (emergencyLockActive) SayvisRedAlert else SayvisSilverMuted
@@ -224,7 +234,7 @@ fun HomeScreen(
                         if (quickInput.isNotBlank()) {
                             onSendMessage(quickInput)
                             quickInput = ""
-                            onNavigate(SayvisScreen.CHAT)
+                            onNavigate(SayvisScreen.ASSISTANT)
                         }
                     },
                     modifier = Modifier
@@ -271,7 +281,7 @@ fun HomeScreen(
                                 )
                             }
                             Text(
-                                text = "${activeMission.progressPercent}%",
+                                text = PersianFormat.percent(activeMission.progressPercent, persianDigits),
                                 fontWeight = FontWeight.Bold,
                                 color = SayvisCyan,
                                 fontSize = 14.sp
@@ -280,11 +290,12 @@ fun HomeScreen(
 
                         Spacer(modifier = Modifier.height(6.dp))
 
-                        Text(
-                            text = activeMission.title,
+                        SayvisText(
+                            source = activeMission.title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color.White,
+                            markTranslated = true
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -305,11 +316,19 @@ fun HomeScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(
-                                text = "${if (isPersian) "مهلت: " else "Deadline: "} ${activeMission.deadline}",
-                                fontSize = 11.sp,
-                                color = SayvisSilverMuted
-                            )
+                            Row {
+                                Text(
+                                    text = if (isPersian) "مهلت: " else "Deadline: ",
+                                    fontSize = 11.sp,
+                                    color = SayvisSilverMuted
+                                )
+                                SayvisText(
+                                    source = activeMission.deadline,
+                                    fontSize = 11.sp,
+                                    color = SayvisSilverMuted,
+                                    markTranslated = true
+                                )
+                            }
                             Text(
                                 text = if (isPersian) "مشاهده جزئیات →" else "View Tasks →",
                                 fontSize = 11.sp,
@@ -329,28 +348,28 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 QuickNavTile(
-                    title = if (isPersian) "مدل شناختی" else "Cognitive UIC",
-                    subtitle = if (isPersian) "اهداف و ترجیحات" else "Goals & Habits",
-                    icon = Icons.Default.Psychology,
+                    title = if (isPersian) "مأموریت‌ها" else "Missions",
+                    subtitle = if (isPersian) "کارها و پیشرفت" else "Tasks & progress",
+                    icon = Icons.Default.Flag,
                     tint = SayvisCyan,
-                    modifier = Modifier.weight(1f).testTag("quick_tile_uic")
-                ) { onNavigate(SayvisScreen.UIC) }
+                    modifier = Modifier.weight(1f).testTag("quick_tile_missions")
+                ) { onNavigate(SayvisScreen.MISSIONS) }
 
                 QuickNavTile(
-                    title = if (isPersian) "موتور AWARE" else "AWARE Engine",
-                    subtitle = if (isPersian) "فرصت‌ها و الگوها" else "Context & Alerts",
-                    icon = Icons.Default.Radar,
+                    title = if (isPersian) "درگاه ترید" else "Trading",
+                    subtitle = if (isPersian) "اتصال متاتریدر" else "MetaTrader link",
+                    icon = Icons.Default.SwapHoriz,
+                    tint = SayvisGreenSuccess,
+                    modifier = Modifier.weight(1f).testTag("quick_tile_gateway")
+                ) { onNavigate(SayvisScreen.GATEWAY) }
+
+                QuickNavTile(
+                    title = if (isPersian) "اسکریپت‌ها" else "Scripts",
+                    subtitle = if (isPersian) "خودکارسازی" else "Automation",
+                    icon = Icons.Default.Code,
                     tint = SayvisGold,
-                    modifier = Modifier.weight(1f).testTag("quick_tile_aware")
-                ) { onNavigate(SayvisScreen.AWARE) }
-
-                QuickNavTile(
-                    title = if (isPersian) "امنیت و دستگاه" else "Security & Dev",
-                    subtitle = if (isPersian) "کنترل Zero-Trust" else "Zero-Trust Mesh",
-                    icon = Icons.Default.Shield,
-                    tint = SayvisSilverMuted,
-                    modifier = Modifier.weight(1f).testTag("quick_tile_security")
-                ) { onNavigate(SayvisScreen.SECURITY) }
+                    modifier = Modifier.weight(1f).testTag("quick_tile_scripts")
+                ) { onNavigate(SayvisScreen.SCRIPTS) }
             }
         }
 

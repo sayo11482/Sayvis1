@@ -8,8 +8,10 @@ import com.example.sayvis.data.local.SayvisDatabase
 import com.example.sayvis.data.local.UicAttributeEntity
 import com.example.sayvis.model.AuditEvent
 import com.example.sayvis.model.AwareOpportunity
+import com.example.sayvis.model.CognitiveLoadLevel
 import com.example.sayvis.model.ContextSnapshot
 import com.example.sayvis.model.Device
+import com.example.sayvis.model.FocusActivity
 import com.example.sayvis.model.Mission
 import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.model.RiskLevel
@@ -211,6 +213,20 @@ class SayvisRepository(private val database: SayvisDatabase) {
         )
     }
 
+    /** Adds a device that passed the pairing handshake. It starts UNTRUSTED. */
+    suspend fun registerPairedDevice(device: Device) {
+        database.deviceDao().insertDevice(DeviceEntity.fromDomain(device))
+        recordAuditEvent(
+            actor = "OWNER",
+            action = "device.pair",
+            riskLevel = RiskLevel.HIGHER_RISK,
+            auth = "OWNER_CONFIRMED_PAIRING_CODE",
+            result = "SUCCESS",
+            digest = "Paired ${device.type.name} ${device.name} fp=${device.publicKeyFingerprint}",
+            deviceId = device.id
+        )
+    }
+
     suspend fun revokeDevice(deviceId: String) {
         database.deviceDao().updateDeviceStatus(deviceId, isRevoked = true, isTrusted = false)
         recordAuditEvent(
@@ -223,22 +239,39 @@ class SayvisRepository(private val database: SayvisDatabase) {
         )
     }
 
-    // Helper to build real-time context snapshot for AWARE engine
+    // Helper to build real-time context snapshot for AWARE engine.
+    // The snapshot is language-neutral: it stores enum keys and raw values, and the UI
+    // renders it through ContextLocalization so Persian users never see English prose.
     fun getContextSnapshot(
         activeMissionsCount: Int,
         blockedTasksCount: Int,
         emergencyLockActive: Boolean,
-        isOnline: Boolean
+        isOnline: Boolean,
+        batteryPercent: Int = 85,
+        isCharging: Boolean = false,
+        focusWindowActive: Boolean = false,
+        currentActivity: FocusActivity = FocusActivity.STRATEGIC_EXECUTION
     ): ContextSnapshot {
+        val load = when {
+            emergencyLockActive -> CognitiveLoadLevel.ELEVATED
+            blockedTasksCount >= 3 -> CognitiveLoadLevel.FATIGUE_RISK
+            blockedTasksCount > 0 -> CognitiveLoadLevel.ELEVATED
+            else -> CognitiveLoadLevel.OPTIMAL
+        }
         return ContextSnapshot(
             timestamp = System.currentTimeMillis(),
-            focusWindow = "Deep Work Window (09:00 - 11:30)",
-            currentActivity = "Strategic Execution & Architecture Verification",
-            cognitiveLoad = if (blockedTasksCount > 0) "Fatigue / Blocker Alert" else "Optimal Flow",
+            focusWindowActive = focusWindowActive,
+            focusWindowStart = "09:00",
+            focusWindowEnd = "11:30",
+            currentActivity = currentActivity,
+            cognitiveLoad = load,
             activeMissionsCount = activeMissionsCount,
             blockedTasksCount = blockedTasksCount,
-            networkStatus = if (isOnline) "Online - SAYVIS Gateway Secure Enclave" else "Offline - Sovereign Local Safe Mode",
-            emergencyLockActive = emergencyLockActive
+            isOnline = isOnline,
+            gatewaySecure = isOnline,
+            emergencyLockActive = emergencyLockActive,
+            batteryPercent = batteryPercent,
+            isCharging = isCharging
         )
     }
 }

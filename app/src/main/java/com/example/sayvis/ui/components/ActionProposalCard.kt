@@ -75,12 +75,13 @@ fun ActionProposalCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = opportunity.title,
+                SayvisText(
+                    source = opportunity.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    markTranslated = true
                 )
 
                 Box(
@@ -99,10 +100,11 @@ fun ActionProposalCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = opportunity.description,
+            SayvisText(
+                source = opportunity.description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = SayvisSilverMuted
+                color = SayvisSilverMuted,
+                markTranslated = true
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -136,11 +138,19 @@ fun ActionProposalCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Text(
-                    text = "${if (isPersian) "محتوا: " else "Target: "} ${opportunity.proposedAction.targetPayload}",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row {
+                    Text(
+                        text = if (isPersian) "محتوا: " else "Target: ",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    SayvisText(
+                        source = opportunity.proposedAction.targetPayload,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        markTranslated = true
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
