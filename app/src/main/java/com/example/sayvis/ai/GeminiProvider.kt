@@ -28,9 +28,10 @@ class GeminiProvider(
     override fun isConfigured(settings: AiSettings): Boolean = resolveKey(settings).isNotBlank()
 
     private fun resolveKey(settings: AiSettings): String {
-        val runtime = settings.geminiApiKey.trim()
+        // Strip every whitespace character: pasted keys often arrive with line breaks.
+        val runtime = settings.geminiApiKey.filter { !it.isWhitespace() }
         if (runtime.isNotBlank() && runtime != PLACEHOLDER) return runtime
-        val packaged = buildConfigKeyProvider().trim()
+        val packaged = buildConfigKeyProvider().filter { !it.isWhitespace() }
         return if (packaged.isNotBlank() && packaged != PLACEHOLDER) packaged else ""
     }
 
@@ -84,7 +85,19 @@ class GeminiProvider(
                 "generationConfig",
                 JSONObject().apply {
                     put("temperature", context.temperature)
-                    put("maxOutputTokens", context.maxOutputTokens)
+                    put("maxOutputTokens", context.maxOutputTokens.coerceAtLeast(128))
+
+                    // Gemini 2.5 Flash thinks by default and thinking tokens eat the
+                    // output budget, which makes small-budget requests return EMPTY
+                    // answers. Thinking can only be disabled on the stable 2.5
+                    // Flash/Flash-Lite snapshots; 2.5 Pro needs a floor, and 3.x /
+                    // -latest aliases are left untouched because they reject the field.
+                    when (model.lowercase(java.util.Locale.ROOT)) {
+                        "gemini-2.5-flash", "gemini-2.5-flash-lite" ->
+                            put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
+                        "gemini-2.5-pro" ->
+                            put("thinkingConfig", JSONObject().put("thinkingBudget", 128))
+                    }
                 }
             )
         }
@@ -100,17 +113,32 @@ class GeminiProvider(
                 if (!response.isSuccessful) {
                     return@withContext failure(model, start, "HTTP ${response.code}: ${summarise(payload)}")
                 }
-                val text = JSONObject(payload)
+                val candidate = JSONObject(payload)
                     .optJSONArray("candidates")
                     ?.optJSONObject(0)
+                val text = candidate
                     ?.optJSONObject("content")
                     ?.optJSONArray("parts")
-                    ?.let { parts -> buildString { for (i in 0 until parts.length()) append(parts.optJSONObject(i)?.optString("text") ?: "") } }
+                    ?.let { parts ->
+                        buildString {
+                            for (i in 0 until parts.length()) {
+                                val part = parts.optJSONObject(i) ?: continue
+                                // "thought" parts are internal reasoning, not the answer.
+                                if (!part.optBoolean("thought", false)) append(part.optString("text"))
+                            }
+                        }
+                    }
                     ?.trim()
                     .orEmpty()
 
                 if (text.isEmpty()) {
-                    failure(model, start, "The model returned an empty answer (it may have been blocked by a safety filter).")
+                    val finishReason = candidate?.optString("finishReason").orEmpty().ifBlank { "UNKNOWN" }
+                    failure(
+                        model, start,
+                        "The model returned no visible text (finishReason=$finishReason). " +
+                            "If this keeps happening, raise 'Maximum response length' in Settings — " +
+                            "thinking models can spend the whole token budget before answering."
+                    )
                 } else {
                     AIResponse(
                         text = text,
@@ -132,15 +160,36 @@ class GeminiProvider(
             return@withContext ProbeOutcome(false, 0, "no-key", "کلید API وارد نشده است", "No API key entered")
         }
         val response = generateResponse(
-            AiRequestContext(prompt = "ping", languageFa = false, maxOutputTokens = 8),
+            AiRequestContext(prompt = "Reply with the single word: OK", languageFa = false, maxOutputTokens = 512),
             settings
         )
+        if (response.isSuccess) {
+            return@withContext ProbeOutcome(
+                true,
+                System.currentTimeMillis() - start,
+                response.model,
+                "اتصال برقرار است",
+                "Connection successful"
+            )
+        }
+
+        // Distinguish "bad key / no network" from "key fine, generation hiccup".
+        val keyReachable = runCatching {
+            val request = Request.Builder()
+                .url("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=$apiKey")
+                .get()
+                .build()
+            clientFor(settings).newCall(request).execute().use { it.isSuccessful }
+        }.getOrDefault(false)
+
+        val faHint = if (keyReachable) "کلید معتبر است؛ فقط تولید پاسخ ناموفق بود: " else ""
+        val enHint = if (keyReachable) "The key is VALID; only generation failed: " else ""
         ProbeOutcome(
-            response.isSuccess,
+            false,
             System.currentTimeMillis() - start,
             response.model,
-            if (response.isSuccess) "اتصال برقرار است" else (response.errorMessage ?: "خطا"),
-            if (response.isSuccess) "Connection successful" else (response.errorMessage ?: "Error")
+            faHint + (response.errorMessage ?: "خطا"),
+            enHint + (response.errorMessage ?: "Error")
         )
     }
 
