@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.sayvis.settings.AiVisualStyle
+import com.example.sayvis.ui.AvatarState
 import com.example.sayvis.ui.theme.SayvisAmberWarning
 import com.example.sayvis.ui.theme.SayvisCyan
 import com.example.sayvis.ui.theme.SayvisGold
