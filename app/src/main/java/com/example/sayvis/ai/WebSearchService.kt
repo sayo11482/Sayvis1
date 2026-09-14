@@ -132,7 +132,9 @@ class WebSearchService(
                     out.add(
                         WebResult(
                             title = title,
-                            url = "https://$lang.wikipedia.org/wiki/" + urlencode(title).replace("%20", "_"),
+                            // URLEncoder emits '+' for spaces; Wikipedia uses
+                            // underscores in canonical article paths.
+                            url = "https://$lang.wikipedia.org/wiki/" + urlencode(title).replace("+", "_"),
                             snippet = stripTags(jsonUnescape(match.groupValues[2])),
                             source = "Wikipedia"
                         )
