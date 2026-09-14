@@ -341,8 +341,8 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         text = if (persian) {
             "سلام. من سایو هستم، دستیار شخصی سایویس.\n" +
                 "پروندهٔ شناختی شما بارگذاری شد، امنیت «اعتماد صفر» فعال است و ۳ دستگاه جفت شده‌اند.\n" +
-                "می‌توانید مستقیم دستور بدهید: «مأموریت بساز …»، «یادت باشه که …»، «حساب کن ۱۲×۳»، «وضعیت رو گزارش بده»، «باز کن تنظیمات» — را تحلیل و واقعاً اجرا می‌کنم. "
-                +"از تب «ابزارها» به مأموریت‌ها، معاملات و اسکریپت‌نویسی دسترسی دارید و همهٔ تنظیمات — از جمله کلید API و درگاه متاتریدر — در تب «تنظیمات» است."
+                "می‌توانید مستقیم دستور بدهید: «مأموریت بساز …»، «یادت باشه که …»، «حساب کن ۱۲×۳»، «وضعیت رو گزارش بده»، «باز کن تنظیمات» — را تحلیل و واقعاً اجرا می‌کنم. " +
+                "از تب «ابزارها» به مأموریت‌ها، معاملات و اسکریپت‌نویسی دسترسی دارید و همهٔ تنظیمات — از جمله کلید API و درگاه متاتریدر — در تب «تنظیمات» است."
         } else {
             "Hello. I am SAYO, your SAYVIS personal assistant.\n" +
                 "Your cognitive profile is loaded, zero-trust security is active and 3 devices are paired.\n" +
@@ -1382,7 +1382,6 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, if (persian) "fa-IR" else "en-US")
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MATCH, 2)
             putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
         }

@@ -349,7 +349,6 @@ fun ChatScreen(
                     if (inputText.isNotBlank()) {
                         onSendMessage(inputText)
                         inputText = ""
-                        isVoiceListening = false
                     }
                 },
                 modifier = Modifier
