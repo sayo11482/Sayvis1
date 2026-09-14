@@ -1,0 +1,57 @@
+name: Build APK
+
+# Builds the installable debug APK for every push to the working branch and to
+# main, and publishes it as a workflow artifact so the owner can download the
+# installer without touching Android Studio.
+on:
+  push:
+    branches:
+      - arena/01a09a63-sayvis1
+      - main
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # The debug signing config points at <root>/debug.keystore, which is
+      # deliberately gitignored. Regenerate a standard Android debug keystore
+      # when it is absent so assembleDebug can sign the installer.
+      - name: Provide debug keystore
+        run: |
+          if [ ! -f debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug, O=Android, C=US"
+          fi
+
+      # The repository ships gradle-wrapper.properties but not the wrapper jar,
+      # so install the exact Gradle version the wrapper declares.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Assemble debug APK
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sayvis-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
