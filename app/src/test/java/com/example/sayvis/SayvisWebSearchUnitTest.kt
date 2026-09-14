@@ -58,7 +58,9 @@ class SayvisWebSearchUnitTest {
         )
         assertNotNull(decision)
         assertTrue(decision!!.explicit)
-        assertEquals("درباره قیمت طلا", decision.query)
+        // The longest matching trigger ("جستجو کن درباره") is consumed, so the
+        // slotted query is the topic only.
+        assertEquals("قیمت طلا", decision.query)
     }
 
     @Test

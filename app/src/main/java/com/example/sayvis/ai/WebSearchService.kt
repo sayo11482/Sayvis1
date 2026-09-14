@@ -117,21 +117,23 @@ class WebSearchService(
             return runCatching { URLDecoder.decode(match.groupValues[1], "UTF-8") }.getOrNull()
         }
 
-        /** Extracts search hits from the Wikipedia opensearch-style JSON. */
+        /**
+         * Extracts search hits from the Wikipedia search JSON. Parsed with a
+         * regex scanner instead of org.json so the logic stays unit-testable
+         * on the plain JVM (where org.json is a stub).
+         */
         fun parseWikipediaJson(json: String, lang: String): List<WebResult> {
             return runCatching {
-                val root = org.json.JSONObject(json)
-                val hits = root.optJSONObject("query")?.optJSONArray("search") ?: return emptyList()
+                val pairRegex = Regex("\\\"title\\\"\\s*:\\s*\\\"((?:\\\\.|[^\\\"\\\\])*)\\\"\\s*,\\s*\\\"snippet\\\"\\s*:\\s*\\\"((?:\\\\.|[^\\\"\\\\])*)\\\"")
                 val out = ArrayList<WebResult>()
-                for (i in 0 until hits.length()) {
-                    val hit = hits.optJSONObject(i) ?: continue
-                    val title = hit.optString("title")
+                for (match in pairRegex.findAll(json)) {
+                    val title = jsonUnescape(match.groupValues[1])
                     if (title.isBlank()) continue
                     out.add(
                         WebResult(
                             title = title,
                             url = "https://$lang.wikipedia.org/wiki/" + urlencode(title).replace("%20", "_"),
-                            snippet = stripTags(hit.optString("snippet")),
+                            snippet = stripTags(jsonUnescape(match.groupValues[2])),
                             source = "Wikipedia"
                         )
                     )
@@ -150,8 +152,13 @@ class WebSearchService(
         )
 
         private val QUESTION_WORDS = listOf(
-            "چیست", "چیه", "چیه؟", "چرا", "چگونه", "چطور", "کیست", "کجاست", "کی بود", "اخبار", "قیمت", "آب و هوا", "هوا چطوره",
-            "what is", "who is", "why ", "how ", "when ", "where ", "news", "price of", "weather"
+            "چیست", "چیه", "چیه؟", "چرا", "چگونه", "چطور", "کیست", "کجاست", "کی بود", "اخبار", "قیمت", "آب و هوا", "هوا چطوره"
+        )
+
+        // Latin cues are matched on word boundaries so e.g. "how" inside
+        // "show" does not trigger a web search.
+        private val LATIN_QUESTION = Regex(
+            """\b(what|who|why|how|when|where)\b|\b(news|price of|weather)\b"""
         )
 
         /**
@@ -170,7 +177,7 @@ class WebSearchService(
                 }
             }
             val questionMark = text.contains('؟') || text.contains('?')
-            val questionWord = QUESTION_WORDS.any { text.contains(it) }
+            val questionWord = QUESTION_WORDS.any { text.contains(it) } || LATIN_QUESTION.containsMatchIn(text)
             return if (questionMark || questionWord) SearchDecision(query = text, explicit = false) else null
         }
 
@@ -185,6 +192,33 @@ class WebSearchService(
             .replace("&gt;", ">")
             .replace(Regex("\\s+"), " ")
             .trim()
+
+        /** Minimal JSON string unescape for the regex-extracted fields. */
+        fun jsonUnescape(value: String): String {
+            if ('\\' !in value) return value
+            val out = StringBuilder(value.length)
+            var i = 0
+            while (i < value.length) {
+                val ch = value[i]
+                if (ch != '\\' || i + 1 >= value.length) { out.append(ch); i++; continue }
+                when (val next = value[i + 1]) {
+                    '"' -> out.append('"')
+                    '\\' -> out.append('\\')
+                    '/' -> out.append('/')
+                    'n' -> out.append('\n')
+                    'r' -> out.append('\r')
+                    't' -> out.append('\t')
+                    'b' -> out.append('\b')
+                    'u' -> if (i + 5 < value.length) {
+                        out.append(value.substring(i + 2, i + 6).toIntOrNull(16)?.toChar() ?: 'u')
+                        i += 4
+                    } else out.append('u')
+                    else -> out.append(next)
+                }
+                i += 2
+            }
+            return out.toString()
+        }
 
         fun urlencode(value: String): String =
             java.net.URLEncoder.encode(value, "UTF-8")
