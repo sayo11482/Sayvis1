@@ -219,7 +219,7 @@ class SayvisRepository(private val database: SayvisDatabase) {
         recordAuditEvent(
             actor = "OWNER",
             action = "device.pair",
-            riskLevel = RiskLevel.HIGH,
+            riskLevel = RiskLevel.HIGHER_RISK,
             auth = "OWNER_CONFIRMED_PAIRING_CODE",
             result = "SUCCESS",
             digest = "Paired ${device.type.name} ${device.name} fp=${device.publicKeyFingerprint}",

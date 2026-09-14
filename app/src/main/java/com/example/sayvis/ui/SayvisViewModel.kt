@@ -837,7 +837,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         when (val r = accountStore.register(email, password, persian)) {
             is AccountResult.Success -> {
                 _accountMessage.value = if (persian) "حساب مالک ساخته شد و وارد شدید." else "Owner account created and signed in."
-                audit("OWNER", "account.register", RiskLevel.HIGH, "OWNER_PASSWORD", "SUCCESS", "account=${r.account.accountId}")
+                audit("OWNER", "account.register", RiskLevel.HIGHER_RISK, "OWNER_PASSWORD", "SUCCESS", "account=${r.account.accountId}")
             }
             is AccountResult.Failure -> _accountMessage.value = r.message(persian)
         }
@@ -848,18 +848,18 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         when (val r = accountStore.signIn(email, password)) {
             is AccountResult.Success -> {
                 _accountMessage.value = if (persian) "ورود موفق." else "Signed in."
-                audit("OWNER", "account.sign_in", RiskLevel.MEDIUM, "OWNER_PASSWORD", "SUCCESS", "account=${r.account.accountId}")
+                audit("OWNER", "account.sign_in", RiskLevel.MEDIUM_RISK, "OWNER_PASSWORD", "SUCCESS", "account=${r.account.accountId}")
             }
             is AccountResult.Failure -> {
                 _accountMessage.value = r.message(persian)
-                audit("OWNER", "account.sign_in", RiskLevel.MEDIUM, "OWNER_PASSWORD", "REJECTED", "attempts=${accountStore.failedAttempts()}")
+                audit("OWNER", "account.sign_in", RiskLevel.MEDIUM_RISK, "OWNER_PASSWORD", "REJECTED", "attempts=${accountStore.failedAttempts()}")
             }
         }
     }
 
     fun signOutOwner() {
         accountStore.signOut()
-        audit("OWNER", "account.sign_out", RiskLevel.LOW, "OWNER", "SUCCESS", "")
+        audit("OWNER", "account.sign_out", RiskLevel.LOW_RISK, "OWNER", "SUCCESS", "")
     }
 
     fun changeOwnerPassword(current: String, new: String) {
@@ -867,7 +867,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         when (val r = accountStore.changePassword(current, new, persian)) {
             is AccountResult.Success -> {
                 _accountMessage.value = if (persian) "رمز عبور تغییر کرد." else "Password changed."
-                audit("OWNER", "account.password_change", RiskLevel.HIGH, "OWNER_PASSWORD", "SUCCESS", "")
+                audit("OWNER", "account.password_change", RiskLevel.HIGHER_RISK, "OWNER_PASSWORD", "SUCCESS", "")
             }
             is AccountResult.Failure -> _accountMessage.value = r.message(persian)
         }
@@ -887,7 +887,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         if (offer == null) {
             _accountMessage.value = if (isPersian.value) "ابتدا با ایمیل و رمز عبور وارد شوید." else "Sign in with e-mail and password first."
         } else {
-            audit("OWNER", "device.pair.offer", RiskLevel.MEDIUM, "OWNER_SESSION", "SUCCESS", "code=${offer.code}")
+            audit("OWNER", "device.pair.offer", RiskLevel.MEDIUM_RISK, "OWNER_SESSION", "SUCCESS", "code=${offer.code}")
         }
     }
 
@@ -898,7 +898,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         val ok = accountStore.completePairing(fingerprint, proof)
         if (!ok) {
             _accountMessage.value = if (persian) "کد تأیید دستگاه نامعتبر یا منقضی است." else "Device proof is invalid or the code expired."
-            audit("OWNER", "device.pair", RiskLevel.HIGH, "PAIRING_PROOF", "REJECTED", "fp=$fingerprint")
+            audit("OWNER", "device.pair", RiskLevel.HIGHER_RISK, "PAIRING_PROOF", "REJECTED", "fp=$fingerprint")
             return
         }
         val device = Device(
