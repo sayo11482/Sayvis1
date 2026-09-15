@@ -59,6 +59,7 @@ import com.example.sayvis.ui.screens.AwareScreen
 import com.example.sayvis.ui.screens.ChatScreen
 import com.example.sayvis.ui.screens.HomeScreen
 import com.example.sayvis.ui.screens.MissionsScreen
+import com.example.sayvis.ui.screens.ScreenTranslatorScreen
 import com.example.sayvis.ui.screens.ScriptsScreen
 import com.example.sayvis.ui.screens.SecurityDevicesScreen
 import com.example.sayvis.ui.screens.SettingsScreen
@@ -119,6 +120,12 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
 
     val probe by viewModel.probe.collectAsState()
     val isProbing by viewModel.isProbing.collectAsState()
+
+    val screenTranslateStatus by viewModel.screenTranslateStatus.collectAsState()
+    val screenTranslateStats by viewModel.screenTranslateStats.collectAsState()
+    val screenPreview by viewModel.previewSegment.collectAsState()
+    val screenPreviewBusy by viewModel.previewBusy.collectAsState()
+    val aiReady by viewModel.aiReady.collectAsState()
 
     val strings = remember(isPersian) { SayvisStrings.of(isPersian) }
     val layoutDirection = if (isPersian && settings.localization.forceRtlForPersian) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -335,6 +342,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                             devices = devices.count { it.isTrusted && !it.isRevoked },
                             scripts = scripts.size,
                             gatewayConnected = gatewayState.isConnected,
+                            screenTranslatorActive = screenTranslateStatus.isSessionActive,
                             persianDigits = settings.localization.persianDigits
                         ),
                         isPersian = isPersian,
@@ -448,6 +456,27 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         onExecutionModeChange = { viewModel.changeExecutionMode(it) },
                         onPlaceOrder = { viewModel.placeOrder(it) },
                         onClosePosition = { viewModel.closePosition(it) }
+                    )
+
+                    SayvisScreen.SCREEN_TRANSLATOR -> ScreenTranslatorScreen(
+                        settings = settings,
+                        status = screenTranslateStatus,
+                        stats = screenTranslateStats,
+                        preview = screenPreview,
+                        previewBusy = screenPreviewBusy,
+                        dictionarySize = viewModel.screenDictionarySize,
+                        cacheSize = viewModel.screenTranslationCacheSize,
+                        aiReady = aiReady,
+                        isPersian = isPersian,
+                        onCreateCaptureIntent = { viewModel.createScreenCaptureIntent() },
+                        onStart = { resultCode, data -> viewModel.startScreenTranslation(resultCode, data) },
+                        onStop = { viewModel.stopScreenTranslation() },
+                        onPause = { viewModel.pauseScreenTranslation() },
+                        onResume = { viewModel.resumeScreenTranslation() },
+                        onSettingsChange = { mutator -> viewModel.setScreenTranslation(mutator) },
+                        onPreview = { text -> viewModel.runScreenPreview(text) },
+                        onClearPreview = { viewModel.clearScreenPreview() },
+                        onRefreshLayers = { viewModel.refreshScreenTranslationLayers() }
                     )
 
                     SayvisScreen.SCRIPTS -> ScriptsScreen(

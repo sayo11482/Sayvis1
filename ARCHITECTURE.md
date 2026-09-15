@@ -90,3 +90,29 @@ anything free-form, so no string can silently fall through to English.
   the probe reports the exact reason instead of a generic failure.
 - **No secure hardware**: `SecureVault` reports `isHardwareBacked = false` and the Settings
   screen surfaces it rather than implying protection that does not exist.
+
+---
+
+## Live Screen Translation Layer
+
+```text
+ ScreenTranslatorService (foreground, type=mediaProjection)
+        │  owns the session, the notification and the audit entries
+        ├── ScreenCaptureController   MediaProjection → VirtualDisplay → ImageReader
+        ├── ScreenTextRecognizer      ML Kit bundled Latin OCR (offline)
+        ├── ScreenTranslationEngine   cache → ScreenLexicon → AIOrchestrator provider
+        ├── ScreenTextPlanner         pure geometry: lines, plates, fonts, contrast
+        └── ScreenOverlayHost         TYPE_APPLICATION_OVERLAY windows
+                ├── ScreenOverlayPlanView    Persian drawn over the original text
+                └── ScreenControlBubbleView  tap=pause, drag=move, hold=stop
+```
+
+Live state travels through `ScreenTranslateRuntime` (a process-wide observable), so the Compose
+screen and the overlay renderer read the same truth while the owner is inside another app.
+`ScreenTranslationSettings` is persisted with the rest of the owner configuration
+(`SettingsStore`, schema v4) and observed by the service, which means a slider change is visible
+on the overlay the next frame.
+
+Everything that decides *what* is written and *where* is Android-free (`ScreenTextPlanner`,
+`ScreenLexicon`, `ScreenTranslationCache`, `ScreenTranslationEngine`) and covered by
+`SayvisScreenTranslateUnitTest`.

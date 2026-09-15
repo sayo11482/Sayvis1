@@ -270,6 +270,134 @@ class SayvisStrings(val fa: Boolean) {
     val errorGeneric get() = t("خطای ناشناخته", "Unknown error")
     val version get() = t("نسخه", "Version")
 
+    // ---------------------------------------------- live screen translation (PUR)
+    val toolScreenTranslate get() = t("مترجم زندهٔ صفحه", "Live Screen Translator")
+    val toolScreenTranslateHint get() = t(
+        "متن انگلیسی روی صفحه، در لحظه سر جای خودش فارسی می‌شود",
+        "English text on screen is replaced with Persian in place, live"
+    )
+    val stTitle get() = t("مترجم زندهٔ صفحه", "Live Screen Translator")
+    val stSubtitle get() = t(
+        "هر متن انگلیسی که روی صفحه می‌بینید، در همان نقطه از تصویر با فارسی جایگزین می‌شود — بدون کپی‌کردن، بدون انتظار.",
+        "Every piece of English on the screen is replaced with Persian exactly where it sits — nothing to copy, nothing to wait for."
+    )
+    val stStart get() = t("روشن کردن ترجمهٔ زنده", "Turn on live translation")
+    val stStop get() = t("پایان ترجمه", "Stop translation")
+    val stPause get() = t("توقف موقت", "Pause")
+    val stResume get() = t("ادامه", "Resume")
+    val stPhaseLabel get() = t("وضعیت سرویس", "Service state")
+    val stPermissionsTitle get() = t("دسترسی‌های لازم", "Required permissions")
+    val stOverlayPermission get() = t("نمایش روی برنامه‌های دیگر", "Display over other apps")
+    val stOverlayPermissionHint get() = t(
+        "تا فارسی را دقیقاً روی متن انگلیسی بنویسد، سایویس باید روی صفحهٔ برنامه‌های دیگر ترسیم کند.",
+        "SAYVIS draws over other apps so the Persian lands exactly on the English it replaces."
+    )
+    val stCapturePermission get() = t("ضبط صفحه", "Screen capture")
+    val stCapturePermissionHint get() = t(
+        "برای خواندن متن روی صفحه. اندروید اجازهٔ ضبط را برای هر جلسه از شما می‌پرسد؛ سایویس تصویر صفحه را جایی نمی‌فرستد.",
+        "Needed to read the text on the screen. Android asks for this consent every session; SAYVIS never uploads the picture."
+    )
+    val stNotificationPermission get() = t("اعلان‌ها", "Notifications")
+    val stNotificationPermissionHint get() = t(
+        "یک ترجمهٔ دائمی باید همیشه در اعلان‌ها دیده شود تا بتوانید هر لحظه متوقفش کنید.",
+        "A permanent translator must stay visible in the notification shade so you can stop it any time."
+    )
+    val stGrant get() = t("اعطای دسترسی", "Grant")
+    val stGranted get() = t("داده شده", "Granted")
+    val stOpenSystemSettings get() = t("تنظیمات سیستم", "System settings")
+    val stNeedAllPermissions get() = t(
+        "برای شروع، «نمایش روی برنامه‌های دیگر» و اجازهٔ ضبط صفحه لازم است.",
+        "To start, the overlay permission and screen-capture consent are both required."
+    )
+    val stAppearanceTitle get() = t("ظاهر ترجمه", "Translation appearance")
+    val stModeLabel get() = t("شیوهٔ نمایش", "Display mode")
+    val stGranularityLabel get() = t("واحد ترجمه", "Translation unit")
+    val stPlateStyle get() = t("پلاک پشت نوشته", "Plate behind the text")
+    val stPlateOpacity get() = t("شفافیت پلاک (٪)", "Plate opacity (%)")
+    val stTextColor get() = t("رنگ نوشته", "Text colour")
+    val stTextScale get() = t("اندازهٔ نوشته (٪)", "Text scale (%)")
+    val stPersianNumbers get() = t("اعداد فارسی در ترجمه", "Persian digits inside translations")
+    val stPerformanceTitle get() = t("کارایی و باتری", "Performance & battery")
+    val stPollIntervalLabel get() = t("فاصلهٔ خواندن صفحه (میلی‌ثانیه)", "Screen read interval (ms)")
+    val stPollIntervalHint get() = t(
+        "کمتر = به‌روزرسانی سریع‌تر، بیشتر = مصرف کمتر باتری",
+        "Lower = snappier, higher = cooler and lighter on the battery"
+    )
+    val stMaxPerFrame get() = t("بیشینهٔ عبارت در هر تصویر", "Max phrases per frame")
+    val stMaxPerRequest get() = t("بیشینهٔ عبارت در هر درخواست هوش مصنوعی", "Max phrases per AI request")
+    val stMinWordLength get() = t("کوتاه‌ترین واژهٔ قابل ترجمه (نویسه)", "Shortest translatable word (characters)")
+    val stBubble get() = t("حباب کنترل شناور", "Floating control bubble")
+    val stBubbleHint get() = t(
+        "یک ضربه: توقف/ادامه • کشیدن: جابه‌جایی • نگه‌داشتن: پایان ترجمه",
+        "Tap: pause/resume • Drag: move • Hold: stop translating"
+    )
+    val stBubbleOpacity get() = t("شفافیت حباب (٪)", "Bubble opacity (%)")
+    val stKeepAwake get() = t("روشن نگه داشتن صفحه", "Keep the screen awake")
+    val stResumeBoot get() = t("یادآوری پس از راه‌اندازی دوبارهٔ دستگاه", "Remind me after a restart")
+    val stResumeBootHint get() = t(
+        "اندروید اجازهٔ ضبط را در هر جلسه دوباره می‌پرسد؛ این گزینه فقط یادآوری می‌کند.",
+        "Android always asks for capture consent again; this only reminds you."
+    )
+    val stDictionaryOnly get() = t("فقط واژه‌نامهٔ آفلاین (بدون اینترنت)", "Offline dictionary only (no internet)")
+    val stDictionaryOnlyHint get() = t(
+        "هیچ متنی به سرویس هوش مصنوعی فرستاده نمی‌شود؛ ترجمه فقط از واژه‌نامهٔ روی دستگاه می‌آید.",
+        "No sentence ever leaves the device; translations come from the on-device glossary only."
+    )
+    val stCacheTranslations get() = t("ذخیرهٔ ترجمه‌ها برای دفعهٔ بعد", "Reuse translations next time")
+    val stSingleAppCapture get() = t("اجازهٔ انتخاب یک برنامهٔ مشخص (اندروید ۱۴+)", "Let me pick a single app (Android 14+)")
+    val stSkipOwnApp get() = t("نادیده گرفتن صفحهٔ خود سایویس", "Skip SAYVIS's own screens")
+    val stStatsTitle get() = t("آمار زندهٔ جلسه", "Live session statistics")
+    val stStatFrames get() = t("تصویر خوانده‌شده", "Frames read")
+    val stStatSkipped get() = t("تصویر ردشده (بدون تغییر)", "Frames skipped (unchanged)")
+    val stStatSegments get() = t("عبارت نوشته‌شده روی صفحه", "Phrases written on screen")
+    val stStatOcr get() = t("زمان تشخیص متن", "Text recognition time")
+    val stStatDictionary get() = t("واژه‌های واژه‌نامهٔ آفلاین", "Offline dictionary entries")
+    val stStatCache get() = t("جمله‌های آموخته‌شده", "Learned sentences")
+    val stStatOnline get() = t("سرویس هوش مصنوعی", "AI provider")
+    val stOnlineReady get() = t("آماده (متن آزاد با هوش مصنوعی)", "Ready (free text via AI)")
+    val stOnlineOffline get() = t("فقط واژه‌نامهٔ آفلاین", "Offline dictionary only")
+    val stRecentTitle get() = t("آخرین چیزهایی که روی صفحه ترجمه شد", "What was translated most recently")
+    val stNothingTranslated get() = t(
+        "هنوز چیزی ترجمه نشده است؛ ترجمهٔ زنده را روشن کنید و صفحه را عوض کنید.",
+        "Nothing translated yet — turn on live translation and change the screen."
+    )
+    val stProtectedContent get() = t(
+        "این تصویر محافظت‌شده است (برنامهٔ بانکی یا مشابه)؛ اندروید اجازهٔ خواندن آن را نمی‌دهد.",
+        "This screen is protected (a bank or similar app); Android does not allow reading it."
+    )
+    val stTesterTitle get() = t("آزمودن مترجم", "Try the translator")
+    val stTesterHint get() = t(
+        "یک متن انگلیسی بنویسید تا همین حالا ببینید سایویس چه می‌کند و ترجمه از کجا آمده است.",
+        "Type any English text to see what SAYVIS does with it — and which tier produced it."
+    )
+    val stTestMethod get() = t("ترجمه کن", "Translate")
+    val stSourceText get() = t("متن اصلی", "Source text")
+    val stResultText get() = t("ترجمهٔ فارسی", "Persian translation")
+    val stTierLabel get() = t("منبع ترجمه", "Produced by")
+    val stTierDictionary get() = t("واژه‌نامهٔ آفلاین", "Offline dictionary")
+    val stTierCache get() = t("حافظهٔ ترجمه", "Translation cache")
+    val stTierMachine get() = t("سرویس هوش مصنوعی", "AI provider")
+    val stTierNone get() = t("ترجمه نشد", "No translation")
+    val stPrivacyTitle get() = t("حریم خصوصی و امنیت", "Privacy & security")
+    val stPrivacyBody get() = t(
+        "تصویر صفحه فقط روی همین دستگاه پردازش می‌شود و هرگز جایی فرستاده نمی‌شود. " +
+            "فقط متنِ شناسایی‌شده و تنها در صورتی که «فقط واژه‌نامهٔ آفلاین» و «حالت آفلاین» خاموش باشند، " +
+            "برای ترجمهٔ جمله‌های تازه به سرویس هوش مصنوعی خودتان می‌رود. " +
+            "با فعال شدن قفل اضطراری، ترجمهٔ زنده فوراً متوقف و مسدود می‌شود و همهٔ رخدادها در زنجیرهٔ ممیزی ثبت می‌گردد.",
+        "The screen image is processed on this device only and is never uploaded. " +
+            "Only recognised text — and only when both \"offline dictionary only\" and \"force offline\" are off — " +
+            "is sent to the AI provider you configured, to translate sentences the dictionary does not know. " +
+            "Engaging the emergency lock stops and blocks live translation immediately, and every transition is written to the audit chain."
+    )
+    val stEmergencyBlocked get() = t(
+        "قفل اضطراری سایویس فعال است؛ ترجمهٔ زندهٔ صفحه مسدود شده است.",
+        "The SAYVIS emergency lock is engaged; live screen translation is blocked."
+    )
+    val stConsentDenied get() = t(
+        "اجازهٔ ضبط صفحه داده نشد. برای فعال‌سازی، دوباره تلاش کنید و «شروع ضبط» را بپذیرید.",
+        "Screen-capture consent was not granted. Try again and accept the capture prompt."
+    )
+
     // ------------------------------------------------------------------ numbers
     val percent get() = t("٪", "%")
     val usd get() = t("دلار", "USD")

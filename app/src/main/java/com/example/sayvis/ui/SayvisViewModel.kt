@@ -1,6 +1,11 @@
 package com.example.sayvis.ui
 
 import android.app.Application
+import android.content.Context
+import android.content.Intent
+import android.media.projection.MediaProjectionConfig
+import android.media.projection.MediaProjectionManager
+import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sayvis.ai.AIOrchestrator
@@ -38,6 +43,16 @@ import com.example.sayvis.scripts.ScriptEngine
 import com.example.sayvis.scripts.ScriptRunResult
 import com.example.sayvis.scripts.ScriptStore
 import com.example.sayvis.scripts.ScriptTrigger
+import com.example.sayvis.screentranslate.ScreenLexicon
+import com.example.sayvis.screentranslate.ScreenTranslateRuntime
+import com.example.sayvis.screentranslate.ScreenTranslateStatus
+import com.example.sayvis.screentranslate.PreferencesKeyValueStore
+import com.example.sayvis.screentranslate.ScreenTranslationCache
+import com.example.sayvis.screentranslate.ScreenTranslationEngine
+import com.example.sayvis.screentranslate.ScreenTranslationSettings
+import com.example.sayvis.screentranslate.ScreenTranslationStats
+import com.example.sayvis.screentranslate.ScreenTranslatorService
+import com.example.sayvis.screentranslate.TranslatedSegment
 import com.example.sayvis.settings.AiProviderKind
 import com.example.sayvis.settings.AppLanguage
 import com.example.sayvis.settings.AppSettings
@@ -96,7 +111,8 @@ enum class SayvisScreen(val titleEn: String, val titleFa: String) {
     SIMULATION("Decision Simulator", "شبیه‌سازی تصمیم"),
     SECURITY("Security & Devices", "امنیت و دستگاه‌ها"),
     GATEWAY("Trading Gateway", "درگاه معاملاتی"),
-    SCRIPTS("Scripts & Automation", "اسکریپت و خودکارسازی");
+    SCRIPTS("Scripts & Automation", "اسکریپت و خودکارسازی"),
+    SCREEN_TRANSLATOR("Live Screen Translator", "مترجم زندهٔ صفحه");
 
     fun title(isPersian: Boolean): String = if (isPersian) titleFa else titleEn
 
@@ -144,6 +160,10 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val translationService = TranslationService(application)
     private val gateway = MetaTraderGateway()
     private val aiOrchestrator = AIOrchestrator()
+    private val screenTranslationEngine = ScreenTranslationEngine(
+        cache = ScreenTranslationCache(PreferencesKeyValueStore(application)),
+        orchestrator = aiOrchestrator
+    )
 
     val awareEngine = AwareEngine(repository)
 
@@ -209,6 +229,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun resetAllSettings() {
+        ScreenTranslatorService.stop(getApplication())
         settingsStore.resetToDefaults()
         _gatewayState.value = MtGatewayState()
         translationService.clearCache()
@@ -227,6 +248,113 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     val translationCacheSize: Int get() = translationService.cacheSize()
 
     fun clearTranslationCache() = translationService.clearCache()
+
+    // ------------------------------------------------- live screen translation
+    /** Live status of the permanent translator service (written by the service itself). */
+    val screenTranslateStatus: StateFlow<ScreenTranslateStatus> = ScreenTranslateRuntime.status
+
+    /** Cumulative counters for the translator dashboard. */
+    val screenTranslateStats: StateFlow<ScreenTranslationStats> = ScreenTranslateRuntime.stats
+
+    /** Size of the offline English→Persian glossary, shown to the owner. */
+    val screenDictionarySize: Int get() = ScreenLexicon.size
+
+    /** Sentences the live translator has already learned (persisted across sessions). */
+    val screenTranslationCacheSize: Int get() = screenTranslationEngine.cacheSize()
+
+    private val _previewSegment = MutableStateFlow<TranslatedSegment?>(null)
+    val previewSegment: StateFlow<TranslatedSegment?> = _previewSegment.asStateFlow()
+
+    private val _previewBusy = MutableStateFlow(false)
+    val previewBusy: StateFlow<Boolean> = _previewBusy.asStateFlow()
+
+    /** Applies a change to the screen-translation configuration. */
+    fun setScreenTranslation(mutator: (ScreenTranslationSettings) -> ScreenTranslationSettings) {
+        settingsStore.setScreenTranslation(mutator)
+    }
+
+    /**
+     * The system dialog that grants screen capture. On Android 14+ the owner may be offered
+     * a single app window instead of the whole display, which is both more private and a
+     * better fit for translating one specific app.
+     */
+    fun createScreenCaptureIntent(): Intent {
+        val manager = getApplication<Application>()
+            .getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        val preferSingleApp = settingsStore.current().screenTranslation.preferSingleAppCapture
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && preferSingleApp) {
+            runCatching { manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForUserChoice()) }
+                .getOrElse { manager.createScreenCaptureIntent() }
+        } else {
+            manager.createScreenCaptureIntent()
+        }
+    }
+
+    fun startScreenTranslation(resultCode: Int, captureData: Intent) {
+        settingsStore.setScreenTranslation { it.copy(enabled = true) }
+        ScreenTranslatorService.start(getApplication(), resultCode, captureData)
+        audit(
+            actor = "OWNER",
+            action = "screen.translate.start",
+            riskLevel = RiskLevel.HIGHER_RISK,
+            auth = "OWNER_CONSENT_SCREEN_CAPTURE",
+            result = "SUCCESS",
+            digest = "Screen capture consent granted to the live translator"
+        )
+    }
+
+    fun pauseScreenTranslation() = ScreenTranslatorService.send(getApplication(), ScreenTranslatorService.ACTION_PAUSE)
+
+    fun resumeScreenTranslation() = ScreenTranslatorService.send(getApplication(), ScreenTranslatorService.ACTION_RESUME)
+
+    fun stopScreenTranslation(reason: String = "owner stopped the session") {
+        ScreenTranslatorService.stop(getApplication())
+        settingsStore.setScreenTranslation { it.copy(enabled = false) }
+        audit(
+            actor = "OWNER",
+            action = "screen.translate.stop",
+            riskLevel = RiskLevel.MEDIUM_RISK,
+            auth = "OWNER_CONFIRMED",
+            result = "SUCCESS",
+            digest = reason
+        )
+    }
+
+    /** Rebuilds the overlay windows after the owner returns from the permission screen. */
+    fun refreshScreenTranslationLayers() =
+        ScreenTranslatorService.send(getApplication(), ScreenTranslatorService.ACTION_REFRESH)
+
+    /** Offline dictionary check used by the in-app tester field. */
+    fun runScreenPreview(text: String) {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return
+        _previewBusy.value = true
+        viewModelScope.launch {
+            val current = settingsStore.current()
+            val offline = screenTranslationEngine.resolveOffline(listOf(trimmed), current.screenTranslation)[trimmed]
+            _previewSegment.value = offline
+            if (offline == null) {
+                val online = screenTranslationEngine.translateOne(
+                    text = trimmed,
+                    settings = current.screenTranslation,
+                    ai = current.ai,
+                    forceOffline = current.forceOfflineMode,
+                    emergencyLockActive = current.emergencyLockActive,
+                    languageFa = true
+                )
+                _previewSegment.value = online
+            }
+            _previewBusy.value = false
+        }
+    }
+
+    fun clearScreenPreview() {
+        _previewSegment.value = null
+    }
+
+    fun clearScreenTranslationCache() {
+        screenTranslationEngine.clearCache()
+    }
 
     // --------------------------------------------------------------- AI / API
     private val _probe = MutableStateFlow<ProviderProbe?>(null)
@@ -997,6 +1125,8 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         updateAvatarState()
     }
 
+    private fun screenLexiconSize(): Int = ScreenLexicon.size
+
     companion object {
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
     }
@@ -1019,6 +1149,9 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             appendLine("execution mode: ${current.trading.executionMode.name}")
             appendLine("scripts: ${scriptStore.all().size} (enabled ${scriptStore.enabled().size})")
             appendLine("translation cache: ${translationService.cacheSize()}")
+            appendLine("screen translator phase: ${ScreenTranslateRuntime.status.value.phase.name}")
+            appendLine("screen translator dictionary: ${screenLexiconSize()} entries")
+            appendLine("screen translator cache: ${screenTranslationEngine.cacheSize()}")
         }
     }
 }

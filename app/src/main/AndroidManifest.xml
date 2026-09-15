@@ -6,6 +6,23 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!--
+      Live screen translation (مترجم زندهٔ صفحه).
+
+      * FOREGROUND_SERVICE + FOREGROUND_SERVICE_MEDIA_PROJECTION: Android requires a
+        foreground service of the mediaProjection type before any screen capture starts.
+      * SYSTEM_ALERT_WINDOW: the translated Persian is drawn over other apps, exactly on top
+        of the English it replaces. The owner must grant "display over other apps".
+      * POST_NOTIFICATIONS: the capture session is permanent, so it must be visible.
+      * RECEIVE_BOOT_COMPLETED: after a reboot SAYVIS may offer to resume the translator
+        (a fresh screen-capture consent is always required by the platform).
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -19,6 +36,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.MyApplication">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -26,6 +44,28 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          Permanent live translator. Started from the Screen Translator screen (which holds
+          the screen-capture consent) or from its own notification. Never exported: only the
+          owner's own app may command it.
+        -->
+        <service
+            android:name="com.example.sayvis.screentranslate.ScreenTranslatorService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection"
+            android:stopWithTask="false" />
+
+        <!-- Offers to resume translation after a reboot (consent must be re-granted). -->
+        <receiver
+            android:name="com.example.sayvis.screentranslate.ScreenTranslatorBootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

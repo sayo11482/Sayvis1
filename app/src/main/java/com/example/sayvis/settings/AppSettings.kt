@@ -1,5 +1,7 @@
 package com.example.sayvis.settings
 
+import com.example.sayvis.screentranslate.ScreenTranslationSettings
+
 /**
  * Global, owner-controlled configuration surface for SAYVIS.
  *
@@ -154,6 +156,11 @@ data class LocalizationSettings(
 data class AppSettings(
     val localization: LocalizationSettings = LocalizationSettings(),
     val ai: AiSettings = AiSettings(),
+    /**
+     * Live screen translation (English → Persian written on top of the original text).
+     * See `com.example.sayvis.screentranslate`.
+     */
+    val screenTranslation: ScreenTranslationSettings = ScreenTranslationSettings(),
     val trading: MtGatewayProfile = MtGatewayProfile(),
     val appearance: AppearanceMode = AppearanceMode.DARK_SPACE,
     val forceOfflineMode: Boolean = false,
@@ -164,7 +171,7 @@ data class AppSettings(
     val hapticFeedback: Boolean = true,
     val compactBottomNav: Boolean = true,
     val onboardingCompleted: Boolean = false,
-    val settingsSchemaVersion: Int = 3
+    val settingsSchemaVersion: Int = 4
 ) {
     /** Convenience: is the active language Persian? */
     fun isPersian(deviceLanguagePersian: Boolean = false): Boolean = when (localization.language) {

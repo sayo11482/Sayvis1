@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - arena/01a09a63-sayvis1
+      - arena/01a0a737-sayvis1
       - main
   workflow_dispatch:
 
@@ -50,11 +51,15 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
-      - name: Assemble debug APK
+      - name: Assemble debug APK and run the translator unit tests
         id: build
         run: |
           set -o pipefail
           gradle assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee build.log
+          # The pure-Kotlin half of the live screen translator (geometry, filters,
+          # glossary, cache, engine parsing) is verified here, where it actually runs.
+          gradle testDebugUnitTest --no-daemon --console=plain \
+            --tests "com.example.sayvis.SayvisScreenTranslateUnitTest" 2>&1 | tee -a build.log
 
       # When compilation fails, surface the actual errors in a place that is
       # readable through the GitHub API (annotations + a PR comment) so they can

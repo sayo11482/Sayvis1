@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -63,6 +64,8 @@ import com.example.sayvis.ui.theme.SayvisSurfaceVariant
  */
 data class ToolCounts(
     val missions: Int = 0,
+    /** True while the live screen translator is armed or running. */
+    val screenTranslatorActive: Boolean = false,
     val opportunities: Int = 0,
     val uicAttributes: Int = 0,
     val devices: Int = 0,
@@ -100,6 +103,7 @@ fun ToolsScreen(
         ToolEntry(SayvisScreen.TRADING, Icons.Default.AutoGraph, SayvisCyan, "tool_trading")
     )
     val systemTools = listOf(
+        ToolEntry(SayvisScreen.SCREEN_TRANSLATOR, Icons.Default.Translate, SayvisCyan, "tool_screen_translator"),
         ToolEntry(SayvisScreen.SCRIPTS, Icons.Default.Code, SayvisGold, "tool_scripts"),
         ToolEntry(SayvisScreen.SECURITY, Icons.Default.Security, SayvisRedAlert, "tool_security")
     )
@@ -233,6 +237,7 @@ private fun ToolCard(
 }
 
 private fun toolTitle(screen: SayvisScreen, s: com.example.sayvis.i18n.SayvisStrings): String = when (screen) {
+    SayvisScreen.SCREEN_TRANSLATOR -> s.toolScreenTranslate
     SayvisScreen.MISSIONS -> s.toolMissions
     SayvisScreen.UIC -> s.toolUic
     SayvisScreen.AWARE -> s.toolAware
@@ -245,6 +250,7 @@ private fun toolTitle(screen: SayvisScreen, s: com.example.sayvis.i18n.SayvisStr
 }
 
 private fun toolHint(screen: SayvisScreen, s: com.example.sayvis.i18n.SayvisStrings): String = when (screen) {
+    SayvisScreen.SCREEN_TRANSLATOR -> s.toolScreenTranslateHint
     SayvisScreen.MISSIONS -> s.toolMissionsHint
     SayvisScreen.UIC -> s.toolUicHint
     SayvisScreen.AWARE -> s.toolAwareHint
@@ -257,6 +263,11 @@ private fun toolHint(screen: SayvisScreen, s: com.example.sayvis.i18n.SayvisStri
 }
 
 private fun toolBadge(screen: SayvisScreen, counts: ToolCounts, isPersian: Boolean): String? = when (screen) {
+    SayvisScreen.SCREEN_TRANSLATOR -> if (counts.screenTranslatorActive) {
+        if (isPersian) "فعال" else "Live"
+    } else {
+        if (isPersian) "آفلاین‌محور" else "Offline-first"
+    }
     SayvisScreen.MISSIONS -> counts.missions.takeIf { it > 0 }
         ?.let { PersianFormat.digits(it.toString(), counts.persianDigits) }
     SayvisScreen.AWARE -> counts.opportunities.takeIf { it > 0 }
