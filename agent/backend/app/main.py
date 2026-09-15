@@ -164,11 +164,11 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI app
 app = FastAPI(
-    title="SAYVIS Professional AI Agent",
+    title="ODIN AGENT - Professional AI Agent",
     description="""
-## Sovereign Personal AI Agent Platform - Professional Edition
+## ODIN AGENT - Sovereign Professional AI Agent Platform
 
-**سایویس - پلتفرم عامل هوش مصنوعی حاکمیتی حرفه‌ای**
+**اودین ایجنت - عامل هوش مصنوعی حرفه‌ای و حاکمیتی**
 
 A professional self-hosted AI agent built on:
 - **n8n**: Workflow automation & orchestration
@@ -197,7 +197,7 @@ Then visit:
 - n8n: http://localhost:5678
 - Qdrant: http://localhost:6333/dashboard
     """,
-    version="1.0.0",
+    version="3.0.0-odin",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -322,11 +322,11 @@ async def openai_chat_completions(request: Request):
 @app.get("/", tags=["Root"])
 async def root():
     return {
-        "name": "SAYVIS Professional AI Agent",
-        "name_fa": "سایویس - عامل هوش مصنوعی حرفه‌ای",
-        "version": "1.0.0",
+        "name": "ODIN AGENT - Professional AI Agent",
+        "name_fa": "اودین ایجنت - عامل هوش مصنوعی حرفه‌ای",
+        "version": "3.0.0-odin",
         "status": "operational",
-        "description": "Sovereign Personal AI Operating System",
+        "description": "Odin Sovereign Professional AI Agent Platform",
         "services": {
             "n8n": "http://localhost:5678",
             "qdrant": "http://localhost:6333/dashboard",

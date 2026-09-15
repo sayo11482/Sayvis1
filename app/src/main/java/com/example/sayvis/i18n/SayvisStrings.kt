@@ -20,11 +20,11 @@ class SayvisStrings(val fa: Boolean) {
     /** Core picker: returns the Persian string when [fa], otherwise the English one. */
     fun t(faText: String, enText: String): String = if (fa) faText else enText
 
-    // ---------------------------------------------------------------- branding
-    val appName get() = t("سایویس", "SAYVIS")
-    val appNameLatin get() = "SAYVIS"
-    val appTagline get() = t("سامانهٔ هوش شخصی و حاکمیت داده", "Sovereign Personal AI Platform")
-    val assistantName get() = t("دستیار سایو", "SAYO Assistant")
+    // ---------------------------------------------------------------- branding - ODIN AGENT
+    val appName get() = t("اودین ایجنت", "ODIN AGENT")
+    val appNameLatin get() = "ODIN AGENT"
+    val appTagline get() = t("عامل هوش مصنوعی حرفه‌ای و حاکمیتی", "Sovereign Professional AI Agent Platform")
+    val assistantName get() = t("دستیار اودین", "ODIN Assistant")
 
     // ------------------------------------------------------- bottom navigation
     val navHome get() = t("خانه", "Home")

@@ -9,9 +9,9 @@
     Persian too when the device locale is fa.
 -->
 <resources>
-    <string name="app_name">سایویس</string>
-    <string name="app_name_fa">سایویس</string>
-    <string name="sayo_tagline">سامانهٔ هوش شخصی و حاکمیت داده</string>
+    <string name="app_name">اودین ایجنت</string>
+    <string name="app_name_fa">اودین ایجنت</string>
+    <string name="sayo_tagline">عامل هوش مصنوعی حرفه‌ای و حاکمیتی</string>
     <string name="uic_title">پروندهٔ شناختی کاربر</string>
     <string name="aware_title">موتور ادراک محیطی</string>
     <string name="missions_title">مأموریت‌ها</string>

@@ -3,14 +3,14 @@ package com.example.sayvis.ai
 import com.example.sayvis.settings.AiProviderKind
 import com.example.sayvis.settings.AiSettings
 
-/** Identity of the engine that actually produced an answer. */
+/** Identity of the engine that actually produced an answer - ODIN AGENT Edition */
 enum class ProviderType(val displayName: String, val displayNameFa: String) {
     GEMINI("Google Gemini", "گوگل جمینای"),
     OPEN_ROUTER("OpenRouter", "اوپن‌روتر"),
     GROQ_ROUTER("Groq LPU", "گروک"),
     CUSTOM_ENDPOINT("Custom endpoint", "سرویس دلخواه"),
-    SAYVIS_AGENT("SAYVIS Professional Agent", "عامل حرفه‌ای سایویس"),
-    LOCAL_COGNITIVE("SAYVIS local core", "هستهٔ محلی سایویس");
+    SAYVIS_AGENT("ODIN Professional Agent", "عامل حرفه‌ای اودین"),
+    LOCAL_COGNITIVE("ODIN local core", "هستهٔ محلی اودین");
 
     fun display(isPersian: Boolean): String = if (isPersian) displayNameFa else displayName
 

@@ -169,7 +169,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = if (isPersian) "سایویس" else "SAYVIS",
+                    text = if (isPersian) "اودین ایجنت" else "ODIN AGENT",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.White,
@@ -177,7 +177,7 @@ fun HomeScreen(
                 )
 
                 Text(
-                    text = if (isPersian) "لایه سیستم‌عامل هوش مصنوعی شخصی" else "Personal AI Operating Layer",
+                    text = if (isPersian) "عامل هوش مصنوعی حرفه‌ای و حاکمیتی" else "Sovereign Professional AI Agent",
                     style = MaterialTheme.typography.bodySmall,
                     color = SayvisCyan,
                     fontWeight = FontWeight.SemiBold
@@ -209,7 +209,7 @@ fun HomeScreen(
                     onValueChange = { quickInput = it },
                     placeholder = {
                         Text(
-                            if (isPersian) "فرمان یا سؤال از سایویس..." else "Directive or inquiry to SAYVIS...",
+                            if (isPersian) "فرمان یا سؤال از اودین..." else "Directive or inquiry to ODIN...",
                             color = SayvisSilverMuted.copy(alpha = 0.6f),
                             fontSize = 13.sp
                         )

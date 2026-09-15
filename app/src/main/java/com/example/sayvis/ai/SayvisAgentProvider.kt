@@ -12,8 +12,8 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
- * SAYVIS Professional AI Agent Provider
- * Connects to self-hosted SAYVIS Agent backend (FastAPI + n8n + Ollama + Qdrant)
+ * ODIN Professional AI Agent Provider (formerly SAYVIS)
+ * Connects to self-hosted ODIN Agent backend (FastAPI + n8n + Ollama + Qdrant)
  * 
  * This provider enables the Android app to use the professional self-hosted agent
  * that runs via: docker compose --profile cpu up
@@ -80,7 +80,7 @@ class SayvisAgentProvider : AIProvider {
                 val body = response.body?.string() ?: ""
                 
                 if (!response.isSuccessful) {
-                    throw Exception("SAYVIS Agent returned HTTP ${response.code}: ${body.take(300)}")
+                    throw Exception("ODIN Agent returned HTTP ${response.code}: ${body.take(300)}")
                 }
 
                 val json = JSONObject(body)
@@ -133,7 +133,7 @@ class SayvisAgentProvider : AIProvider {
                     model = settings.sayvisAgentModel,
                     isOfflineMode = false,
                     processingTimeMs = System.currentTimeMillis() - start,
-                    errorMessage = "SAYVIS Agent error: ${e.message}. Fallback also failed: ${fallbackError.message}"
+                    errorMessage = "ODIN Agent error: ${e.message}. Fallback also failed: ${fallbackError.message}"
                 )
             }
         }
@@ -197,7 +197,7 @@ class SayvisAgentProvider : AIProvider {
             val content = message?.optString("content") ?: ""
 
             if (content.isBlank()) {
-                throw Exception("Empty response from SAYVIS Agent OpenAI endpoint")
+                throw Exception("Empty response from ODIN Agent OpenAI endpoint")
             }
 
             return AIResponse(
@@ -218,8 +218,8 @@ class SayvisAgentProvider : AIProvider {
                 success = false,
                 latencyMs = 0,
                 model = "",
-                messageFa = "نشانی عامل سایویس وارد نشده است. مثال: http://192.168.1.100:8000",
-                messageEn = "SAYVIS Agent URL is missing. Example: http://192.168.1.100:8000"
+                messageFa = "نشانی اودین ایجنت وارد نشده است. مثال: http://192.168.1.100:8000",
+                messageEn = "ODIN Agent URL is missing. Example: http://192.168.1.100:8000"
             )
         }
 
@@ -244,9 +244,9 @@ class SayvisAgentProvider : AIProvider {
                     ProbeOutcome(
                         success = true,
                         latencyMs = latency,
-                        model = "sayvis-agent-$version",
-                        messageFa = "✅ عامل حرفه‌ای سایویس متصل است! نسخه: $version | تاخیر: ${latency}ms\nسرویس‌ها: n8n, Ollama, Qdrant, Postgres",
-                        messageEn = "✅ SAYVIS Professional Agent connected! Version: $version | Latency: ${latency}ms\nServices: n8n, Ollama, Qdrant, Postgres"
+                        model = "odin-agent-$version",
+                        messageFa = "✅ اودین ایجنت حرفه‌ای متصل است! نسخه: $version | تاخیر: ${latency}ms\nسرویس‌ها: n8n, Ollama, Qdrant, Postgres",
+                        messageEn = "✅ ODIN Professional Agent connected! Version: $version | Latency: ${latency}ms\nServices: n8n, Ollama, Qdrant, Postgres"
                     )
                 } else {
                     // Try /api/v1/health as fallback
@@ -262,16 +262,16 @@ class SayvisAgentProvider : AIProvider {
                                 success = true,
                                 latencyMs = fallbackLatency,
                                 model = settings.sayvisAgentModel,
-                                messageFa = "✅ عامل سایویس متصل است (مسیر جایگزین) | تاخیر: ${fallbackLatency}ms",
-                                messageEn = "✅ SAYVIS Agent connected (fallback route) | Latency: ${fallbackLatency}ms"
+                                messageFa = "✅ اودین ایجنت متصل است (مسیر جایگزین) | تاخیر: ${fallbackLatency}ms",
+                                messageEn = "✅ ODIN Agent connected (fallback route) | Latency: ${fallbackLatency}ms"
                             )
                         } else {
                             ProbeOutcome(
                                 success = false,
                                 latencyMs = fallbackLatency,
                                 model = "",
-                                messageFa = "❌ اتصال به عامل سایویس ناموفق بود. HTTP ${response.code}: ${body.take(200)}\nبررسی کنید: docker compose --profile cpu up",
-                                messageEn = "❌ Failed to connect to SAYVIS Agent. HTTP ${response.code}: ${body.take(200)}\nCheck: docker compose --profile cpu up"
+                                messageFa = "❌ اتصال به اودین ایجنت ناموفق بود. HTTP ${response.code}: ${body.take(200)}\nبررسی کنید: docker compose --profile cpu up",
+                                messageEn = "❌ Failed to connect to ODIN Agent. HTTP ${response.code}: ${body.take(200)}\nCheck: docker compose --profile cpu up"
                             )
                         }
                     }
@@ -282,8 +282,8 @@ class SayvisAgentProvider : AIProvider {
                 success = false,
                 latencyMs = System.currentTimeMillis() - start,
                 model = "",
-                messageFa = "❌ خطای اتصال به عامل سایویس: ${e.message}\n\nراهنما:\n1. مطمئن شوید Docker اجرا است: docker compose --profile cpu up\n2. نشانی را بررسی کنید (IP محلی، نه localhost اگر روی گوشی تست می‌کنید)\n3. فایروال پورت 8000 را باز کند",
-                messageEn = "❌ Connection error to SAYVIS Agent: ${e.message}\n\nGuide:\n1. Ensure Docker is running: docker compose --profile cpu up\n2. Check URL (use local IP, not localhost if testing from phone)\n3. Firewall allows port 8000"
+                messageFa = "❌ خطای اتصال به اودین ایجنت: ${e.message}\n\nراهنما:\n1. مطمئن شوید Docker اجرا است: docker compose --profile cpu up\n2. نشانی را بررسی کنید (IP محلی، نه localhost اگر روی گوشی تست می‌کنید)\n3. فایروال پورت 8000 را باز کند",
+                messageEn = "❌ Connection error to ODIN Agent: ${e.message}\n\nGuide:\n1. Ensure Docker is running: docker compose --profile cpu up\n2. Check URL (use local IP, not localhost if testing from phone)\n3. Firewall allows port 8000"
             )
         }
     }

@@ -228,14 +228,14 @@ fun SettingsScreen(
 
                 AiProviderKind.SAYVIS_AGENT -> {
                     Text(
-                        text = if (isPersian) "🚀 عامل حرفه‌ای سایویس - شامل n8n, Ollama, Qdrant, Postgres\nدستور راه‌اندازی: git clone https://github.com/n8n-io/self-hosted-ai-starter-kit.git && docker compose --profile cpu up"
-                        else "🚀 SAYVIS Professional Agent - includes n8n, Ollama, Qdrant, Postgres\nSetup: git clone https://github.com/n8n-io/self-hosted-ai-starter-kit.git && docker compose --profile cpu up",
+                        text = if (isPersian) "🔥 اودین ایجنت حرفه‌ای - شامل n8n, Ollama, Qdrant, Postgres\nدستور راه‌اندازی: cd agent && docker compose --profile cpu up"
+                        else "🔥 ODIN Professional Agent - includes n8n, Ollama, Qdrant, Postgres\nSetup: cd agent && docker compose --profile cpu up",
                         fontSize = 11.sp,
                         color = SayvisCyan
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SayvisField(
-                        label = if (isPersian) "نشانی عامل سایویس" else "SAYVIS Agent URL",
+                        label = if (isPersian) "نشانی اودین ایجنت" else "ODIN Agent URL",
                         value = settings.ai.sayvisAgentBaseUrl,
                         onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(sayvisAgentBaseUrl = it.trim()))) },
                         hint = "http://192.168.1.100:8000",
@@ -246,12 +246,12 @@ fun SettingsScreen(
                         label = s.model,
                         value = settings.ai.sayvisAgentModel,
                         onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(sayvisAgentModel = it.trim()))) },
-                        hint = "sayvis-agent",
+                        hint = "odin-agent",
                         monospace = true
                     )
                     SecretField(
                         label = s.apiKey,
-                        hint = if (isPersian) "اختیاری - کلید API عامل" else "optional - agent API key",
+                        hint = if (isPersian) "اختیاری - کلید API اودین" else "optional - ODIN API key",
                         value = settings.ai.sayvisAgentApiKey,
                         reveal = revealKey,
                         onRevealChange = { revealKey = it },

@@ -150,7 +150,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (currentScreen.isPrimary() && currentScreen == SayvisScreen.HOME) {
                                 Text(
-                                    text = "SAYVIS",
+                                    text = "ODIN",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Black,
                                     letterSpacing = 2.sp,

@@ -17,10 +17,10 @@ enum class AppLanguage(val labelFa: String, val labelEn: String) {
     fun label(isPersian: Boolean): String = if (isPersian) labelFa else labelEn
 }
 
-/** Selectable AI inference backends. */
+/** Selectable AI inference backends - ODIN AGENT Edition */
 enum class AiProviderKind(val labelFa: String, val labelEn: String, val isLocal: Boolean) {
-    LOCAL("هستهٔ محلی سایویس (آفلاین)", "SAYVIS Local Core (offline)", true),
-    SAYVIS_AGENT("عامل حرفه‌ای سایویس (Self-hosted)", "SAYVIS Professional Agent (Self-hosted)", false),
+    LOCAL("هستهٔ محلی اودین (آفلاین)", "ODIN Local Core (offline)", true),
+    SAYVIS_AGENT("عامل حرفه‌ای اودین (Self-hosted)", "ODIN Professional Agent (Self-hosted)", false),
     GEMINI("گوگل جمینای", "Google Gemini", false),
     OPENROUTER("اوپن‌روتر (چندمدلی)", "OpenRouter (multi-model)", false),
     GROQ("گروک (پاسخ سریع)", "Groq (fast LPU)", false),
