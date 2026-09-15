@@ -38,6 +38,90 @@ class EvolutionService {
         .readTimeout(12, TimeUnit.SECONDS)
         .build()
 
+    /** A GitHub-derived tuning proposal for the LIT engine, with provenance. */
+    data class TuningProposal(
+        val atrFactor: Double,
+        val rsiHigh: Double,
+        val rsiLow: Double,
+        val targetMultiples: List<Double>,
+        val signals: List<String>,
+        val repos: List<String>
+    )
+
+    /**
+     * Trading-focused GitHub scan: the most-starred strategy bots are parsed
+     * for practical signals (scalping stops, swing widths, breakout RR
+     * ladders, mean-reversion timing) and the signals are turned into real
+     * LitStrategyEngine.Tuning deltas — floor-clamped (targets ≥ 1:3).
+     */
+    suspend fun scanTradingTuning(languageFa: Boolean): TuningProposal = withContext(Dispatchers.IO) {
+        val query = "trading+bot+strategy&sort=stars&order=desc&per_page=10"
+        val request = okhttp3.Request.Builder()
+            .url("https://api.github.com/search/repositories?q=$query")
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "SayvisBot/1.0 (self-evolution)")
+            .get()
+            .build()
+        val repos = runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use emptyList<RepoHit>()
+                parseGitHubSearch(response.body?.string().orEmpty())
+            }
+        }.getOrDefault(emptyList())
+        deriveTuning(repos)
+    }
+
+    /** Pure signal→tuning mapping (unit-tested; defaults when no signal). */
+    fun deriveTuning(repos: List<RepoHit>): TuningProposal {
+        val signals = LinkedHashSet<String>()
+        val sources = LinkedHashSet<String>()
+        var atrFactor = 1.5
+        var rsiHigh = 75.0
+        var rsiLow = 25.0
+        val targets = mutableListOf(3.0, 4.5, 6.0)
+
+        for (repo in repos.take(8)) {
+            val hay = (repo.description + " " + repo.topics.joinToString(" ")).lowercase()
+            val used = mutableListOf<String>()
+            fun hit(vararg needles: String): Boolean = needles.any { hay.contains(it) }
+
+            if (hit("scalp", "scalping", "m1", "m5", "intraday")) {
+                atrFactor = 1.2
+                used += "اسکالپ"
+            }
+            if (hit("swing", "position trading", "daily", "long-term")) {
+                atrFactor = 2.0
+                used += "سوئینگ"
+            }
+            if (hit("mean reversion", "mean-reversion", "bollinger", "oversold", "overbought")) {
+                rsiHigh = 72.0
+                rsiLow = 28.0
+                used += "برگشت‌به‌میانگین"
+            }
+            if (hit("breakout", "liquidity", "smc", "order block", "smart money", "risk reward", "risk-reward")) {
+                targets.clear()
+                targets += listOf(3.0, 5.0, 8.0)
+                used += "شکست/RR بلند"
+            }
+            if (hit("macd", "momentum")) {
+                rsiHigh = 73.0
+                used += "مومنتوم"
+            }
+            if (used.isNotEmpty() && repo.stars >= 100) {
+                sources += repo.fullName
+                signals += used.map { "$it ← ${repo.fullName} (⭐${repo.stars})" }
+            }
+        }
+        return TuningProposal(
+            atrFactor = atrFactor.coerceIn(1.0, 2.5),
+            rsiHigh = rsiHigh.coerceIn(60.0, 85.0),
+            rsiLow = rsiLow.coerceIn(15.0, 40.0),
+            targetMultiples = targets,
+            signals = signals.toList().take(8),
+            repos = sources.toList()
+        )
+    }
+
     suspend fun search(languageFa: Boolean): EvolutionReport = withContext(Dispatchers.IO) {
         val query = "ai+assistant+agent+android"
         val request = Request.Builder()

@@ -197,6 +197,11 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val connectivityProbe = ConnectivityProbe()
     private val evolutionService = EvolutionService()
     private val marketData = MarketDataService()
+
+    init {
+        LitStrategyEngine.Tuning.fromJson(settingsStore.current().tradeTuningJson)
+            ?.let { _tradeTuning.value = it }
+    }
     private val googleServices = GoogleServicesService()
 
     val awareEngine = AwareEngine(repository)
@@ -479,6 +484,57 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         return brainNote + response.text + footer
     }
 
+    /**
+     * TRADING EVOLUTION: scans GitHub's top strategy bots, converts the
+     * discovered signals into real LIT engine tuning (ATR factor, RSI gates,
+     * RR ladder — floor 1:3 preserved) and applies it immediately to every
+     * subsequent analysis run.
+     */
+    fun applyTradingEvolution() {
+        if (_tuningBusy.value) return
+        _tuningBusy.value = true
+        viewModelScope.launch {
+            val current = settingsStore.current()
+            val persian = current.isPersian(SayvisStrings.deviceIsPersian())
+            val proposal = runCatching { evolutionService.scanTradingTuning(persian) }.getOrNull()
+            if (proposal == null || proposal.repos.isEmpty()) {
+                _tradeNote.value = if (persian)
+                    "اسکن گیت‌هاب سیگنال قابل اعتمادی نیافت؛ تیونینگ خانه (ATR×1.5، اهداف 3/4.5/6) باقی ماند."
+                else "The GitHub scan found no trustworthy signal; house tuning kept (ATR×1.5, 3/4.5/6)."
+                _tuningBusy.value = false
+                return@launch
+            }
+            val tuning = LitStrategyEngine.Tuning(
+                atrFactor = proposal.atrFactor,
+                rsiHigh = proposal.rsiHigh,
+                rsiLow = proposal.rsiLow,
+                targetMultiples = proposal.targetMultiples,
+                sourceRepos = proposal.repos
+            ).safe()
+            _tradeTuning.value = tuning
+            settingsStore.update { it.copy(tradeTuningJson = tuning.toJson()) }
+            _tradeNote.value = if (persian)
+                "🧬 ارتقا از گیت‌هاب اعمال شد: ATR×${tuning.atrFactor} | گیت‌های RSI ${tuning.rsiHigh}/${tuning.rsiLow} | اهداف " +
+                    tuning.targetMultiples.joinToString("/") { "%.1f".format(it) } +
+                    " — منابع: " + proposal.repos.take(3).joinToString(", ")
+            else
+                "🧬 GitHub evolution applied: ATR×${tuning.atrFactor} | RSI gates ${tuning.rsiHigh}/${tuning.rsiLow} | targets " +
+                    tuning.targetMultiples.joinToString("/") { "%.1f".format(it) } +
+                    " — from: " + proposal.repos.take(3).joinToString(", ")
+            audit(
+                actor = "SAYVIS_AGENT",
+                action = "trade.evolution_apply",
+                riskLevel = RiskLevel.MEDIUM_RISK,
+                auth = "OWNER_CONFIRMED",
+                result = "SUCCESS",
+                digest = "atr=${tuning.atrFactor} rsi=${tuning.rsiHigh}/${tuning.rsiLow} targets=${tuning.targetMultiples} repos=${proposal.repos.size}"
+            )
+            // Re-run the analysis immediately with the new tuning.
+            refreshMarkets()
+            _tuningBusy.value = false
+        }
+    }
+
     /** Self-evolution: scan GitHub for similar agents, distil an adoption backlog. */
     fun runEvolution() {
         if (_evolutionBusy.value) return
@@ -532,6 +588,12 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val _tradeNote = MutableStateFlow<String?>(null)
     val tradeNote: StateFlow<String?> = _tradeNote.asStateFlow()
 
+    private val _tradeTuning = MutableStateFlow(LitStrategyEngine.Tuning())
+    val tradeTuning: StateFlow<LitStrategyEngine.Tuning> = _tradeTuning.asStateFlow()
+
+    private val _tuningBusy = MutableStateFlow(false)
+    val tuningBusy: StateFlow<Boolean> = _tuningBusy.asStateFlow()
+
     val tradeAutomationEnabled: StateFlow<Boolean> = settings
         .map { it.tradeAutomationEnabled }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
@@ -546,7 +608,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             _marketSnapshot.value = snapshot
             val analyses = HashMap<MarketDataService.Symbol, LitStrategyEngine.Analysis>()
             snapshot?.series?.forEach { (symbol, closes) ->
-                runCatching { LitStrategyEngine.analyse(closes) }.getOrNull()?.let { analyses[symbol] = it }
+                runCatching { LitStrategyEngine.analyse(closes, _tradeTuning.value) }.getOrNull()?.let { analyses[symbol] = it }
             }
             _marketAnalyses.value = analyses
             _avatarState.value = AvatarState.OPPORTUNITY_AWARE
@@ -849,6 +911,15 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 val active = _marketAnalyses.value.values.filter { it.plan.side != LitStrategyEngine.Side.WAIT }
                 if (active.isNotEmpty()) {
                     appendLine(if (persian) "تمرکز ترید لیت (LIT) — دادهٔ زندهٔ بازار مالک:" else "LIT TRADING FOCUS — the owner's live market data:")
+                    val tuning = _tradeTuning.value
+                    if (tuning.sourceRepos.isNotEmpty()) {
+                        appendLine(
+                            if (persian) "تیونینگ فعال (خودتکاملی گیت‌هاب): ATR×${tuning.atrFactor}، RSI ${tuning.rsiHigh}/${tuning.rsiLow}، اهداف " +
+                                tuning.targetMultiples.joinToString("/") { "%.1f".format(it) } + " ← " + tuning.sourceRepos.take(2).joinToString(", ")
+                            else "Active tuning (GitHub self-evolution): ATR×${tuning.atrFactor}, RSI ${tuning.rsiHigh}/${tuning.rsiLow}, targets " +
+                                tuning.targetMultiples.joinToString("/") { "%.1f".format(it) } + " ← " + tuning.sourceRepos.take(2).joinToString(", ")
+                        )
+                    }
                     active.take(3).forEach { analysis ->
                         val plan = analysis.plan
                         appendLine(

@@ -2,6 +2,7 @@ package com.example.sayvis
 
 import com.example.sayvis.trading.LitStrategyEngine
 import com.example.sayvis.trading.MarketDataService
+import com.example.sayvis.ai.EvolutionService
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -136,5 +137,69 @@ class SayvisLitTradingUnitTest {
         assertEquals(2050.0, scenarios[0].trigger, 1e-9)
         assertEquals(2000.0, scenarios[1].trigger, 1e-9)
         assertEquals(1950.0, scenarios[2].trigger, 1e-9)
+    }
+
+
+    // ------------------------------------------- GitHub→LIT evolution loop
+
+    private fun repo(name: String, stars: Int, desc: String, topics: List<String>) =
+        EvolutionService.RepoHit(name, "https://github.com/$name", stars, desc, topics)
+
+    @Test
+    fun `scalping and breakout signals retune the engine with provenance`() {
+        val repos = listOf(
+            repo("alpha/scalper", 1200, "Ultra fast M1 scalping bot with tight stops", listOf("trading", "scalping")),
+            repo("beta/smc-breakout", 800, "Smart money breakout liquidity sweeps with high risk-reward ladder", listOf("smc", "breakout")),
+            repo("gamma/meanrev", 300, "Mean reversion on bollinger extremes", listOf("mean-reversion"))
+        )
+        val proposal = EvolutionService.deriveTuning(repos)
+        assertEquals(1.2, proposal.atrFactor, 1e-9)          // scalping tightened the stop
+        assertEquals(listOf(3.0, 5.0, 8.0), proposal.targetMultiples) // breakout RR ladder
+        assertEquals(72.0, proposal.rsiHigh, 1e-9)           // mean-reversion widened the veto
+        assertTrue(proposal.repos.contains("alpha/scalper"))
+        assertTrue(proposal.signals.any { it.contains("alpha/scalper") })
+    }
+
+    @Test
+    fun `no signals keep house tuning defaults`() {
+        val proposal = EvolutionService.deriveTuning(emptyList())
+        assertEquals(1.5, proposal.atrFactor, 1e-9)
+        assertEquals(75.0, proposal.rsiHigh, 1e-9)
+        assertEquals(listOf(3.0, 4.5, 6.0), proposal.targetMultiples)
+        assertTrue(proposal.repos.isEmpty())
+    }
+
+    @Test
+    fun `tuned engine honours the rsi gate and keeps the 1 to 3 floor`() {
+        // RSI 74 passes the house gate (75) but is vetoed by the tuned 72 gate.
+        val house = LitStrategyEngine.buildPlan(2000.0, true, 74.0, 1.0, 2050.0, 1950.0)
+        assertEquals(LitStrategyEngine.Side.LONG, house.side)
+        val tuned = LitStrategyEngine.Tuning(atrFactor = 1.2, rsiHigh = 72.0, rsiLow = 28.0)
+        val vetoed = LitStrategyEngine.buildPlan(2000.0, true, 74.0, 1.0, 2050.0, 1950.0, tuned)
+        assertEquals(LitStrategyEngine.Side.WAIT, vetoed.side)
+        // Tuned ladder is actually applied: 3/5/8 and still ≥ 1:3.
+        val ladder = LitStrategyEngine.Tuning(targetMultiples = listOf(3.0, 5.0, 8.0))
+        val plan = LitStrategyEngine.buildPlan(2000.0, true, 60.0, 1.0, 2050.0, 1950.0, ladder)
+        val r = plan.entry - plan.stop
+        assertTrue((plan.targets[0].price - plan.entry) / r >= 3.0 - 1e-9)
+        assertEquals(8.0, plan.targets[2].rr, 1e-9)
+        // The floor is unbreakable even if a future scan proposes less.
+        val clamped = LitStrategyEngine.Tuning(targetMultiples = listOf(1.5, 2.0)).safe()
+        assertTrue(clamped.targetMultiples[0] >= 3.0)
+    }
+
+    @Test
+    fun `tuning json round trip keeps provenance`() {
+        val tuning = LitStrategyEngine.Tuning(
+            atrFactor = 1.2, rsiHigh = 72.0, rsiLow = 28.0,
+            targetMultiples = listOf(3.0, 5.0, 8.0),
+            sourceRepos = listOf("alpha/scalper")
+        )
+        val restored = LitStrategyEngine.Tuning.fromJson(tuning.toJson())!!
+        assertEquals(tuning.atrFactor, restored.atrFactor, 1e-9)
+        assertEquals(tuning.rsiHigh, restored.rsiHigh, 1e-9)
+        assertEquals(tuning.targetMultiples, restored.targetMultiples)
+        assertEquals(listOf("alpha/scalper"), restored.sourceRepos)
+        assertNull(LitStrategyEngine.Tuning.fromJson("not-json"))
     }
 }

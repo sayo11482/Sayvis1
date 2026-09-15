@@ -270,6 +270,20 @@ class SayvisStrings(val fa: Boolean) {
     )
     val litAutoToggle get() = t("ترید خودکار LIT (از طریق درگاه ایمن)", "LIT auto-trade (via the safe gateway)")
     val litExecute get() = t("اجرای نقشهٔ LIT", "Execute the LIT plan")
+    fun litTuningLabel(atr: Double, rsiHigh: Double, rsiLow: Double, targets: List<Double>): String {
+        val ladder = targets.joinToString("/") { "%.1f".format(it) }
+        return t(
+            "🧬 تیونینگ موتور: ATR×%s | RSI %s/%s | اهداف %s (کف ۱:۳)",
+            "🧬 Engine tuning: ATR×%s | RSI %s/%s | targets %s (floor 1:3)"
+        ).let { tpl ->
+            String.format(
+                tpl,
+                "%.1f".format(atr), "%.0f".format(rsiHigh), "%.0f".format(rsiLow), ladder
+            )
+        }
+    }
+    val litTuningScan get() = t("ارتقای خودکار از گیت‌هاب (اسکن استراتژی‌ها)", "Auto-evolve from GitHub (scan strategies)")
+    val litTuningScanning get() = t("در حال یادگیری از گیت‌هاب…", "Learning from GitHub…")
 
     // Linked accounts (Instagram + Gmail-login sites)
     val sectionLinked get() = t("حساب‌های متصل", "Linked accounts")

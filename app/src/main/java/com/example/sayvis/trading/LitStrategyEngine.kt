@@ -23,6 +23,54 @@ object LitStrategyEngine {
 
     const val MIN_RR: Double = 3.0
 
+    /**
+     * Engine tuning applied on EVERY analysis run. Defaults are the house LIT
+     * values; the self-evolution loop (GitHub scan) rewrites them with
+     * provenance so the engine literally absorbs what works in the field.
+     * Invariants enforced everywhere: rsiHigh > rsiLow, target[0] ≥ 1:3.
+     */
+    data class Tuning(
+        val atrFactor: Double = 1.5,
+        val rsiHigh: Double = 75.0,
+        val rsiLow: Double = 25.0,
+        val targetMultiples: List<Double> = listOf(3.0, 4.5, 6.0),
+        val sourceRepos: List<String> = emptyList()
+    ) {
+        fun safe(): Tuning = copy(
+            atrFactor = atrFactor.coerceIn(1.0, 2.5),
+            rsiHigh = rsiHigh.coerceIn(60.0, 85.0),
+            rsiLow = rsiLow.coerceIn(15.0, 40.0),
+            targetMultiples = targetMultiples
+                .map { it.coerceAtLeast(MIN_RR) }
+                .zipWithNext { a, b -> if (b <= a) a + 0.5 else b }
+                .let { rest -> listOf(maxOf(MIN_RR, targetMultiples.firstOrNull() ?: MIN_RR)) + rest }
+        )
+
+        fun toJson(): String =
+            org.json.JSONObject()
+                .put("atrFactor", atrFactor)
+                .put("rsiHigh", rsiHigh)
+                .put("rsiLow", rsiLow)
+                .put("targets", org.json.JSONArray(targetMultiples))
+                .put("repos", org.json.JSONArray(sourceRepos))
+                .toString()
+
+        companion object {
+            fun fromJson(raw: String): Tuning? = runCatching {
+                val root = org.json.JSONObject(raw)
+                val targets = root.optJSONArray("targets") ?: return@runCatching null
+                val repos = root.optJSONArray("repos")
+                Tuning(
+                    atrFactor = root.optDouble("atrFactor", 1.5),
+                    rsiHigh = root.optDouble("rsiHigh", 75.0),
+                    rsiLow = root.optDouble("rsiLow", 25.0),
+                    targetMultiples = (0 until targets.length()).map { targets.optDouble(it, 3.0) },
+                    sourceRepos = if (repos == null) emptyList() else (0 until repos.length()).mapNotNull { repos.optString(it).ifBlank { null } }
+                ).safe()
+            }.getOrNull()
+        }
+    }
+
     data class Candle(val open: Double, val high: Double, val low: Double, val close: Double)
 
     enum class Side { LONG, SHORT, WAIT }
@@ -126,7 +174,7 @@ object LitStrategyEngine {
 
     /** Full LIT analysis over a close series (closes-only feeds are allowed:
      *  candles are synthesised with high = low = close). */
-    fun analyse(closes: List<Double>): Analysis? {
+    fun analyse(closes: List<Double>, tuning: Tuning = Tuning()): Analysis? {
         if (closes.size < 30) return null
         val candles = closes.map { Candle(it, it, it, it) }
         val ema20 = ema(closes, 20) ?: return null
@@ -150,7 +198,7 @@ object LitStrategyEngine {
             scenarios = scenariosFor(price, trendUp, swingHigh, swingLow)
         )
 
-        val plan = buildPlan(price, trendUp, rsi, atr, swingHigh, swingLow)
+        val plan = buildPlan(price, trendUp, rsi, atr, swingHigh, swingLow, tuning)
         return Analysis(view, plan)
     }
 
@@ -161,13 +209,14 @@ object LitStrategyEngine {
         rsi: Double,
         atr: Double,
         swingHigh: Double?,
-        swingLow: Double?
+        swingLow: Double?,
+        tuning: Tuning = Tuning()
     ): TradePlan {
         if (trendUp == null || atr <= 0.0) return wait(price, "روند تعریف‌شده نیست (EMA50 کافی نیست)", "No defined trend yet (insufficient EMA50 history)")
 
-        val risk = 1.5 * atr
-        val exhaustedHigh = rsi > 75.0
-        val exhaustedLow = rsi < 25.0
+        val risk = tuning.atrFactor * atr
+        val exhaustedHigh = rsi > tuning.rsiHigh
+        val exhaustedLow = rsi < tuning.rsiLow
 
         if (trendUp) {
             if (exhaustedHigh) return wait(price, "RSI ناحیهٔ اشباع خرید است — تعقیب ممنوع", "RSI is overbought — no chasing")
@@ -175,12 +224,10 @@ object LitStrategyEngine {
             val entry = price
             val stop = min(swingLow ?: (price - risk), price - risk)
             val r = entry - stop
-            val targets = (1..3).map { i ->
-                val multiple = if (i == 1) 3.0 else if (i == 2) 4.5 else 6.0
-                Target(entry + r * multiple, multiple)
-            }
+            val multiples = effectiveMultiples(tuning)
+            val targets = multiples.map { multiple -> Target(entry + r * multiple, multiple) }
             return TradePlan(
-                Side.LONG, entry, stop, targets, MIN_RR,
+                Side.LONG, entry, stop, targets, multiples.first(),
                 "روند صعودی (EMA20>EMA50)؛ ورود با شکرفرماسیون نقدینگی بالای سقف قبلی؛ حد ضرر ۱.۵×ATR زیر آخرین کف؛ اهداف ۳R/۴.۵R/۶R (حداقل ۱:۳ تضمین‌شده).",
                 "Uptrend (EMA20>EMA50); entry on the liquidity break above the last swing high; stop 1.5×ATR under the last swing low; targets 3R/4.5R/6R (RR floor 1:3 guaranteed)."
             )
@@ -189,17 +236,18 @@ object LitStrategyEngine {
             val entry = price
             val stop = max(swingHigh ?: (price + risk), price + risk)
             val r = stop - entry
-            val targets = (1..3).map { i ->
-                val multiple = if (i == 1) 3.0 else if (i == 2) 4.5 else 6.0
-                Target(entry - r * multiple, multiple)
-            }
+            val multiples = effectiveMultiples(tuning)
+            val targets = multiples.map { multiple -> Target(entry - r * multiple, multiple) }
             return TradePlan(
-                Side.SHORT, entry, stop, targets, MIN_RR,
+                Side.SHORT, entry, stop, targets, multiples.first(),
                 "روند نزولی (EMA20<EMA50)؛ ورود با شکست نقدینگی زیر کف قبلی؛ حد ضرر ۱.۵×ATR بالای سقف قبلی؛ اهداف ۳R/۴.۵R/۶R (حداقل ۱:۳ تضمین‌شده).",
                 "Downtrend (EMA20<EMA50); entry on the liquidity break under the last swing low; stop 1.5×ATR above the last swing high; targets 3R/4.5R/6R (RR floor 1:3 guaranteed)."
             )
         }
     }
+
+    /** Tuned ladder, floor-clamped so target 1 never dips below 1:3. */
+    fun effectiveMultiples(tuning: Tuning): List<Double> = tuning.safe().targetMultiples
 
     private fun wait(price: Double, fa: String, en: String) = TradePlan(
         Side.WAIT, price, price, emptyList(), 0.0, fa, en

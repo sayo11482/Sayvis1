@@ -67,6 +67,8 @@ fun MarketsScreen(
     val busy by viewModel.marketBusy.collectAsState()
     val autoTrade by viewModel.tradeAutomationEnabled.collectAsState()
     val tradeNote by viewModel.tradeNote.collectAsState()
+    val tuning by viewModel.tradeTuning.collectAsState()
+    val tuningBusy by viewModel.tuningBusy.collectAsState()
 
     Column(
         modifier = modifier
@@ -258,6 +260,34 @@ fun MarketsScreen(
                     tradeNote?.let { note ->
                         Text(text = note, fontSize = 10.5.sp, color = SayvisCyan, modifier = Modifier.testTag("lit_trade_note"))
                     }
+
+                    // GitHub self-evolution: live tuning with provenance.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = s.litTuningLabel(
+                                tuning.atrFactor, tuning.rsiHigh, tuning.rsiLow,
+                                tuning.targetMultiples
+                            ),
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = SayvisSilverMuted,
+                            modifier = Modifier.weight(1f).testTag("lit_tuning")
+                        )
+                    }
+                    if (tuning.sourceRepos.isNotEmpty()) {
+                        Text(
+                            text = "⭐ " + tuning.sourceRepos.take(3).joinToString(" • "),
+                            fontSize = 9.5.sp,
+                            color = SayvisGreenSuccess
+                        )
+                    }
+                    SayvisButton(
+                        label = if (tuningBusy) s.litTuningScanning else s.litTuningScan,
+                        onClick = { viewModel.applyTradingEvolution() },
+                        busy = tuningBusy,
+                        tone = ButtonTone.NEUTRAL,
+                        modifier = Modifier.fillMaxWidth().testTag("lit_tuning_scan")
+                    )
                 }
             }
         } ?: run {
