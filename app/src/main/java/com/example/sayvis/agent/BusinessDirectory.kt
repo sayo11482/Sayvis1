@@ -281,10 +281,17 @@ object BusinessDirectory {
     }
 
     private fun miniInt(json: String, field: String): Int =
-        Regex(Q + field + Q + B + "s*:" + B + "s*(-?[0-9]+)").find(json)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        Regex(numberPattern(field)).find(json)?.groupValues?.get(1)?.toIntOrNull() ?: 0
 
     private fun miniLong(json: String, field: String): Long =
-        Regex(Q + field + Q + B + "s*:" + B + "s*(-?[0-9]+)").find(json)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+        Regex(numberPattern(field)).find(json)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+
+    /** Pattern "field":<number> built from the shared quoting constants. */
+    private fun numberPattern(field: String): String {
+        val b = 92.toChar()
+        val q = 34.toChar()
+        return q + field + q + b + "s*:" + b + "s*(-?[0-9]+)"
+    }
 
     fun unescape(value: String): String {
         if (!value.contains(92.toChar())) return value

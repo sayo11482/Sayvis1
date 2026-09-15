@@ -128,7 +128,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
     val isProbing by viewModel.isProbing.collectAsState()
     val listenLevel by com.example.sayvis.voice.ListenBus.level.collectAsState()
     val connectivity by viewModel.connectivity.collectAsState()
-    val sportsSuggestions by viewModel.sportsSuggestions.collectAsState()
+    val sportsSuggestions: List<com.example.sayvis.ai.SearchTasteEngine.Suggestion> by viewModel.sportsSuggestions.collectAsState()
     val recentSearchCount = viewModel.recentSearches().size
     var importedNote by remember { mutableStateOf("") }
 
