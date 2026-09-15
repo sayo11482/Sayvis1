@@ -19,7 +19,7 @@ import time
 from datetime import datetime
 
 from .config import settings
-from .api.routes import health, chat, missions, workflows, rag
+from .api.routes import health, chat, missions, workflows, rag, quant
 
 # Configure logging
 logging.basicConfig(
@@ -230,6 +230,7 @@ app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
 app.include_router(missions.router, prefix="/api/v1", tags=["Missions"])
 app.include_router(workflows.router, prefix="/api/v1", tags=["Workflows"])
 app.include_router(rag.router, prefix="/api/v1", tags=["RAG"])
+app.include_router(quant.router, prefix="/api/v1", tags=["Quant Trading"])
 
 # OpenAI-compatible endpoint for Android app integration
 @app.post("/v1/chat/completions", tags=["OpenAI Compatible"])

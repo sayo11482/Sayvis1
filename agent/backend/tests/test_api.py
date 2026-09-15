@@ -56,7 +56,7 @@ def test_root_endpoint():
     assert response.status_code == 200
     data = response.json()
     assert "name" in data
-    assert "SAYVIS" in data["name"]
+    assert "ODIN" in data["name"] or "SAYVIS" in data["name"]
 
 def test_health_endpoint():
     from app.main import app

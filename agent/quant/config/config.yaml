@@ -1,0 +1,188 @@
+# ODIN QUANT - Master Configuration
+# تمام پارامترها بدون تغییر کد قابل تنظیم هستند
+
+# =============================================================================
+# General
+# =============================================================================
+general:
+  project_name: "ODIN-QUANT"
+  version: "1.0.0-odin"
+  environment: "paper"  # paper, live, backtest
+  timezone: "Asia/Tehran"
+  log_level: "INFO"
+
+# =============================================================================
+# Data
+# =============================================================================
+data:
+  default_source: "yfinance"  # yfinance, ccxt, polygon
+  default_timeframe: "1h"
+  multi_timeframes: ["15m", "1h", "4h", "1d"]
+  symbols:
+    crypto: ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+    forex: ["EURUSD", "GBPUSD", "XAUUSD"]
+    stocks: ["AAPL", "NVDA", "TSLA"]
+  history_days: 365
+  resample: true
+  clean: true
+
+# =============================================================================
+# Risk Management - NON-NEGOTIABLE
+# =============================================================================
+risk:
+  max_risk_per_trade: 0.01        # 1% per trade
+  max_daily_drawdown: 0.03        # 3% daily -> kill-switch
+  max_total_drawdown: 0.15        # 15% total -> stop all
+  max_open_positions: 5
+  max_correlation: 0.7            # Correlation filter
+  position_sizing_method: "atr"   # atr, volatility, fixed
+  atr_period: 14
+  atr_multiplier_sl: 2.0
+  atr_multiplier_tp: 3.0
+  risk_free_rate: 0.02
+  commission: 0.001               # 0.1% per trade
+  slippage: 0.0005                # 0.05%
+
+# =============================================================================
+# Execution
+# =============================================================================
+execution:
+  mode: "paper"  # paper, live
+  paper_start_balance: 10000.0
+  paper_currency: "USD"
+  live_exchange: "binance"  # binance, bybit, etc.
+  live_testnet: true
+  order_type: "market"  # market, limit
+  use_stop_loss: true
+  use_take_profit: true
+  use_trailing_stop: true
+
+# =============================================================================
+# Strategies - Modular, enable/disable
+# =============================================================================
+strategies:
+  trend_following:
+    enabled: true
+    weight: 0.4
+    params:
+      ema_fast: 20
+      ema_slow: 50
+      adx_period: 14
+      adx_threshold: 25
+      volume_ma: 20
+      volume_multiplier: 1.5
+      sl_atr: 2.0
+      tp_atr: 3.0
+      trailing_atr: 1.5
+      time_exit_bars: 20
+      htf_timeframe: "4h"  # Higher timeframe filter
+
+  mean_reversion:
+    enabled: true
+    weight: 0.3
+    params:
+      bb_period: 20
+      bb_std: 2.0
+      rsi_period: 14
+      rsi_oversold: 30
+      rsi_overbought: 70
+      zscore_period: 20
+      zscore_threshold: 2.0
+      sl_bb_multiplier: 1.5
+      time_exit_bars: 10
+
+  momentum_breakout:
+    enabled: true
+    weight: 0.2
+    params:
+      lookback: 20
+      atr_period: 14
+      atr_threshold: 1.0
+      volume_spike: 2.0
+      sl_atr: 1.5
+      trailing_atr: 1.0
+      time_exit_bars: 10
+
+  pairs_trading:
+    enabled: false
+    weight: 0.1
+    params:
+      pairs:
+        - ["BTC/USDT", "ETH/USDT"]
+        - ["EURUSD", "GBPUSD"]
+      lookback: 60
+      zscore_entry: 2.0
+      zscore_exit: 0.0
+      cointegration_pvalue: 0.05
+      sl_zscore: 3.0
+
+  volatility_regime:
+    enabled: true
+    params:
+      adx_trending: 25
+      adx_ranging: 20
+      bb_squeeze_threshold: 0.5
+      atr_high_vol_multiplier: 2.0
+      atr_period: 14
+      adx_period: 14
+      bb_period: 20
+
+# =============================================================================
+# Filters
+# =============================================================================
+filters:
+  trading_hours:
+    enabled: false
+    start: "00:00"
+    end: "23:59"
+    timezone: "UTC"
+    # Forex: avoid weekend, Crypto: 24/7
+  news_filter:
+    enabled: false
+    avoid_high_impact: true
+    buffer_minutes: 60
+  spread_filter:
+    enabled: true
+    max_spread_percent: 0.001  # 0.1%
+  volume_filter:
+    enabled: true
+    min_volume_usd: 1000000
+
+# =============================================================================
+# Backtest
+# =============================================================================
+backtest:
+  start_date: "2023-01-01"
+  end_date: "2024-01-01"
+  initial_capital: 10000.0
+  commission: 0.001
+  slippage: 0.0005
+  walk_forward:
+    enabled: true
+    train_days: 180
+    test_days: 30
+    step_days: 30
+
+# =============================================================================
+# Alerts
+# =============================================================================
+alerts:
+  telegram:
+    enabled: false
+    bot_token: "${TELEGRAM_BOT_TOKEN}"
+    chat_id: "${TELEGRAM_CHAT_ID}"
+    notify_entry: true
+    notify_exit: true
+    notify_daily_pnl: true
+    notify_kill_switch: true
+  discord:
+    enabled: false
+    webhook_url: "${DISCORD_WEBHOOK_URL}"
+
+# =============================================================================
+# Dashboard
+# =============================================================================
+dashboard:
+  enabled: true
+  port: 8501
+  refresh_seconds: 10
