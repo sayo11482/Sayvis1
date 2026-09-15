@@ -19,6 +19,7 @@ class AIOrchestrator(
     private val openRouterProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.OPENROUTER),
     private val groqProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.GROQ),
     private val customProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.CUSTOM),
+    private val sayvisAgentProvider: SayvisAgentProvider = SayvisAgentProvider(),
     private val localProvider: LocalCognitiveProvider = LocalCognitiveProvider()
 ) {
 
@@ -34,6 +35,7 @@ class AIOrchestrator(
         AiProviderKind.OPENROUTER -> openRouterProvider
         AiProviderKind.GROQ -> groqProvider
         AiProviderKind.CUSTOM -> customProvider
+        AiProviderKind.SAYVIS_AGENT -> sayvisAgentProvider
         AiProviderKind.LOCAL -> null
     }
 
@@ -106,6 +108,7 @@ class AIOrchestrator(
         AiProviderKind.OPENROUTER -> openRouterProvider.probe(settings)
         AiProviderKind.GROQ -> groqProvider.probe(settings)
         AiProviderKind.CUSTOM -> customProvider.probe(settings)
+        AiProviderKind.SAYVIS_AGENT -> sayvisAgentProvider.probe(settings)
         AiProviderKind.LOCAL -> ProbeOutcome(
             success = true,
             latencyMs = 0,

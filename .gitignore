@@ -16,3 +16,15 @@
 local.properties
 .env
 debug.keystore
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+*.log
+.venv/
+venv/
+data/
+logs/
+*.db
+
