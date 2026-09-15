@@ -547,6 +547,11 @@ class TranslationService(context: Context? = null) {
             put("automation.webhook.send", "خودکارسازی — ارسال وب‌هوک")
             put("automation.webhook.blocked", "خودکارسازی — وب‌هوک مسدود شد")
             put("automation.execution_mode.request", "خودکارسازی — درخواست تغییر سطح اجرا")
+            put("screen.translate.start", "ترجمهٔ زندهٔ صفحه — آغاز")
+            put("screen.translate.stop", "ترجمهٔ زندهٔ صفحه — پایان")
+            put("screen.translate.consent", "ترجمهٔ زندهٔ صفحه — اجازهٔ ضبط صفحه")
+            put("screen.translate.permission", "ترجمهٔ زندهٔ صفحه — بررسی دسترسی نمایش")
+            put("screen.translate.blocked", "ترجمهٔ زندهٔ صفحه — مسدودسازی با قفل اضطراری")
 
             // ---- Opportunity / mission misc ----
             put("Blocked dependency", "وابستگی مسدودکننده")
@@ -556,6 +561,12 @@ class TranslationService(context: Context? = null) {
             put("power_save_mode_enable", "فعال‌سازی حالت ذخیرهٔ نیرو")
             put("defer_background_inference", "به تعویق انداختن پردازش پس‌زمینه")
             put("focus_duration=90", "مدت تمرکز = ۹۰ دقیقه")
+
+            // ---- Live screen translation (PUR) ----
+            put("Live screen translation", "ترجمهٔ زندهٔ صفحه")
+            put("screen capture", "ضبط صفحه")
+            put("display over other apps", "نمایش روی برنامه‌های دیگر")
+            put("SCREEN_TRANSLATOR", "مترجم زندهٔ صفحه")
         }
 
         /**

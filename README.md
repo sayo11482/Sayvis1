@@ -22,6 +22,7 @@
 8. **Scripting & Automation**: A small line-based rule language the owner writes in-app; scripts emit effects that pass through the zero-trust gate and never perform I/O themselves.
 9. **Life Simulation Engine**: Probabilistic scenario analysis for career, financial, and strategic life decisions.
 10. **Sovereign Avatar**: Real-time cybernetic canvas state visualizer displaying cognitive, communicative, and security posture.
+11. **Live Screen Translator (PUR)**: A permanent English→Persian screen translator. A foreground `mediaProjection` service mirrors the display, reads the English with on-device ML Kit OCR, resolves it through cache → glossary → the owner's AI provider, and paints the Persian **exactly where the English was**, over any app. See [SCREEN_TRANSLATION.md](SCREEN_TRANSLATION.md).
 
 ---
 

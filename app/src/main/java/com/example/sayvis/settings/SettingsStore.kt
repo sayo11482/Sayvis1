@@ -2,6 +2,11 @@ package com.example.sayvis.settings
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.sayvis.screentranslate.ScreenPlateStyle
+import com.example.sayvis.screentranslate.ScreenTextColorMode
+import com.example.sayvis.screentranslate.ScreenTranslationGranularity
+import com.example.sayvis.screentranslate.ScreenTranslationMode
+import com.example.sayvis.screentranslate.ScreenTranslationSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,6 +62,10 @@ class SettingsStore private constructor(context: Context) {
     fun setEmergencyLock(active: Boolean) = update { it.copy(emergencyLockActive = active) }
 
     fun setExecutionMode(mode: TradingExecutionMode) = update { it.copy(trading = it.trading.copy(executionMode = mode)) }
+
+    /** Applies a change to the live screen-translation block. */
+    fun setScreenTranslation(mutator: (ScreenTranslationSettings) -> ScreenTranslationSettings) =
+        update { it.copy(screenTranslation = mutator(it.screenTranslation)) }
 
     fun setAppearance(mode: AppearanceMode) = update { it.copy(appearance = mode) }
 
@@ -145,6 +154,32 @@ class SettingsStore private constructor(context: Context) {
             put("forceLang", s.ai.forceResponseLanguage)
         })
 
+        put("st", JSONObject().apply {
+            val st = s.screenTranslation
+            put("enabled", st.enabled)
+            put("mode", st.mode.name)
+            put("granularity", st.granularity.name)
+            put("persianNumbers", st.persianNumbers)
+            put("plateStyle", st.plateStyle.name)
+            put("plateOpacity", st.plateOpacityPercent)
+            put("customPlate", st.customPlateColor)
+            put("textColorMode", st.textColorMode.name)
+            put("customText", st.customTextColor)
+            put("textScale", st.textScalePercent)
+            put("bubble", st.showControlBubble)
+            put("bubbleOpacity", st.bubbleOpacityPercent)
+            put("pollInterval", st.pollIntervalMs)
+            put("maxPerFrame", st.maxSegmentsPerFrame)
+            put("maxPerRequest", st.maxSegmentsPerRequest)
+            put("minWordLength", st.minWordLength)
+            put("dictionaryOnly", st.dictionaryOnly)
+            put("cache", st.cacheTranslations)
+            put("keepAwake", st.keepScreenOn)
+            put("resumeBoot", st.resumeAfterBoot)
+            put("singleApp", st.preferSingleAppCapture)
+            put("skipOwnApp", st.skipOwnApp)
+        })
+
         put("mt", JSONObject().apply {
             val t = s.trading
             put("id", t.id)
@@ -169,9 +204,10 @@ class SettingsStore private constructor(context: Context) {
         val loc = root.optJSONObject("loc") ?: JSONObject()
         val ai = root.optJSONObject("ai") ?: JSONObject()
         val mt = root.optJSONObject("mt") ?: JSONObject()
+        val st = root.optJSONObject("st") ?: JSONObject()
 
         return AppSettings(
-            settingsSchemaVersion = root.optInt("schema", 3),
+            settingsSchemaVersion = root.optInt("schema", 4),
             appearance = enumOr(root.optString("appearance"), AppearanceMode.DARK_SPACE),
             forceOfflineMode = root.optBoolean("forceOffline", false),
             emergencyLockActive = root.optBoolean("emergencyLock", false),
@@ -200,6 +236,30 @@ class SettingsStore private constructor(context: Context) {
                 maxOutputTokens = ai.optInt("maxTokens", 2048),
                 timeoutSeconds = ai.optInt("timeout", 25),
                 forceResponseLanguage = ai.optBoolean("forceLang", true)
+            ),
+            screenTranslation = ScreenTranslationSettings(
+                enabled = st.optBoolean("enabled", false),
+                mode = enumOr(st.optString("mode"), ScreenTranslationMode.REPLACE),
+                granularity = enumOr(st.optString("granularity"), ScreenTranslationGranularity.LINE),
+                persianNumbers = st.optBoolean("persianNumbers", true),
+                plateStyle = enumOr(st.optString("plateStyle"), ScreenPlateStyle.SAMPLED),
+                plateOpacityPercent = st.optInt("plateOpacity", 92),
+                customPlateColor = st.optInt("customPlate", 0x1B2430),
+                textColorMode = enumOr(st.optString("textColorMode"), ScreenTextColorMode.AUTO),
+                customTextColor = st.optInt("customText", 0xF4F7FB),
+                textScalePercent = st.optInt("textScale", 100),
+                showControlBubble = st.optBoolean("bubble", true),
+                bubbleOpacityPercent = st.optInt("bubbleOpacity", 80),
+                pollIntervalMs = st.optInt("pollInterval", 700),
+                maxSegmentsPerFrame = st.optInt("maxPerFrame", 48),
+                maxSegmentsPerRequest = st.optInt("maxPerRequest", 20),
+                minWordLength = st.optInt("minWordLength", 2),
+                dictionaryOnly = st.optBoolean("dictionaryOnly", false),
+                cacheTranslations = st.optBoolean("cache", true),
+                keepScreenOn = st.optBoolean("keepAwake", false),
+                resumeAfterBoot = st.optBoolean("resumeBoot", false),
+                preferSingleAppCapture = st.optBoolean("singleApp", false),
+                skipOwnApp = st.optBoolean("skipOwnApp", true)
             ),
             trading = MtGatewayProfile(
                 id = mt.optString("id", "mt_primary"),
