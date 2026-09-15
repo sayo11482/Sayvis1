@@ -247,6 +247,27 @@ class SayvisStrings(val fa: Boolean) {
     )
     val mirrorHint get() = t("صورت‌تان را داخل کادر نگه دارید…", "Hold your face inside the frame…")
 
+    // Live markets + LIT strategy
+    val marketsRefresh get() = t("به‌روزرسانی", "Refresh")
+    val marketsRefreshing get() = t("در حال دریافت…", "Fetching…")
+    val marketsPullHint get() = t("برای دریافت قیمت‌های زنده و تحلیل LIT، «به‌روزرسانی» را بزنید.", "Tap “Refresh” for live quotes and LIT analysis.")
+    val marketsAnalysing get() = t("هنوز سری داده‌ای برای این نماد دریافت نشده؛ بعد از به‌روزرسانی، تحلیل LIT اینجا ظاهر می‌شود.", "No series fetched for this symbol yet; LIT analysis appears here after refresh.")
+    val marketEstimated get() = t("برآورد رسمی", "official estimate")
+    val marketUsdtPanel get() = t("تتر در TradingView نماد استاندارد تومانی ندارد؛ قیمت زندهٔ بازار/برآورد رسمی در کارت بالا نمایش داده می‌شود.", "Tether has no standard Toman symbol on TradingView; the live/free-market or labelled official price stays in the card above.")
+    fun litPlan(entry: Double, sl: Double, tp1: Double, tp2: Double, tp3: Double) = t(
+        "نقشهٔ معامله: ورود %s | حد ضرر %s | اهداف: %s / %s / %s — ریسک به ریوارد حداقل ۱:۳",
+        "Trade plan: entry %s | stop %s | targets %s / %s / %s — risk:reward floor 1:3"
+    ).let { template ->
+        val fmtValues = arrayOf(fmtNum(entry), fmtNum(sl), fmtNum(tp1), fmtNum(tp2), fmtNum(tp3))
+        template.formatted(*fmtValues)
+    }
+    val litRiskNote get() = t(
+        "⚠️ تحلیل آموزشی است نه سیگنال قطعی. اجرای واقعی فقط از درگاه متصل و با تأییدهای خود گیت‌وی انجام می‌شود؛ حالت پیش‌فرض شبیه‌سازی کاغذی است.",
+        "⚠️ Educational analysis, not financial advice. Real routing only through a connected gateway with its own confirmations; paper simulation is the default."
+    )
+    val litAutoToggle get() = t("ترید خودکار LIT (از طریق درگاه ایمن)", "LIT auto-trade (via the safe gateway)")
+    val litExecute get() = t("اجرای نقشهٔ LIT", "Execute the LIT plan")
+
     // Linked accounts (Instagram + Gmail-login sites)
     val sectionLinked get() = t("حساب‌های متصل", "Linked accounts")
     val linkedHint get() = t(
@@ -543,6 +564,8 @@ class SayvisStrings(val fa: Boolean) {
         t("صدای شما با اطمینان $percent٪ شناخته شد.", "Your voice matched with $percent% confidence.")
     fun avatarTestNo(percent: String): String =
         t("مطابقت کافی نبود ($percent٪). دوباره ثبت کنید یا حساسیت را بالا ببرید.", "Not a confident match ($percent%). Re-enrol or raise the sensitivity.")
+
+    private fun fmtNum(v: Double): String = if (v >= 1000.0) "%.1f".format(v) else "%.4f".format(v)
 
     companion object {
         val English = SayvisStrings(false)

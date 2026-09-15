@@ -227,6 +227,8 @@ data class AppSettings(
     val google: GoogleAccountSettings = GoogleAccountSettings(),
     /** Persisted adoption backlog produced by the self-evolution agent. */
     val evolutionBacklog: String = "",
+    /** LIT auto-trading: execute plans through the safety-gated gateway. */
+    val tradeAutomationEnabled: Boolean = false,
     /** Owner-linked non-Google accounts (Instagram handle + pasted sessions). */
     val linked: LinkedAccountSettings = LinkedAccountSettings(),
     val settingsSchemaVersion: Int = 3

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.TravelExplore
 import androidx.compose.material.icons.filled.CameraFront
+import androidx.compose.material.icons.filled.CandlestickChart
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -107,6 +108,7 @@ fun ToolsScreen(
         ToolEntry(SayvisScreen.ROBOT, Icons.Default.SmartToy, SayvisCyan, "tool_robot"),
         ToolEntry(SayvisScreen.AGENT, Icons.Default.TravelExplore, SayvisGold, "tool_agent"),
         ToolEntry(SayvisScreen.MIRROR, Icons.Default.CameraFront, SayvisGreenSuccess, "tool_mirror"),
+        ToolEntry(SayvisScreen.MARKETS, Icons.Default.CandlestickChart, SayvisGold, "tool_markets"),
         ToolEntry(SayvisScreen.AVATAR, Icons.Default.Mic, SayvisGreenSuccess, "tool_avatar_listen"),
         ToolEntry(SayvisScreen.SCRIPTS, Icons.Default.Code, SayvisGold, "tool_scripts"),
         ToolEntry(SayvisScreen.SECURITY, Icons.Default.Security, SayvisRedAlert, "tool_security")

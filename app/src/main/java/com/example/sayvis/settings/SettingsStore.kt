@@ -157,6 +157,7 @@ class SettingsStore private constructor(context: Context) {
         })
 
         put("evolutionBacklog", s.evolutionBacklog)
+        put("tradeAuto", s.tradeAutomationEnabled)
         put("linked", JSONObject().apply {
             put("instagramHandle", s.linked.instagramHandle)
         })
@@ -232,6 +233,7 @@ class SettingsStore private constructor(context: Context) {
                 forceResponseLanguage = ai.optBoolean("forceLang", true)
             ),
             evolutionBacklog = root.optString("evolutionBacklog", ""),
+            tradeAutomationEnabled = root.optBoolean("tradeAuto", false),
             linked = run {
                 val l = root.optJSONObject("linked") ?: JSONObject()
                 LinkedAccountSettings(

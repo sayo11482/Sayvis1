@@ -17,7 +17,10 @@ import com.example.sayvis.ai.ChatTurn
 import com.example.sayvis.ai.AgentService
 import com.example.sayvis.ai.GoogleAuthManager
 import com.example.sayvis.ai.ConnectivityProbe
-import com.example.sayvis.ai.EvolutionService
+import com.example.sayvis.trading.LitStrategyEngine
+import com.example.sayvis.trading.MarketDataService
+import com.example.sayvis.trading.MtOrderRequest
+import com.example.sayvis.trading.MtOrderSide
 import com.example.sayvis.ai.SpecialistAgent
 import com.example.sayvis.ai.GoogleServicesService
 import com.example.sayvis.ai.WebSearchService
@@ -75,7 +78,6 @@ import com.example.sayvis.settings.TradingExecutionMode
 import com.example.sayvis.trading.MetaTraderGateway
 import com.example.sayvis.trading.MtConnectionPhase
 import com.example.sayvis.trading.MtGatewayState
-import com.example.sayvis.trading.MtOrderRequest
 import com.example.sayvis.trading.MtOrderResult
 import com.example.sayvis.ui.components.TranslationBridge
 import kotlinx.coroutines.Dispatchers
@@ -117,6 +119,7 @@ enum class SayvisScreen(val titleEn: String, val titleFa: String) {
     MISSIONS("Missions", "مأموریت‌ها"),
     AGENT("Research agent", "ایجنت پژوهش"),
     MIRROR("Digital mirror", "آینهٔ دیجیتال"),
+    MARKETS("Live markets", "بازارهای لحظه‌ای"),
     UIC("Cognitive Profile", "پروندهٔ شناختی"),
     AWARE("Smart Suggestions", "پیشنهادهای هوشمند"),
     TRADING("Trading & Markets", "معاملات و بازار"),
@@ -192,6 +195,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val agentService = AgentService()
     private val connectivityProbe = ConnectivityProbe()
     private val evolutionService = EvolutionService()
+    private val marketData = MarketDataService()
     private val googleServices = GoogleServicesService()
 
     val awareEngine = AwareEngine(repository)
@@ -513,6 +517,96 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    // ---------------------------------------------------- live trading (LIT)
+
+    private val _marketBusy = MutableStateFlow(false)
+    val marketBusy: StateFlow<Boolean> = _marketBusy.asStateFlow()
+
+    private val _marketSnapshot = MutableStateFlow<MarketDataService.Snapshot?>(null)
+    val marketSnapshot: StateFlow<MarketDataService.Snapshot?> = _marketSnapshot.asStateFlow()
+
+    private val _marketAnalyses = MutableStateFlow<Map<MarketDataService.Symbol, LitStrategyEngine.Analysis>>(emptyMap())
+    val marketAnalyses: StateFlow<Map<MarketDataService.Symbol, LitStrategyEngine.Analysis>> = _marketAnalyses.asStateFlow()
+
+    private val _tradeNote = MutableStateFlow<String?>(null)
+    val tradeNote: StateFlow<String?> = _tradeNote.asStateFlow()
+
+    val tradeAutomationEnabled: StateFlow<Boolean> = settings
+        .map { it.tradeAutomationEnabled }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Pulls live quotes + runs the LIT engine on every series it can fetch. */
+    fun refreshMarkets() {
+        if (_marketBusy.value) return
+        _marketBusy.value = true
+        viewModelScope.launch {
+            val persian = settingsStore.current().isPersian(SayvisStrings.deviceIsPersian())
+            val snapshot = runCatching { marketData.refreshAll() }.getOrNull()
+            _marketSnapshot.value = snapshot
+            val analyses = HashMap<MarketDataService.Symbol, LitStrategyEngine.Analysis>()
+            snapshot?.series?.forEach { (symbol, closes) ->
+                runCatching { LitStrategyEngine.analyse(closes) }.getOrNull()?.let { analyses[symbol] = it }
+            }
+            _marketAnalyses.value = analyses
+            _avatarState.value = AvatarState.OPPORTUNITY_AWARE
+            audit(
+                actor = "SAYVIS_AGENT",
+                action = "markets.lit_refresh",
+                riskLevel = RiskLevel.LOW_RISK,
+                auth = "SESSION_VALIDATED",
+                result = if (snapshot != null) "SUCCESS" else "FAILED",
+                digest = "quotes=${snapshot?.quotes?.size ?: 0} series=${snapshot?.series?.size ?: 0} plans=${analyses.count { it.value.plan.side != LitStrategyEngine.Side.WAIT }}"
+            )
+            _marketBusy.value = false
+        }
+    }
+
+    fun setTradeAutomation(enabled: Boolean) {
+        settingsStore.update { it.copy(tradeAutomationEnabled = enabled) }
+    }
+
+    /**
+     * Executes a LIT plan through the safety-gated gateway. Paper simulation
+     * fills locally; real routing still demands the gateway's own gates
+     * (connection, execution level, session confirmation, loss caps).
+     */
+    fun executeLitPlan(symbol: MarketDataService.Symbol, plan: LitStrategyEngine.TradePlan) {
+        if (plan.side == LitStrategyEngine.Side.WAIT) return
+        viewModelScope.launch {
+            val current = settingsStore.current()
+            if (!current.tradeAutomationEnabled) {
+                _tradeNote.value = if (current.isPersian(SayvisStrings.deviceIsPersian()))
+                    "ابتدا «ترید خودکار LIT» را در همین صفحه روشن کنید."
+                else "Enable “LIT auto-trade” on this screen first."
+                return@launch
+            }
+            val result = gateway.placeOrder(
+                request = MtOrderRequest(
+                    symbol = symbol.name,
+                    side = if (plan.side == LitStrategyEngine.Side.LONG) MtOrderSide.BUY else MtOrderSide.SELL,
+                    volume = 0.01,
+                    stopLoss = plan.stop,
+                    takeProfit = plan.targets.firstOrNull()?.price,
+                    comment = "SAYVIS-LIT"
+                ),
+                state = _gatewayState.value,
+                emergencyLockActive = current.emergencyLockActive,
+                liveConfirmed = false
+            )
+            val persian = current.isPersian(SayvisStrings.deviceIsPersian())
+            _tradeNote.value = (if (persian) result.detailFa else result.detailEn) +
+                (if (result.accepted) "" else "")
+            audit(
+                actor = "SAYVIS_AGENT",
+                action = "trade.auto_execute",
+                riskLevel = RiskLevel.HIGHER_RISK,
+                auth = "OWNER_CONFIRMED",
+                result = if (result.accepted) "SUCCESS" else "BLOCKED",
+                digest = "${symbol.name} ${plan.side} entry=${plan.entry} sl=${plan.stop} tp=${plan.targets.firstOrNull()?.price}"
+            )
+        }
+    }
+
     // ---------------------------------------------------------- connectivity
 
     private val _connectivity = MutableStateFlow<ConnectivityProbe.Result?>(null)
@@ -748,7 +842,23 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             val uicSummary = uicAttributes.value.joinToString("\n") {
                 "- [${it.category.name}] ${it.title}: ${it.value} (status ${it.status.name}, confidence ${it.confidence})"
             }
+            // TRADING FOCUS: while LIT plans are live, the brain concentrates
+            // on the trade data first, exactly as the owner specified.
+            val tradeFocus = buildString {
+                val active = _marketAnalyses.value.values.filter { it.plan.side != LitStrategyEngine.Side.WAIT }
+                if (active.isNotEmpty()) {
+                    appendLine(if (persian) "تمرکز ترید لیت (LIT) — دادهٔ زندهٔ بازار مالک:" else "LIT TRADING FOCUS — the owner's live market data:")
+                    active.take(3).forEach { analysis ->
+                        val plan = analysis.plan
+                        appendLine(
+                            "- ${plan.side} entry=${plan.entry} sl=${plan.stop} " +
+                                "tp1=${plan.targets.getOrNull(0)?.price} rr>=1:3 atr=${analysis.view.atr14} rsi=${analysis.view.rsi14}"
+                        )
+                    }
+                }
+            }
             val systemContext = ContextLocalization.systemContextLine(contextSnapshot.value, persian) +
+                (if (tradeFocus.isNotBlank()) "\n$tradeFocus" else "") +
                 (if (sourcesBlock.isNotBlank()) "\n$sourcesBlock" else "")
             val history = _chatMessages.value.takeLast(10).map { ChatTurn(it.sender, it.text) }
 
