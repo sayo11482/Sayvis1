@@ -197,11 +197,6 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val connectivityProbe = ConnectivityProbe()
     private val evolutionService = EvolutionService()
     private val marketData = MarketDataService()
-
-    init {
-        LitStrategyEngine.Tuning.fromJson(settingsStore.current().tradeTuningJson)
-            ?.let { _tradeTuning.value = it }
-    }
     private val googleServices = GoogleServicesService()
 
     val awareEngine = AwareEngine(repository)
@@ -588,7 +583,10 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val _tradeNote = MutableStateFlow<String?>(null)
     val tradeNote: StateFlow<String?> = _tradeNote.asStateFlow()
 
-    private val _tradeTuning = MutableStateFlow(LitStrategyEngine.Tuning())
+    private val _tradeTuning = MutableStateFlow(
+        LitStrategyEngine.Tuning.fromJson(settingsStore.current().tradeTuningJson)
+            ?: LitStrategyEngine.Tuning()
+    )
     val tradeTuning: StateFlow<LitStrategyEngine.Tuning> = _tradeTuning.asStateFlow()
 
     private val _tuningBusy = MutableStateFlow(false)
