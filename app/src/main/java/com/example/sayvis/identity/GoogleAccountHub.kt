@@ -145,7 +145,7 @@ internal object AccountManagerProxy {
         if (android.os.Build.VERSION.SDK_INT < 23) return null
         return AccountManager.newChooseAccountIntent(
             null as Account?,
-            null as java.util.List<Account>?,
+            null as MutableList<Account>?,
             arrayOf(accountType),
             null as String?,
             null as String?,
