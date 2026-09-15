@@ -254,12 +254,15 @@ class SayvisStrings(val fa: Boolean) {
     val marketsAnalysing get() = t("هنوز سری داده‌ای برای این نماد دریافت نشده؛ بعد از به‌روزرسانی، تحلیل LIT اینجا ظاهر می‌شود.", "No series fetched for this symbol yet; LIT analysis appears here after refresh.")
     val marketEstimated get() = t("برآورد رسمی", "official estimate")
     val marketUsdtPanel get() = t("تتر در TradingView نماد استاندارد تومانی ندارد؛ قیمت زندهٔ بازار/برآورد رسمی در کارت بالا نمایش داده می‌شود.", "Tether has no standard Toman symbol on TradingView; the live/free-market or labelled official price stays in the card above.")
-    fun litPlan(entry: Double, sl: Double, tp1: Double, tp2: Double, tp3: Double) = t(
-        "نقشهٔ معامله: ورود %s | حد ضرر %s | اهداف: %s / %s / %s — ریسک به ریوارد حداقل ۱:۳",
-        "Trade plan: entry %s | stop %s | targets %s / %s / %s — risk:reward floor 1:3"
-    ).let { template ->
-        val fmtValues = arrayOf(fmtNum(entry), fmtNum(sl), fmtNum(tp1), fmtNum(tp2), fmtNum(tp3))
-        template.formatted(*fmtValues)
+    fun litPlan(entry: Double, sl: Double, tp1: Double, tp2: Double, tp3: Double): String {
+        val template = t(
+            "نقشهٔ معامله: ورود %s | حد ضرر %s | اهداف: %s / %s / %s — ریسک به ریوارد حداقل ۱:۳",
+            "Trade plan: entry %s | stop %s | targets %s / %s / %s — risk:reward floor 1:3"
+        )
+        return String.format(
+            template,
+            fmtNum(entry), fmtNum(sl), fmtNum(tp1), fmtNum(tp2), fmtNum(tp3)
+        )
     }
     val litRiskNote get() = t(
         "⚠️ تحلیل آموزشی است نه سیگنال قطعی. اجرای واقعی فقط از درگاه متصل و با تأییدهای خود گیت‌وی انجام می‌شود؛ حالت پیش‌فرض شبیه‌سازی کاغذی است.",
