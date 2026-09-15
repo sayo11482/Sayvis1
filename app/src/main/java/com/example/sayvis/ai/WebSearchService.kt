@@ -8,6 +8,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.URLDecoder
 import java.util.concurrent.TimeUnit
+import com.example.sayvis.net.SayvisNet
 
 /**
  * Keyless, on-device web search used by the assistant to ground answers in fresh
@@ -23,10 +24,7 @@ import java.util.concurrent.TimeUnit
  *  - Wikipedia opensearch (fa/en) for encyclopaedic coverage.
  */
 class WebSearchService(
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
+    private val client: OkHttpClient = SayvisNet.client(8, 10)
 ) {
 
     data class WebResult(

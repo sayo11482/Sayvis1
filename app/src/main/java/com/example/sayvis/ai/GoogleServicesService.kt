@@ -6,6 +6,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import com.example.sayvis.net.SayvisNet
 
 /**
  * Read-only access to the signed-in owner's Google account capabilities:
@@ -26,10 +27,7 @@ class GoogleServicesService {
     /** Which Google capability a normalized prompt asks about. */
     enum class Capability { GMAIL, CALENDAR, DRIVE }
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(12, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
-        .build()
+    private val client = SayvisNet.client(12, 12)
 
     companion object {
 

@@ -42,6 +42,8 @@ googleServices = "4.5.0"
 credentials = "1.5.0"
 googleid = "1.1.1"
 mlkitFace = "16.1.7"
+mlkitBarcode = "17.3.0"
+zxingCore = "3.5.3"
 
 
 [libraries]
@@ -82,6 +84,8 @@ androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycl
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraView" }
 androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraCore" }
 mlkit-face = { group = "com.google.mlkit", name = "face-detection", version.ref = "mlkitFace" }
+mlkit-barcode = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
 logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "loggingInterceptor" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "moshiKotlin" }

@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
+import com.example.sayvis.net.SayvisNet
 
 /**
  * Live, keyless market data for the SAYVIS trading terminal. Every backend
@@ -46,10 +47,7 @@ class MarketDataService {
         val failures: List<String>
     )
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
-        .build()
+    private val client = SayvisNet.client(10, 12)
 
     suspend fun refreshAll(): Snapshot = withContext(Dispatchers.IO) {
         coroutineScope {

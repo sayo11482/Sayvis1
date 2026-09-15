@@ -260,10 +260,7 @@ object GoogleAuthManager {
                 .url(TOKEN_URL)
                 .post(body.toRequestBody("application/x-www-form-urlencoded".toMediaType()))
                 .build()
-            okhttp3.OkHttpClient.Builder()
-                .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                .build()
+            com.example.sayvis.net.SayvisNet.client(15, 15)
                 .newCall(request)
                 .execute()
                 .use { response ->

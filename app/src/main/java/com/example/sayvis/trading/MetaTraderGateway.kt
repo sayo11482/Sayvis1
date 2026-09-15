@@ -19,6 +19,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.round
 import kotlin.random.Random
+import com.example.sayvis.net.SayvisNet
 
 /**
  * MetaTrader 4/5 gateway for SAYVIS.
@@ -43,10 +44,7 @@ class MetaTraderGateway(
     private val random: Random = Random(System.currentTimeMillis())
 ) {
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(12, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .build()
+    private val client = SayvisNet.client(12, 20)
 
     /** Baselines used by the offline simulator so prices stay plausible between runs. */
     private val simulator = MarketSimulator(random)

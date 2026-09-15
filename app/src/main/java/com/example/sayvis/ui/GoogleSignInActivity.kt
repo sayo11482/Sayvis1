@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,11 +20,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sayvis.ai.GoogleAuthManager
 import com.example.sayvis.ai.GoogleLinkManager
+import com.example.sayvis.identity.GoogleAccountHub
 import com.example.sayvis.i18n.SayvisStrings
 import com.example.sayvis.settings.AiProviderKind
 import com.example.sayvis.settings.SecretKey
@@ -56,27 +60,46 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-/** Lifecycle of the automatic connect pipeline (file-private). */
-private enum class Phase { EXCHANGING, OPENING_STUDIO, WAITING_COPY, CONNECTING, DONE, FAILED }
+/** Lifecycle of the connect pipeline (file-private). */
+private enum class Phase { PICKING, MANUAL, EXCHANGING, LINKING, OPENING_STUDIO, WAITING_COPY, CONNECTING, DONE, FAILED }
 
 /**
- * The fully automatic post-authentication pipeline. The owner only signs in
- * with Google once; from there SAYVIS takes over:
+ * The connect entry point (v4.0.0 rebuild).
  *
- *  1. OAuth code exchanged (PKCE) → profile saved, refresh token in the vault.
- *  2. Clipboard is scanned for a Gemini key — if one is there (the usual case:
- *     copied from AI Studio moments before), it is validated live and saved.
- *  3. Otherwise Google AI Studio opens automatically; the moment the owner
- *     copies the key and returns, the resume handler captures, verifies and
- *     links it — Gemini becomes the brain with zero typing.
+ * Manual open (no OAuth payload) now runs the ZERO-CONFIG flow:
+ *
+ *  1. The system "choose a Google account" sheet opens automatically —
+ *     no client ID, no console setup, no SHA-1 (this fixes the broken
+ *     sign-in: the old button stayed disabled without a pasted client ID).
+ *  2. The chosen e-mail becomes the identity hub: settings + every outgoing
+ *     request carries it as `X-Sayvis-Account` (SayvisNet).
+ *  3. The original automatic pipeline then continues unchanged: clipboard
+ *     Gemini-key capture → live validation → AI wiring; otherwise AI Studio
+ *     opens and the key is captured on return. Zero typing.
+ *
+ * If the device offers no Google account (no GMS), a manual e-mail fallback
+ * keeps the owner in control. The PKCE OAuth callback (?code=…) is preserved
+ * for the optional Gmail/Calendar/Drive scopes.
  */
 class GoogleSignInActivity : ComponentActivity() {
 
     private val scope = CoroutineScope(Dispatchers.Main)
 
-    private var phase by mutableStateOf(Phase.EXCHANGING)
+    private var phase by mutableStateOf(Phase.PICKING)
     private var statusLine by mutableStateOf("")
+    private var manualEmail by mutableStateOf("")
     private var browserOpened = false
+
+    private val accountPicker =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val email = result.data?.getStringExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME)
+            if (email.isNullOrBlank()) {
+                phase = Phase.MANUAL
+                statusLine = ""
+            } else {
+                linkChosenAccount(email)
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,8 +113,43 @@ class GoogleSignInActivity : ComponentActivity() {
         val strings = SayvisStrings.of(persian)
 
         when {
-            // Plain open (no OAuth payload): treat as the manual entry point.
-            code == null && error == null -> runAutoConnect(store, persian, strings)
+            // Plain open (no OAuth payload): the zero-config account picker.
+            code == null && error == null -> {
+                phase = Phase.PICKING
+                statusLine = strings.googleAutoConnecting
+                setContent {
+                    SayvisTheme {
+                        ConnectFlowScreen(
+                            isPersian = persian,
+                            phase = phase,
+                            statusLine = statusLine,
+                            manualEmail = manualEmail,
+                            onManualEmailChange = { manualEmail = it },
+                            onManualLink = { linkChosenAccount(manualEmail) },
+                            onRecheck = {
+                                phase = Phase.CONNECTING
+                                attemptKeyLink(store, persian, strings, reopenStudio = false)
+                            },
+                            onOpenStudio = {
+                                browserOpened = true
+                                runCatching {
+                                    startActivity(
+                                        Intent(Intent.ACTION_VIEW, Uri.parse(GoogleLinkManager.STUDIO_KEY_URL))
+                                    )
+                                }
+                            },
+                            onClose = { finish() }
+                        )
+                    }
+                }
+                val pick = GoogleAccountHub.chooseAccountIntent()
+                if (pick != null) {
+                    runCatching { accountPicker.launch(pick) }
+                        .onFailure { phase = Phase.MANUAL }
+                } else {
+                    phase = Phase.MANUAL
+                }
+            }
 
             error != null -> {
                 phase = Phase.FAILED
@@ -99,9 +157,11 @@ class GoogleSignInActivity : ComponentActivity() {
                     "access_denied" -> strings.googleDenied
                     else -> strings.googleErrorGeneric
                 }
+                renderShell(persian, strings)
             }
 
             code != null -> {
+                renderShell(persian, strings)
                 val pending = GoogleAuthManager.pendingFlow(applicationContext)
                 if (pending == null || pending.second != state) {
                     GoogleAuthManager.clearPendingFlow(applicationContext)
@@ -123,15 +183,17 @@ class GoogleSignInActivity : ComponentActivity() {
                             val profile = result.idToken?.let { GoogleAuthManager.parseIdToken(it) }
                             store.putSecret(SecretKey.GOOGLE_REFRESH_TOKEN, result.refreshToken.orEmpty())
                             GoogleAuthManager.cacheAccessToken(applicationContext, result)
-                            store.update {
-                                it.copy(
-                                    google = it.google.copy(
-                                        email = profile?.email.orEmpty(),
-                                        displayName = profile?.name.orEmpty(),
-                                        pictureUrl = profile?.picture.orEmpty(),
-                                        signedInAtEpochMs = System.currentTimeMillis()
+                            val linked = profile?.email.orEmpty()
+                            if (linked.isNotBlank()) {
+                                GoogleAccountHub.link(applicationContext, linked)
+                                store.update {
+                                    it.copy(
+                                        google = it.google.copy(
+                                            displayName = profile?.name ?: GoogleAccountHub.displayNameFor(linked),
+                                            pictureUrl = profile?.picture.orEmpty()
+                                        )
                                     )
-                                )
+                                }
                             }
                             Toast.makeText(this@GoogleSignInActivity, strings.googleWelcome, Toast.LENGTH_LONG).show()
                             runAutoConnect(store, persian, strings)
@@ -140,13 +202,20 @@ class GoogleSignInActivity : ComponentActivity() {
                 }
             }
         }
+    }
 
+    /** Renders the shell for the OAuth-callback paths (UI-only). */
+    private fun renderShell(persian: Boolean, strings: SayvisStrings) {
+        val store = SettingsStore.get(applicationContext)
         setContent {
             SayvisTheme {
-                AutoConnectScreen(
+                ConnectFlowScreen(
                     isPersian = persian,
                     phase = phase,
                     statusLine = statusLine,
+                    manualEmail = manualEmail,
+                    onManualEmailChange = { manualEmail = it },
+                    onManualLink = { linkChosenAccount(manualEmail) },
                     onRecheck = {
                         phase = Phase.CONNECTING
                         attemptKeyLink(store, persian, strings, reopenStudio = false)
@@ -161,6 +230,25 @@ class GoogleSignInActivity : ComponentActivity() {
                     },
                     onClose = { finish() }
                 )
+            }
+        }
+    }
+
+    /** Persists the chosen Google account, then continues the auto pipeline. */
+    private fun linkChosenAccount(rawEmail: String) {
+        val store = SettingsStore.get(applicationContext)
+        val persian = store.current().isPersian(SayvisStrings.deviceIsPersian())
+        val strings = SayvisStrings.of(persian)
+        phase = Phase.LINKING
+        statusLine = strings.googleConnecting
+        when (val result = GoogleAccountHub.link(applicationContext, rawEmail)) {
+            is GoogleAccountHub.LinkResult.Success -> {
+                Toast.makeText(this, strings.googleWelcome + " — " + result.email, Toast.LENGTH_LONG).show()
+                runAutoConnect(store, persian, strings)
+            }
+            is GoogleAccountHub.LinkResult.Invalid -> {
+                phase = Phase.MANUAL
+                statusLine = result.message(persian)
             }
         }
     }
@@ -230,10 +318,13 @@ class GoogleSignInActivity : ComponentActivity() {
 }
 
 @Composable
-private fun AutoConnectScreen(
+private fun ConnectFlowScreen(
     isPersian: Boolean,
     phase: Phase,
     statusLine: String,
+    manualEmail: String,
+    onManualEmailChange: (String) -> Unit,
+    onManualLink: () -> Unit,
     onRecheck: () -> Unit,
     onOpenStudio: () -> Unit,
     onClose: () -> Unit
@@ -242,7 +333,7 @@ private fun AutoConnectScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xF20B1220))
+            .background(Color(0xF20A0B0E))
             .testTag("google_signin_activity"),
         contentAlignment = Alignment.Center
     ) {
@@ -273,6 +364,46 @@ private fun AutoConnectScreen(
                             fontSize = 12.5.sp,
                             color = SayvisRedAlert,
                             modifier = Modifier.testTag("google_signin_failure")
+                        )
+                    }
+                    Phase.MANUAL -> {
+                        Icon(
+                            Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            tint = SayvisCyan,
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Text(
+                            text = s.connectManualTitle,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = SayvisSilver
+                        )
+                        Text(
+                            text = s.connectManualHint,
+                            fontSize = 11.sp,
+                            color = SayvisSilverMuted
+                        )
+                        OutlinedTextField(
+                            value = manualEmail,
+                            onValueChange = onManualEmailChange,
+                            singleLine = true,
+                            placeholder = { Text("name@gmail.com", fontSize = 12.sp) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("google_manual_email")
+                        )
+                        if (statusLine.isNotBlank()) {
+                            Text(text = statusLine, fontSize = 11.sp, color = SayvisRedAlert)
+                        }
+                        SayvisButton(
+                            label = s.connectManualLink,
+                            onClick = onManualLink,
+                            enabled = manualEmail.contains("@"),
+                            tone = ButtonTone.PRIMARY,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("google_manual_link")
                         )
                     }
                     Phase.WAITING_COPY -> {

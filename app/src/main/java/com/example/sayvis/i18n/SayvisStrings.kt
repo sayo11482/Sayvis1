@@ -582,6 +582,57 @@ class SayvisStrings(val fa: Boolean) {
     fun avatarTestNo(percent: String): String =
         t("مطابقت کافی نبود ($percent٪). دوباره ثبت کنید یا حساسیت را بالا ببرید.", "Not a confident match ($percent%). Re-enrol or raise the sensitivity.")
 
+    // ---- v4.0.0 connect centre / rebuilt network / QR pairing ----
+    val connectHubTitle get() = t("مرکز اتصال سایویس", "SAYVIS Connect Centre")
+    val connectHubHint get() = t(
+        "یک جا برای همهٔ اتصال‌ها: اکانت گوگل شما مرکز همهٔ ورودها و هوش مصنوعی سایویس است؛ شبکه هم بازسازی شده و همهٔ درخواست‌ها از یک موتور مشترک با هویت اکانت شما می‌روند.",
+        "One place for every connection: your Google account is the hub of all logins and of SAYVIS's AI usage, and the network layer is rebuilt around one shared engine carrying your account identity."
+    )
+    val connectNetChecking get() = t("در حال بررسی اتصال جهانی…", "Checking global connectivity…")
+    val connectNetNote get() = t(
+        "موتور شبکهٔ بازسازی‌شده: اتصال مشترک، تلاش مجدد خودکار، سرآیند هویت اکانت",
+        "Rebuilt network engine: shared client, automatic retries, account identity header"
+    )
+    val connectNetRetry get() = t("بررسی دوباره", "Re-check")
+    val connectAccountTitle get() = t("اکانت گوگل — مرکز هویت", "Google account — identity hub")
+    val connectAccountHint get() = t(
+        "با یک لمس، اکانت گوگل خود را انتخاب کنید؛ بدون هیچ تنظیمات اضافه‌ای. بعد از آن همهٔ ورودها و هوش مصنوعی زیر همین اکانت می‌ماند.",
+        "Pick your Google account with one tap — no extra setup. Every login and all AI usage then runs under this account."
+    )
+    val connectGoogleButton get() = t("ادامه با اکانت گوگل", "Continue with Google account")
+    val connectAccountNote get() = t(
+        "مرکز همهٔ ورودها و مصرف هوش مصنوعی سایویس",
+        "Hub of all logins and of SAYVIS's AI usage"
+    )
+    val connectSignOut get() = t("خروج از اکانت", "Sign out")
+    val connectQrTitle get() = t("اتصال با QR — اسکن کامپیوتر", "QR connection — computer scan")
+    val connectQrHint get() = t(
+        "این QR اکانت و دستگاه شماست؛ با اسکنر کامپیوتر یا گوشی دیگر بخوانیدش تا پیوند بخورد. یا برعکس: هر QR ساخته‌شده در کامپیوتر (کلید Gemini، کانفیگ، لینک) را اسکن کنید.",
+        "This QR holds your account + device; read it with any computer/phone scanner to pair. The other way round, scan any computer-made QR (Gemini key, config, link)."
+    )
+    val connectQrNeedAccount get() = t(
+        "برای ساخت QR اتصال، اول اکانت گوگل را پیوند دهید.",
+        "Link your Google account first to generate the pairing QR."
+    )
+    val connectPinLabel get() = t("کد جفت‌سازی دستگاه:", "Device pairing pin:")
+    val connectScan get() = t("اسکن QR از کامپیوتر", "Scan QR from computer")
+    val connectScanHintLive get() = t(
+        "QR را روی صفحهٔ کامپیوتر نشان دهید",
+        "Show the QR on your computer screen"
+    )
+    val connectScanPermission get() = t("برای اسکن، دسترسی دوربین لازم است.", "Camera permission is needed to scan.")
+    val connectScanGrant get() = t("اجازهٔ دوربین", "Grant camera")
+    val connectPasteHint get() = t("محتوای QR را همین‌جا بچسبانید…", "Paste QR content here…")
+    val connectImport get() = t("ثبت محتوای QR", "Apply QR content")
+    val connectInvalid get() = t("محتوای QR قابل استفاده نبود.", "The QR content could not be used.")
+    val connectLater get() = t("فعلاً بعداً", "Maybe later")
+    val connectManualTitle get() = t("پیوند اکانت گوگل", "Link your Google account")
+    val connectManualHint get() = t(
+        "انتخاب‌گر اکانت گوگل در دسترس نبود؛ ایمیل اکانت خود را وارد کنید (همه‌چیز محلی می‌ماند).",
+        "The Google account sheet was unavailable; enter your account e-mail (everything stays on-device)."
+    )
+    val connectManualLink get() = t("پیوند دستی اکانت", "Link manually")
+
     private fun fmtNum(v: Double): String = if (v >= 1000.0) "%.1f".format(v) else "%.4f".format(v)
 
     companion object {

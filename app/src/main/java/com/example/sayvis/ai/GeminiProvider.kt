@@ -10,6 +10,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import com.example.sayvis.net.SayvisNet
 
 /**
  * Google Gemini provider.
@@ -36,10 +37,7 @@ class GeminiProvider(
     }
 
     private fun clientFor(settings: AiSettings): OkHttpClient =
-        OkHttpClient.Builder()
-            .connectTimeout(settings.timeoutSeconds.toLong(), TimeUnit.SECONDS)
-            .readTimeout((settings.timeoutSeconds + 10L), TimeUnit.SECONDS)
-            .build()
+        SayvisNet.client(settings.timeoutSeconds, settings.timeoutSeconds + 10L)
 
     override suspend fun generateResponse(
         context: AiRequestContext,

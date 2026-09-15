@@ -103,6 +103,7 @@ fun SettingsScreen(
     onGoogleSignIn: () -> Unit,
     onGoogleSignOut: () -> Unit,
     onSetGoogleRequireSignIn: (Boolean) -> Unit,
+    onOpenConnect: () -> Unit,
     onOpenGateway: () -> Unit,
     onOpenScripts: () -> Unit,
     onClearTranslationCache: () -> Unit,
@@ -655,6 +656,12 @@ fun SettingsScreen(
         SayvisCard {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = s.googleSectionHint, fontSize = 11.5.sp, color = SayvisSilverMuted)
+                SayvisButton(
+                    label = s.connectHubTitle,
+                    onClick = onOpenConnect,
+                    tone = ButtonTone.PRIMARY,
+                    modifier = Modifier.fillMaxWidth().testTag("settings_open_connect")
+                )
                 SayvisField(
                     label = s.googleClientId,
                     value = settings.google.clientId,
@@ -677,7 +684,6 @@ fun SettingsScreen(
                     SayvisButton(
                         label = s.googleSignIn,
                         onClick = onGoogleSignIn,
-                        enabled = settings.google.clientId.isNotBlank(),
                         tone = ButtonTone.PRIMARY,
                         modifier = Modifier.weight(1f).testTag("google_account_signin")
                     )
@@ -702,7 +708,7 @@ fun SettingsScreen(
                     hint = null,
                     checked = settings.google.requireSignInAtLaunch,
                     onCheckedChange = { onSetGoogleRequireSignIn(it) },
-                    enabled = settings.google.clientId.isNotBlank()
+                    enabled = settings.google.signedIn
                 )
             }
         }

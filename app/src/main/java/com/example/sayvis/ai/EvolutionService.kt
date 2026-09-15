@@ -5,6 +5,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
+import com.example.sayvis.net.SayvisNet
 
 /**
  * SAYVIS self-evolution agent: it searches GitHub (keyless API) for assistant/
@@ -33,10 +34,7 @@ class EvolutionService {
         val messageEn: String
     )
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(12, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
-        .build()
+    private val client = SayvisNet.client(12, 12)
 
     /** A GitHub-derived tuning proposal for the LIT engine, with provenance. */
     data class TuningProposal(

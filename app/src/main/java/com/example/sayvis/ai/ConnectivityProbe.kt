@@ -5,6 +5,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
+import com.example.sayvis.net.SayvisNet
 
 /**
  * Answers the owner's very first question — "does SAYVIS actually have
@@ -55,10 +56,7 @@ class ConnectivityProbe {
     }
 
     private fun reachable(url: String): Boolean {
-        val client = OkHttpClient.Builder()
-            .connectTimeout(4, TimeUnit.SECONDS)
-            .readTimeout(4, TimeUnit.SECONDS)
-            .build()
+        val client = SayvisNet.probeClient(4, 4)
         val request = Request.Builder().url(url).head().build()
         return client.newCall(request).execute().use { it.isSuccessful || it.code == 204 }
     }

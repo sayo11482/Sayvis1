@@ -5,6 +5,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
+import com.example.sayvis.net.SayvisNet
 
 /**
  * SAYVIS research agent: on an explicit owner command it runs a real multi-step
@@ -30,11 +31,7 @@ class AgentService(
         val googleLines: List<String> = emptyList()
     )
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(12, TimeUnit.SECONDS)
-        .readTimeout(14, TimeUnit.SECONDS)
-        .followRedirects(true)
-        .build()
+    private val client = SayvisNet.client(12, 14).newBuilder().followRedirects(true).build()
 
     /**
      * Runs the loop. [synthesizer] (when connected) receives the research block

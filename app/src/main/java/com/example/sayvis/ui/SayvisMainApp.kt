@@ -36,6 +36,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -62,6 +63,7 @@ import com.example.sayvis.ui.screens.MarketsScreen
 import com.example.sayvis.ui.screens.RobotScreen
 import com.example.sayvis.ui.screens.AvatarListenScreen
 import com.example.sayvis.ui.screens.ChatScreen
+import com.example.sayvis.ui.screens.ConnectScreen
 import com.example.sayvis.ui.screens.HomeScreen
 import com.example.sayvis.ui.screens.MissionsScreen
 import com.example.sayvis.ui.screens.ScriptsScreen
@@ -128,6 +130,8 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
     val connectivity by viewModel.connectivity.collectAsState()
 
     val strings = remember(isPersian) { SayvisStrings.of(isPersian) }
+
+    LaunchedEffect(Unit) { viewModel.maybeAutoConnectScreen() }
     val layoutDirection = if (isPersian && settings.localization.forceRtlForPersian) LayoutDirection.Rtl else LayoutDirection.Ltr
 
     CompositionLocalProvider(
@@ -358,6 +362,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         onNavigate = { viewModel.navigateTo(it) }
                     )
 
+                    SayvisScreen.CONNECT -> ConnectScreen(viewModel = viewModel)
                     SayvisScreen.SETTINGS -> SettingsScreen(
                         settings = settings,
                         onSettingsChange = { next -> viewModel.updateSettings { next } },
@@ -372,6 +377,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         onGoogleSignIn = { viewModel.beginGoogleSignIn() },
                         onGoogleSignOut = { viewModel.googleSignOut() },
                         onSetGoogleRequireSignIn = { viewModel.setGoogleRequireSignIn(it) },
+                        onOpenConnect = { viewModel.openConnectCenter() },
                         onOpenGateway = { viewModel.navigateTo(SayvisScreen.GATEWAY) },
                         onOpenScripts = { viewModel.navigateTo(SayvisScreen.SCRIPTS) },
                         onClearTranslationCache = { viewModel.clearTranslationCache() },

@@ -101,6 +101,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import com.example.sayvis.net.SayvisNet
 
 /**
  * Navigation model.
@@ -129,7 +130,8 @@ enum class SayvisScreen(val titleEn: String, val titleFa: String) {
     GATEWAY("Trading Gateway", "درگاه معاملاتی"),
     SCRIPTS("Scripts & Automation", "اسکریپت و خودکارسازی"),
     AVATAR("Floating Avatar & Listening", "آواتار شناور و شنیدار"),
-    ROBOT("SAYVIS Robot", "ربات سایویس");
+    ROBOT("SAYVIS Robot", "ربات سایویس"),
+    CONNECT("Connect Centre", "مرکز اتصال");
 
     fun title(isPersian: Boolean): String = if (isPersian) titleFa else titleEn
 
@@ -142,6 +144,7 @@ enum class SayvisScreen(val titleEn: String, val titleFa: String) {
     fun primaryTab(): SayvisScreen = when (this) {
         HOME, ASSISTANT, TOOLS, SETTINGS -> this
         GATEWAY, SCRIPTS -> TOOLS
+        CONNECT -> SETTINGS
         else -> TOOLS
     }
 }
@@ -755,21 +758,118 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
 
     // -------------------------------------------------- google sign-in hooks
 
-    /** Opens the Google consent screen (requires the OAuth client ID). */
-    fun beginGoogleSignIn(): Boolean {
-        val clientId = settingsStore.current().google.clientId.trim()
-        if (clientId.isBlank()) return false
-        return GoogleAuthManager.openBrowser(getApplication(), clientId)
-    }
+    /**
+     * Opens the connect flow (v4.0.0): the system Google account chooser —
+     * no OAuth client ID needed anymore. The advanced PKCE consent screen is
+     * only used for its OAuth callback deep-link path.
+     */
+    fun beginGoogleSignIn(): Boolean = runCatching {
+        val intent = Intent(getApplication(), com.example.sayvis.ui.GoogleSignInActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        getApplication<Application>().startActivity(intent)
+        true
+    }.getOrDefault(false)
 
     /** Removes the Google identity and refresh token from the device. */
     fun googleSignOut() {
         settingsStore.putSecret(SecretKey.GOOGLE_REFRESH_TOKEN, "")
-        settingsStore.update { it.copy(google = it.google.copy(email = "", displayName = "", pictureUrl = "", signedInAtEpochMs = 0L)) }
+        com.example.sayvis.identity.GoogleAccountHub.unlink(getApplication())
+        audit("OWNER", "account.google.unlink", RiskLevel.MEDIUM_RISK, "OWNER_SESSION", "SUCCESS", "identity hub sign-out")
     }
 
     fun setGoogleRequireSignIn(enabled: Boolean) {
         settingsStore.update { it.copy(google = it.google.copy(requireSignInAtLaunch = enabled)) }
+    }
+
+    // ------------------------------------------------------- connect centre
+
+    /** Auto-opens the connect hub once per process while no account is linked. */
+    private var connectAutoShown = false
+    fun maybeAutoConnectScreen() {
+        if (connectAutoShown) return
+        connectAutoShown = true
+        if (settingsStore.current().google.email.isBlank()) {
+            _currentScreen.value = SayvisScreen.CONNECT
+        }
+    }
+
+    fun openConnectCenter() {
+        _currentScreen.value = SayvisScreen.CONNECT
+    }
+
+    /** The pairing QR payload of this device (account + device + pin). */
+    fun pairingPayload(): String {
+        val email = settingsStore.current().google.email
+        val device = android.os.Build.MODEL?.ifBlank { "Android device" } ?: "Android device"
+        val pin = com.example.sayvis.identity.GoogleAccountHub.devicePin(getApplication())
+        return com.example.sayvis.identity.PairingQr.buildPayload(
+            account = email,
+            device = device,
+            pin = pin,
+            createdAt = System.currentTimeMillis()
+        )
+    }
+
+    /**
+     * Applies scanned/imported QR content. Returns (ok, persian message):
+     * links account pairings, stores provider keys/config, reports links.
+     */
+    fun handleQrPayload(raw: String): Pair<Boolean, String> {
+        return when (val import = com.example.sayvis.identity.PairingQr.classify(raw)) {
+            is com.example.sayvis.identity.PairingQr.Import.PairingLink -> {
+                val result = com.example.sayvis.identity.GoogleAccountHub.link(
+                    getApplication(), import.pairing.account
+                )
+                when (result) {
+                    is com.example.sayvis.identity.GoogleAccountHub.LinkResult.Success -> {
+                        audit("OWNER", "account.qr.pair", RiskLevel.MEDIUM_RISK, "OWNER_QR", "SUCCESS",
+                            "paired=${result.email} pin=${import.pairing.pin} dev=${import.pairing.device.take(24)}")
+                        refreshConnectivity()
+                        true to "اکانت ${result.email} با QR پیوند شد ✅"
+                    }
+                    is com.example.sayvis.identity.GoogleAccountHub.LinkResult.Invalid ->
+                        false to result.message(true)
+                }
+            }
+            is com.example.sayvis.identity.PairingQr.Import.ProviderKey -> {
+                storeProviderKey(import.provider, import.apiKey)
+                audit("OWNER", "account.qr.key_import", RiskLevel.MEDIUM_RISK, "OWNER_QR", "SUCCESS",
+                    "provider=${import.provider} keyHash=${import.apiKey.takeLast(4).length}")
+                true to "کلید ${import.provider} ذخیره شد ✅ (از کامپیوتر)"
+            }
+            is com.example.sayvis.identity.PairingQr.Import.Config -> {
+                import.provider?.let { storeProviderKey(it, import.apiKey) }
+                settingsStore.update { current ->
+                    val ai = current.ai
+                    val withBase = if (import.baseUrl != null) ai.copy(customBaseUrl = import.baseUrl) else ai
+                    val withModel = if (import.model != null) withBase.copy(customModel = import.model) else withBase
+                    current.copy(ai = withModel)
+                }
+                audit("OWNER", "account.qr.config_import", RiskLevel.MEDIUM_RISK, "OWNER_QR", "SUCCESS",
+                    "provider=${import.provider ?: "?"} model=${import.model ?: "-"}")
+                true to "کانفیگ هوش مصنوعی از کامپیوتر ثبت شد ✅"
+            }
+            is com.example.sayvis.identity.PairingQr.Import.Link ->
+                true to "لینک خوانده شد: ${import.url.take(60)}"
+            is com.example.sayvis.identity.PairingQr.Import.Plain ->
+                if (import.text.isBlank()) false to "محتوای QR خالی بود."
+                else true to "متن QR: ${import.text.take(60)}"
+        }
+    }
+
+    /** Writes an imported provider key into the matching settings field. */
+    private fun storeProviderKey(provider: String, apiKey: String) {
+        settingsStore.update { current ->
+            val ai = when (provider.lowercase()) {
+                "gemini" -> current.ai.copy(geminiApiKey = apiKey)
+                "openai" -> current.ai.copy(openAiApiKey = apiKey)
+                "groq" -> current.ai.copy(groqApiKey = apiKey)
+                "xai" -> current.ai.copy(xaiApiKey = apiKey)
+                "openrouter" -> current.ai.copy(openRouterApiKey = apiKey)
+                else -> current.ai.copy(customApiKey = apiKey)
+            }
+            current.copy(ai = ai)
+        }
     }
 
     fun sendMessage(text: String, fromVoice: Boolean = false) {
@@ -1706,10 +1806,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun postWebhook(url: String, payload: String): Boolean = withContext(Dispatchers.IO) {
         if (url.isBlank() || (!url.startsWith("http://") && !url.startsWith("https://"))) return@withContext false
         runCatching {
-            val client = OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(15, TimeUnit.SECONDS)
-                .build()
+            val client = SayvisNet.client(10, 15)
             val request = Request.Builder()
                 .url(url)
                 .post(payload.ifBlank { "{}" }.toRequestBody(JSON_MEDIA_TYPE))

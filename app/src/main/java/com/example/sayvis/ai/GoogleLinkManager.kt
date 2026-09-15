@@ -6,6 +6,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import com.example.sayvis.net.SayvisNet
 
 /**
  * Links the owner's Google account to the Gemini API.
@@ -81,10 +82,7 @@ object GoogleLinkManager {
      * travels in the x-goog-api-key header so it never lands in a URL/log.
      */
     suspend fun validateKey(key: String): LinkCheck = withContext(Dispatchers.IO) {
-        val client = OkHttpClient.Builder()
-            .connectTimeout(12, TimeUnit.SECONDS)
-            .readTimeout(12, TimeUnit.SECONDS)
-            .build()
+        val client = SayvisNet.client(12, 12)
         val request = Request.Builder()
             .url("https://generativelanguage.googleapis.com/v1beta/models?pageSize=50")
             .header("x-goog-api-key", key.trim())

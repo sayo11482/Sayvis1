@@ -11,6 +11,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import com.example.sayvis.net.SayvisNet
 
 /**
  * One implementation covering every OpenAI-compatible chat-completions endpoint:
@@ -116,10 +117,7 @@ class OpenAiCompatibleProvider(private val kind: AiProviderKind) : AIProvider {
                 builder.header("X-Title", "SAYVIS")
             }
 
-            val client = OkHttpClient.Builder()
-                .connectTimeout(settings.timeoutSeconds.toLong(), TimeUnit.SECONDS)
-                .readTimeout((settings.timeoutSeconds + 10L), TimeUnit.SECONDS)
-                .build()
+            val client = SayvisNet.client(settings.timeoutSeconds, settings.timeoutSeconds + 10L)
 
             client.newCall(builder.build()).execute().use { response ->
                 val payload = response.body?.string() ?: ""
