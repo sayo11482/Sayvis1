@@ -46,26 +46,47 @@ object LitStrategyEngine {
                 .let { rest -> listOf(maxOf(MIN_RR, targetMultiples.firstOrNull() ?: MIN_RR)) + rest }
         )
 
-        fun toJson(): String =
-            org.json.JSONObject()
-                .put("atrFactor", atrFactor)
-                .put("rsiHigh", rsiHigh)
-                .put("rsiLow", rsiLow)
-                .put("targets", org.json.JSONArray(targetMultiples))
-                .put("repos", org.json.JSONArray(sourceRepos))
-                .toString()
+        /** Dependency-free JSON (org.json is a stub on the JVM test classpath). */
+        fun toJson(): String {
+            val repos = sourceRepos.joinToString(",") { "\u0022" + it + "\u0022" }
+            val targets = targetMultiples.joinToString(",")
+            return "{\u0022atrFactor\u0022:" + atrFactor +
+                ",\u0022rsiHigh\u0022:" + rsiHigh +
+                ",\u0022rsiLow\u0022:" + rsiLow +
+                ",\u0022targets\u0022:[" + targets + "]" +
+                ",\u0022repos\u0022:[" + repos + "]}"
+        }
 
         companion object {
+            private fun number(raw: String, field: String): Double? =
+                Regex("\\"$field\\":\\s*(-?[0-9]+(?:\\.[0-9]+)?)").find(raw)
+                    ?.groupValues?.get(1)?.toDoubleOrNull()
+
+            private fun numberArray(raw: String, field: String): List<Double>? {
+                val block = Regex("\\"$field\\":\\[([^]]*)\\]").find(raw)?.groupValues?.get(1)
+                    ?: return null
+                return Regex("-?[0-9]+(?:\\.[0-9]+)?").findAll(block)
+                    .mapNotNull { it.value.toDoubleOrNull() }
+                    .toList()
+            }
+
+            private fun stringArray(raw: String, field: String): List<String>? {
+                val block = Regex("\\"$field\\":\\[([^]]*)\\]").find(raw)?.groupValues?.get(1)
+                    ?: return null
+                return Regex("\\"((?:\\\\.|[^\\"\\\\])*)\"").findAll(block)
+                    .mapNotNull { it.groupValues.get(1).takeIf { v -> v.isNotBlank() } }
+                    .map { com.example.sayvis.ai.WebSearchService.jsonUnescape(it) }
+                    .toList()
+            }
+
             fun fromJson(raw: String): Tuning? = runCatching {
-                val root = org.json.JSONObject(raw)
-                val targets = root.optJSONArray("targets") ?: return@runCatching null
-                val repos = root.optJSONArray("repos")
+                val targets = numberArray(raw, "targets") ?: return@runCatching null
                 Tuning(
-                    atrFactor = root.optDouble("atrFactor", 1.5),
-                    rsiHigh = root.optDouble("rsiHigh", 75.0),
-                    rsiLow = root.optDouble("rsiLow", 25.0),
-                    targetMultiples = (0 until targets.length()).map { targets.optDouble(it, 3.0) },
-                    sourceRepos = if (repos == null) emptyList() else (0 until repos.length()).mapNotNull { repos.optString(it).ifBlank { null } }
+                    atrFactor = number(raw, "atrFactor") ?: 1.5,
+                    rsiHigh = number(raw, "rsiHigh") ?: 75.0,
+                    rsiLow = number(raw, "rsiLow") ?: 25.0,
+                    targetMultiples = targets,
+                    sourceRepos = stringArray(raw, "repos").orEmpty()
                 ).safe()
             }.getOrNull()
         }
