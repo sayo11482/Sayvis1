@@ -77,7 +77,7 @@ class EvolutionService {
          * flat brace matcher; each window then spans exactly one item.
          */
         fun parseGitHubSearch(json: String): List<RepoHit> {
-            val marks = Regex("\\"full_name\\"").findAll(json).map { it.range.first }.toList()
+            val marks = Regex("\u0022full_name\u0022").findAll(json).map { it.range.first }.toList()
             val out = ArrayList<RepoHit>()
             for ((index, start) in marks.withIndex()) {
                 val end = marks.getOrNull(index + 1) ?: json.length
@@ -94,16 +94,16 @@ class EvolutionService {
         }
 
         private fun stringField(block: String, field: String): String? =
-            Regex("\\\"$field\\\"\\s*:\\s*\\\"((?:\\\\.|[^\\\"\\\\])*)\\\"")
+            Regex("\u0022$field\u0022\\s*:\\s*\u0022((?:\\\\.|[^\u0022\\])*)\u0022")
                 .find(block)?.groupValues?.get(1)?.let { WebSearchService.jsonUnescape(it) }
 
         private fun intField(block: String, field: String): Int =
-            Regex("\\\"$field\\\"\\s*:\\s*(\\d+)").find(block)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+            Regex("\u0022$field\u0022\\s*:\\s*(\\d+)").find(block)?.groupValues?.get(1)?.toIntOrNull() ?: 0
 
         private fun topicsField(block: String): List<String> {
-            val array = Regex("\\\"topics\\\"\\s*:\\s*\\[([^]]*)]").find(block)?.groupValues?.get(1)
+            val array = Regex("\u0022topics\u0022\\s*:\\s*\\[([^]]*)]").find(block)?.groupValues?.get(1)
                 ?: return emptyList()
-            return Regex("\\\"((?:\\\\.|[^\\\"\\\\])*)\\\"").findAll(array)
+            return Regex("\u0022((?:\\\\.|[^\u0022\\])*)\u0022").findAll(array)
                 .mapNotNull { it.groupValues[1].takeIf { s -> s.isNotBlank() } }
                 .toList()
         }
