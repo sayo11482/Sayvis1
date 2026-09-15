@@ -59,11 +59,11 @@ object LitStrategyEngine {
 
         companion object {
             private fun number(raw: String, field: String): Double? =
-                Regex("\\"$field\\":\\s*(-?[0-9]+(?:\\.[0-9]+)?)").find(raw)
+                Regex("\\\"$field\\\":\\s*(-?[0-9]+(?:\\.[0-9]+)?)").find(raw)
                     ?.groupValues?.get(1)?.toDoubleOrNull()
 
             private fun numberArray(raw: String, field: String): List<Double>? {
-                val block = Regex("\\"$field\\":\\[([^]]*)\\]").find(raw)?.groupValues?.get(1)
+                val block = Regex("\\\"$field\\\":\\[([^]]*)\\]").find(raw)?.groupValues?.get(1)
                     ?: return null
                 return Regex("-?[0-9]+(?:\\.[0-9]+)?").findAll(block)
                     .mapNotNull { it.value.toDoubleOrNull() }
@@ -71,9 +71,9 @@ object LitStrategyEngine {
             }
 
             private fun stringArray(raw: String, field: String): List<String>? {
-                val block = Regex("\\"$field\\":\\[([^]]*)\\]").find(raw)?.groupValues?.get(1)
+                val block = Regex("\\\"$field\\\":\\[([^]]*)\\]").find(raw)?.groupValues?.get(1)
                     ?: return null
-                return Regex("\\"((?:\\\\.|[^\\"\\\\])*)\"").findAll(block)
+                return Regex("\\\"((?:\\\\.|[^\\\"\\])*)\\\"").findAll(block)
                     .mapNotNull { it.groupValues.get(1).takeIf { v -> v.isNotBlank() } }
                     .map { com.example.sayvis.ai.WebSearchService.jsonUnescape(it) }
                     .toList()
