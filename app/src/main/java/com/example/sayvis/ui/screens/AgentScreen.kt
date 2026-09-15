@@ -47,6 +47,8 @@ import com.example.sayvis.ui.theme.SayvisGold
 import com.example.sayvis.ui.theme.SayvisGreenSuccess
 import com.example.sayvis.ui.theme.SayvisSilver
 import com.example.sayvis.ui.theme.SayvisSilverMuted
+import androidx.compose.foundation.background
+import com.example.sayvis.ui.theme.SayvisSurfaceVariant
 
 /**
  * The SAYVIS agent hub: five specialists behind one calm console. The owner
