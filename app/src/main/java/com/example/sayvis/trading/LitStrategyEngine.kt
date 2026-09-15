@@ -73,7 +73,7 @@ object LitStrategyEngine {
             private fun stringArray(raw: String, field: String): List<String>? {
                 val block = Regex("\\\"$field\\\":\\[([^]]*)\\]").find(raw)?.groupValues?.get(1)
                     ?: return null
-                return Regex("\\\"((?:\\\\.|[^\\\"\\])*)\\\"").findAll(block)
+                return Regex("\\"((?:\\\\.|[^\\"\\\\])*)\\"").findAll(block)
                     .mapNotNull { it.groupValues.get(1).takeIf { v -> v.isNotBlank() } }
                     .map { com.example.sayvis.ai.WebSearchService.jsonUnescape(it) }
                     .toList()
