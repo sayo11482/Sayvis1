@@ -112,7 +112,7 @@ class PairingQrTest {
 
     @Test
     fun `escaped config values decode`() {
-        val json = "{\"provider\":\"openai\",\"apiKey\":\"sk\\\\-test\\\"quoted\",\"model\":\"gpt-4o\"}"
+        val json = "{\"provider\":\"openai\",\"apiKey\":\"sk\\-test\\\"quoted\",\"model\":\"gpt-4o\"}"
         val config = PairingQr.classify(json)
         assertTrue(config is PairingQr.Import.Config)
         config as PairingQr.Import.Config
