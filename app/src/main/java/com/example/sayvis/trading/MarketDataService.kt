@@ -63,14 +63,23 @@ class MarketDataService {
             val series = HashMap<Symbol, List<Double>>()
             val failures = ArrayList<String>()
 
-            gold.await()?.let { quotes[it.symbol] = it } ?: failures += "gold quote"
-            eur?.let { (quote, closes) ->
-                quotes[Symbol.EURUSD] = quote
-                if (closes.size >= 30) series[Symbol.EURUSD] = closes
-            } ?: failures += "EURUSD series"
-            irr.await()?.let { quotes[it.symbol] = it } ?: failures += "USD/IRR quote"
-            usdt.await()?.let { quotes[it.symbol] = it } ?: failures += "USDT/IRT quote"
-            goldSeries.await()?.let { if (it.size >= 30) series[Symbol.XAUUSD] = it }
+            val goldQuote = gold.await()
+            if (goldQuote != null) quotes[goldQuote.symbol] = goldQuote else failures += "gold quote"
+
+            val eurData = eur.await()
+            if (eurData != null) {
+                quotes[Symbol.EURUSD] = eurData.first
+                if (eurData.second.size >= 30) series[Symbol.EURUSD] = eurData.second
+            } else failures += "EURUSD series"
+
+            val irrQuote = irr.await()
+            if (irrQuote != null) quotes[irrQuote.symbol] = irrQuote else failures += "USD/IRR quote"
+
+            val usdtQuote = usdt.await()
+            if (usdtQuote != null) quotes[usdtQuote.symbol] = usdtQuote else failures += "USDT/IRT quote"
+
+            val goldCandles = goldSeries.await()
+            if (goldCandles != null && goldCandles.size >= 30) series[Symbol.XAUUSD] = goldCandles
 
             Snapshot(quotes, series, failures)
         }

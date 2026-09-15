@@ -17,6 +17,7 @@ import com.example.sayvis.ai.ChatTurn
 import com.example.sayvis.ai.AgentService
 import com.example.sayvis.ai.GoogleAuthManager
 import com.example.sayvis.ai.ConnectivityProbe
+import com.example.sayvis.ai.EvolutionService
 import com.example.sayvis.trading.LitStrategyEngine
 import com.example.sayvis.trading.MarketDataService
 import com.example.sayvis.trading.MtOrderRequest
