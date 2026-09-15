@@ -181,6 +181,18 @@ data class GoogleAccountSettings(
     val signedIn: Boolean get() = email.isNotBlank()
 }
 
+/**
+ * Owner-linked non-Google accounts. Instagram has no official posting API for
+ * personal accounts, so SAYVIS stores the handle (for AI content targeting)
+ * plus owner-pasted session tokens for read-only/assisted automation — honest
+ * assisted mode instead of fake "full control".
+ */
+data class LinkedAccountSettings(
+    val instagramHandle: String = "",
+    /** Vault-backed JSON: [{"site":"…","user":"…","token":"…"}] */
+    val linkedSites: String = ""
+)
+
 /** Localisation & rendering preferences. */
 data class LocalizationSettings(
     val language: AppLanguage = AppLanguage.PERSIAN,
@@ -213,6 +225,10 @@ data class AppSettings(
     val roboticVoiceReplies: Boolean = true,
     val onboardingCompleted: Boolean = false,
     val google: GoogleAccountSettings = GoogleAccountSettings(),
+    /** Persisted adoption backlog produced by the self-evolution agent. */
+    val evolutionBacklog: String = "",
+    /** Owner-linked non-Google accounts (Instagram handle + pasted sessions). */
+    val linked: LinkedAccountSettings = LinkedAccountSettings(),
     val settingsSchemaVersion: Int = 3
 ) {
     /** Convenience: is the active language Persian? */

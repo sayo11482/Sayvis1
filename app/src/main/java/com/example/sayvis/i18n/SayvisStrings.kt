@@ -219,6 +219,43 @@ class SayvisStrings(val fa: Boolean) {
     )
     val googleRecheck get() = t("بررسی مجدد کلیپ‌بورد", "Re-check clipboard")
 
+    // Agent hub (five specialists + self-evolution)
+    val agentHubHint get() = t("پنج ایجنت تخصصی — مغزِ رایگانِ بهترین، خودکار انتخاب می‌شود", "Five specialist agents — the best free brain is chosen automatically")
+    val agentKindResearch get() = t("پژوهش", "Research")
+    val agentKindTrade get() = t("ترید", "Trade")
+    val agentKindContent get() = t("محتوا", "Content")
+    val agentKindWeb get() = t("طراحی سایت", "Web design")
+    val agentKindApp get() = t("اپ‌سازی", "App builder")
+    val agentAutoBrain get() = t("⚡ انتخاب خودکار بهترین هوش مصنوعی رایگان و کم‌مصرف در هر اجرا", "⚡ Best free, token-lean AI is auto-selected on every run")
+    val agentGoalTrade get() = t("مثلاً: تحلیل طلا در هفتهٔ جاری با سناریوها", "e.g. analyse gold this week with scenarios")
+    val agentGoalContent get() = t("مثلاً: تقویم محتوای پیج پوشاک برای هفتهٔ آینده", "e.g. content calendar for my fashion page")
+    val agentGoalWeb get() = t("مثلاً: لندینگ مینیمال برای استودیو طراحی", "e.g. minimal landing for a design studio")
+    val agentGoalApp get() = t("مثلاً: اپ یادداشت با هم‌گام‌سازی محلی", "e.g. a notes app with local sync")
+    val evolutionTitle get() = t("خودتکاملی سایویس (گیت‌هاب)", "SAYVIS self-evolution (GitHub)")
+    val evolutionHint get() = t(
+        "پروژه‌های مشابه را در گیت‌هاب می‌کاود و بهترین الگوها را به‌صورت بک‌لاگ جذب ثبت می‌کند.",
+        "Scans GitHub for similar agents and records the best patterns as an adoption backlog."
+    )
+    val evolutionRun get() = t("اسکن گیت‌هاب", "Scan GitHub")
+    val evolutionScanning get() = t("در حال کاوش…", "Scanning…")
+
+    // Digital mirror
+    val toolMirror get() = t("آینهٔ دیجیتال سایویس", "SAYVIS Digital Mirror")
+    val toolMirrorHint get() = t(
+        "با دوربین سلفی صورت شما را می‌بیند و به پرترهٔ رباتیک زنده تبدیل می‌کند — کاملاً روی دستگاه",
+        "Sees you through the selfie camera and repaints you as a live robotic portrait — fully on-device"
+    )
+    val mirrorHint get() = t("صورت‌تان را داخل کادر نگه دارید…", "Hold your face inside the frame…")
+
+    // Linked accounts (Instagram + Gmail-login sites)
+    val sectionLinked get() = t("حساب‌های متصل", "Linked accounts")
+    val linkedHint get() = t(
+        "هندل اینستاگرام برای ایجنت محتوا استفاده می‌شود. نشست سایت‌ها فقط روی همین دستگاه در امن‌سپر ذخیره می‌شود. انتشار خودکار در اینستاگرام API رسمی ندارد؛ سایویس در حالت یاری‌گر عمل می‌کند.",
+        "The Instagram handle feeds the content agent; pasted sessions stay in this device's Keystore. Instagram has no official auto-posting API for personal accounts — SAYVIS acts as an assisted agent."
+    )
+    val linkedInstagram get() = t("هندل اینستاگرام (بدون @)", "Instagram handle (without @)")
+    val linkedSites get() = t("نشست سایت‌های متصل (JSON)", "Linked site sessions (JSON)")
+
     // Research agent
     val sectionAgent get() = t("ایجنت پژوهش", "Research agent")
     val toolAgent get() = t("ایجنت وب‌گردی سایویس", "SAYVIS web-browsing agent")

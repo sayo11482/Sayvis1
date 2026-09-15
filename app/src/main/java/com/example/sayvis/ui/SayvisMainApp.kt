@@ -57,6 +57,7 @@ import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.ui.components.LocalTranslation
 import com.example.sayvis.ui.screens.AwareScreen
 import com.example.sayvis.ui.screens.AgentScreen
+import com.example.sayvis.ui.screens.DigitalMirrorScreen
 import com.example.sayvis.ui.screens.RobotScreen
 import com.example.sayvis.ui.screens.AvatarListenScreen
 import com.example.sayvis.ui.screens.ChatScreen
@@ -487,6 +488,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                     )
 
                     SayvisScreen.AGENT -> AgentScreen(viewModel = viewModel)
+                    SayvisScreen.MIRROR -> DigitalMirrorScreen()
 
                     SayvisScreen.ROBOT -> RobotScreen(
                         avatarState = avatarState,

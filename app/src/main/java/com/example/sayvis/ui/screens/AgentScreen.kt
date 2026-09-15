@@ -1,5 +1,8 @@
 package com.example.sayvis.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.TravelExplore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -28,13 +32,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.sayvis.ai.SpecialistAgent
 import com.example.sayvis.i18n.LocalStrings
 import com.example.sayvis.ui.SayvisViewModel
 import com.example.sayvis.ui.components.ButtonTone
 import com.example.sayvis.ui.components.SayvisButton
 import com.example.sayvis.ui.components.SayvisCard
 import com.example.sayvis.ui.components.SayvisField
-import com.example.sayvis.ui.components.SayvisSectionHeader
 import com.example.sayvis.ui.theme.SayvisCyan
 import com.example.sayvis.ui.theme.SayvisGold
 import com.example.sayvis.ui.theme.SayvisGreenSuccess
@@ -42,10 +46,11 @@ import com.example.sayvis.ui.theme.SayvisSilver
 import com.example.sayvis.ui.theme.SayvisSilverMuted
 
 /**
- * The SAYVIS research agent console: give it a goal and watch it search the
- * web, open and read the top pages, optionally consult the owner's Google
- * account (gmail/calendar/drive) and synthesise a cited answer. The same
- * engine is reachable from the assistant with "ایجنت: …".
+ * The SAYVIS agent hub: five specialists behind one calm console. The owner
+ * picks a mission type, states the goal, and the pipeline runs itself — best
+ * free brain auto-selected, live web grounding, cited deliverable. The self-
+ * evolution card scans GitHub for similar agents and keeps an adoption
+ * backlog, so SAYVIS keeps absorbing the best patterns in the field.
  */
 @Composable
 fun AgentScreen(
@@ -53,10 +58,13 @@ fun AgentScreen(
     modifier: Modifier = Modifier
 ) {
     val s = LocalStrings.current
+    var kind by remember { mutableStateOf(SpecialistAgent.Kind.RESEARCH) }
     var goal by remember { mutableStateOf("") }
     val busy by viewModel.agentBusy.collectAsState()
     val steps by viewModel.agentSteps.collectAsState()
     val result by viewModel.agentResult.collectAsState()
+    val evolutionBusy by viewModel.evolutionBusy.collectAsState()
+    val evolutionReport by viewModel.evolutionReport.collectAsState()
 
     Column(
         modifier = modifier
@@ -72,7 +80,49 @@ fun AgentScreen(
             Spacer(modifier = Modifier.width(10.dp))
             Column {
                 Text(text = s.sectionAgent, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = SayvisSilver)
-                Text(text = s.toolAgentHint, fontSize = 11.sp, color = SayvisSilverMuted)
+                Text(text = s.agentHubHint, fontSize = 11.sp, color = SayvisSilverMuted)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // ---- mission type chips
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            val kinds = listOf(
+                SpecialistAgent.Kind.RESEARCH to s.agentKindResearch,
+                SpecialistAgent.Kind.TRADE to s.agentKindTrade,
+                SpecialistAgent.Kind.CONTENT to s.agentKindContent
+            )
+            kinds.forEachIndexed { index, (candidate, label) ->
+                KindChip(
+                    label = label,
+                    selected = kind == candidate,
+                    onClick = { kind = candidate },
+                    tag = "agent_kind_$index",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            val kinds = listOf(
+                SpecialistAgent.Kind.WEBDESIGN to s.agentKindWeb,
+                SpecialistAgent.Kind.APPDEV to s.agentKindApp
+            )
+            kinds.forEachIndexed { index, (candidate, label) ->
+                KindChip(
+                    label = label,
+                    selected = kind == candidate,
+                    onClick = { kind = candidate },
+                    tag = "agent_kind_${index + 3}",
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
 
@@ -84,23 +134,27 @@ fun AgentScreen(
                     label = s.agentGoalLabel,
                     value = goal,
                     onValueChange = { goal = it },
-                    hint = s.agentEmpty
+                    hint = goalHint(kind, s)
                 )
                 SayvisButton(
                     label = if (busy) s.agentRunning else s.agentRun,
-                    onClick = { viewModel.runAgent(goal) },
+                    onClick = { viewModel.runSpecialist(kind, goal) },
                     busy = busy,
                     enabled = goal.trim().length >= 6,
                     tone = ButtonTone.GOLD,
                     modifier = Modifier.fillMaxWidth().testTag("agent_run_button")
+                )
+                Text(
+                    text = s.agentAutoBrain,
+                    fontSize = 10.5.sp,
+                    color = SayvisGreenSuccess
                 )
             }
         }
 
         if (steps.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))
-            SayvisSectionHeader(title = s.agentRunning, icon = Icons.Default.TravelExplore)
-            SayvisCard(containerColor = SayvisSilver.copy(alpha = 0.04f)) {
+            SayvisCard {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     steps.forEachIndexed { index, step ->
                         Text(
@@ -126,6 +180,66 @@ fun AgentScreen(
             }
         }
 
+        // ---- self-evolution
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = SayvisGold, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = s.evolutionTitle, fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = SayvisSilver)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        SayvisCard {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = s.evolutionHint, fontSize = 11.sp, color = SayvisSilverMuted)
+                SayvisButton(
+                    label = if (evolutionBusy) s.evolutionScanning else s.evolutionRun,
+                    onClick = { viewModel.runEvolution() },
+                    busy = evolutionBusy,
+                    tone = ButtonTone.NEUTRAL,
+                    modifier = Modifier.fillMaxWidth().testTag("evolution_run_button")
+                )
+                evolutionReport?.let { report ->
+                    Text(
+                        text = report,
+                        fontSize = 11.sp,
+                        color = SayvisSilver,
+                        modifier = Modifier.testTag("evolution_report")
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(18.dp))
     }
+}
+
+@Composable
+private fun KindChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    tag: String,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = label,
+        fontSize = 10.5.sp,
+        color = if (selected) SayvisSilver else SayvisSilverMuted,
+        modifier = modifier
+            .border(
+                BorderStroke(1.dp, if (selected) SayvisGold.copy(alpha = 0.6f) else SayvisSilverMuted.copy(alpha = 0.25f)),
+                androidx.compose.foundation.shape.RoundedCornerShape(50)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp, vertical = 7.dp)
+            .testTag(tag)
+    )
+}
+
+private fun goalHint(kind: SpecialistAgent.Kind, s: com.example.sayvis.i18n.SayvisStrings): String = when (kind) {
+    SpecialistAgent.Kind.RESEARCH -> s.agentEmpty
+    SpecialistAgent.Kind.TRADE -> s.agentGoalTrade
+    SpecialistAgent.Kind.CONTENT -> s.agentGoalContent
+    SpecialistAgent.Kind.WEBDESIGN -> s.agentGoalWeb
+    SpecialistAgent.Kind.APPDEV -> s.agentGoalApp
 }

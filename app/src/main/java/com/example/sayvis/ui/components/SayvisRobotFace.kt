@@ -64,7 +64,7 @@ fun SayvisRobotFace(
         val speaking = state == AvatarState.SPEAKING
         val offline = state == AvatarState.OFFLINE
 
-        val breath = AiStyleMath.breath(breathPhase)
+        val breath = AiStyleMath.naturalBreath(breathPhase)
         val eyePhase = if (thinking) phase * 2.2f else phase
         val core = if (locked) Color(0xFFEF4444) else aiStyleColor(eyePhase).let {
             if (offline) it.copy(alpha = 0.35f) else it

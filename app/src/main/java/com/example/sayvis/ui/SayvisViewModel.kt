@@ -17,6 +17,8 @@ import com.example.sayvis.ai.ChatTurn
 import com.example.sayvis.ai.AgentService
 import com.example.sayvis.ai.GoogleAuthManager
 import com.example.sayvis.ai.ConnectivityProbe
+import com.example.sayvis.ai.EvolutionService
+import com.example.sayvis.ai.SpecialistAgent
 import com.example.sayvis.ai.GoogleServicesService
 import com.example.sayvis.ai.WebSearchService
 import com.example.sayvis.ai.ProviderType
@@ -114,6 +116,7 @@ enum class SayvisScreen(val titleEn: String, val titleFa: String) {
     // ---- secondary ----
     MISSIONS("Missions", "مأموریت‌ها"),
     AGENT("Research agent", "ایجنت پژوهش"),
+    MIRROR("Digital mirror", "آینهٔ دیجیتال"),
     UIC("Cognitive Profile", "پروندهٔ شناختی"),
     AWARE("Smart Suggestions", "پیشنهادهای هوشمند"),
     TRADING("Trading & Markets", "معاملات و بازار"),
@@ -188,6 +191,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val webSearch = WebSearchService()
     private val agentService = AgentService()
     private val connectivityProbe = ConnectivityProbe()
+    private val evolutionService = EvolutionService()
     private val googleServices = GoogleServicesService()
 
     val awareEngine = AwareEngine(repository)
@@ -366,6 +370,147 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     /** Quick intermediate SAYVIS chat line (agent steps etc.). */
     private fun appendAssistantNote(text: String) {
         _chatMessages.value = _chatMessages.value + ChatMessage(sender = "SAYVIS", text = text)
+    }
+
+    // -------------------------------------------------- specialist agents
+
+    private val _evolutionBusy = MutableStateFlow(false)
+    val evolutionBusy: StateFlow<Boolean> = _evolutionBusy.asStateFlow()
+
+    private val _evolutionReport = MutableStateFlow<String?>(null)
+    val evolutionReport: StateFlow<String?> = _evolutionReport.asStateFlow()
+
+    /** Specialist run: brain chosen free-first, live web grounding, output. */
+    fun runSpecialist(kind: SpecialistAgent.Kind, goal: String) {
+        val trimmed = goal.trim()
+        if (trimmed.isBlank() || _agentBusy.value) return
+        val current = settingsStore.current()
+        if (current.emergencyLockActive) {
+            _agentResult.value = "⚠️ قفل اضطراری فعال است — ایجنت‌ها مسدود شدند."
+            return
+        }
+        _agentBusy.value = true
+        _agentSteps.value = emptyList()
+        _agentResult.value = null
+        viewModelScope.launch {
+            val finalText = runAgentPipeline(kind, trimmed, current) { step ->
+                _agentSteps.value = _agentSteps.value + step
+            }
+            _agentResult.value = finalText
+            _agentBusy.value = false
+        }
+    }
+
+    /**
+     * Shared specialist pipeline: picks the best free brain, grounds the run
+     * in fresh web sources, calls the orchestrator, returns the final message.
+     */
+    private suspend fun runAgentPipeline(
+        kind: SpecialistAgent.Kind,
+        goal: String,
+        current: AppSettings,
+        onStep: (String) -> Unit
+    ): String {
+        val persian = current.isPersian(SayvisStrings.deviceIsPersian())
+
+        // 1) AUTOMATIC brain selection — free/low-token first, every run.
+        val brain = SpecialistAgent.pickBrain(current.ai)
+        val brainSettings = if (brain != null) current.ai.copy(provider = brain.kind) else current.ai
+        onStep(
+            if (persian) "🧠 مغز انتخاب‌شده: " + (brain?.noteFa ?: "هستهٔ محلی سایویس (بدون کلید)")
+            else "🧠 Brain selected: " + (brain?.noteEn ?: "SAYVIS local core (keyless)")
+        )
+
+        // 2) Live grounding.
+        onStep(if (persian) "🔍 جست‌وجوی زندهٔ وب…" else "🔍 Live web search…")
+        val sources = runCatching { webSearch.search(goal, persian) }.getOrDefault(emptyList())
+        if (sources.isNotEmpty()) {
+            onStep(if (persian) "📄 ${sources.size} منبع تازه پیدا شد" else "📄 Found ${sources.size} fresh sources")
+        }
+
+        // 3) Owner context (linked accounts).
+        val ownerContext = buildString {
+            if (current.linked.instagramHandle.isNotBlank()) {
+                append(if (persian) "هندل اینستاگرام مالک: @${current.linked.instagramHandle}\n" else "Owner's Instagram handle: @${current.linked.instagramHandle}\n")
+            }
+        }
+
+        val sourcesBlock = if (sources.isEmpty()) "" else buildString {
+            appendLine(if (persian) "منابع زندهٔ وب (به آن‌ها استناد کن):" else "LIVE WEB SOURCES (cite them):")
+            sources.forEachIndexed { index, result ->
+                appendLine("${index + 1}. ${result.title} — ${result.snippet.take(150)} (${result.url})")
+            }
+        }
+
+        val prompt = SpecialistAgent.prompt(kind, goal, persian, ownerContext)
+        onStep(if (persian) "🛠 اجرای مأموریت تخصصی…" else "🛠 Running the specialist mission…")
+
+        val response = aiOrchestrator.querySAYVIS(
+            prompt = prompt,
+            uicContext = "",
+            systemContext = sourcesBlock,
+            languageFa = persian,
+            emergencyLockActive = current.emergencyLockActive,
+            forceOffline = current.forceOfflineMode,
+            settings = brainSettings
+        )
+
+        val footer = if (sources.isNotEmpty()) {
+            "\n\n🌐 " + (if (persian) "منابع:" else "Sources:") + "\n" +
+                sources.take(4).joinToString("\n") { "• ${it.title} (${it.source})" }
+        } else ""
+        val brainNote = if (brain != null) {
+            if (persian) "🔎 اجرا با: ${brain.noteFa}\n\n" else "🔎 Ran with: ${brain.noteEn}\n\n"
+        } else ""
+
+        audit(
+            actor = "SAYVIS_AGENT",
+            action = "agent.specialist",
+            riskLevel = RiskLevel.LOW_RISK,
+            auth = "OWNER_CONFIRMED",
+            result = if (response.isSuccess) "SUCCESS" else "FAILED",
+            digest = "kind=$kind goal=${goal.take(40)} brain=${brain?.kind?.name ?: "LOCAL"}"
+        )
+        return brainNote + response.text + footer
+    }
+
+    /** Self-evolution: scan GitHub for similar agents, distil an adoption backlog. */
+    fun runEvolution() {
+        if (_evolutionBusy.value) return
+        val current = settingsStore.current()
+        _evolutionBusy.value = true
+        viewModelScope.launch {
+            val persian = current.isPersian(SayvisStrings.deviceIsPersian())
+            val report = runCatching { evolutionService.search(persian) }.getOrNull()
+            if (report == null) {
+                _evolutionReport.value = if (persian) "اسکن گیت‌هاب ناموفق بود." else "GitHub scan failed."
+            } else {
+                val text = buildString {
+                    appendLine(if (persian) report.messageFa else report.messageEn)
+                    appendLine()
+                    report.repos.take(5).forEach { repo ->
+                        appendLine("⭐${repo.stars}  ${repo.fullName} — ${repo.description.take(110)}")
+                        appendLine("   ${repo.url}")
+                    }
+                    if (report.ideas.isNotEmpty()) {
+                        appendLine()
+                        appendLine(if (persian) "🧬 بک‌لاگ جذب (الگوبرداری هوشمند):" else "🧬 Adoption backlog:")
+                        report.ideas.forEach { appendLine("• $it") }
+                    }
+                }
+                _evolutionReport.value = text
+                settingsStore.update { it.copy(evolutionBacklog = report.ideas.joinToString("\n")) }
+                audit(
+                    actor = "SAYVIS_AGENT",
+                    action = "agent.evolution",
+                    riskLevel = RiskLevel.LOW_RISK,
+                    auth = "OWNER_CONFIRMED",
+                    result = "SUCCESS",
+                    digest = "repos=${report.repos.size} ideas=${report.ideas.size}"
+                )
+            }
+            _evolutionBusy.value = false
+        }
     }
 
     // ---------------------------------------------------------- connectivity

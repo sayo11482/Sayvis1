@@ -103,6 +103,7 @@ class SettingsStore private constructor(context: Context) {
         putSecret(SecretKey.OPENAI_API_KEY, settings.ai.openAiApiKey)
         putSecret(SecretKey.XAI_API_KEY, settings.ai.xaiApiKey)
         putSecret(SecretKey.CUSTOM_API_KEY, settings.ai.customApiKey)
+        putSecret(SecretKey.LINKED_SITES, settings.linked.linkedSites)
         putSecret(SecretKey.MT_PASSWORD, settings.trading.password)
         putSecret(SecretKey.MT_BRIDGE_TOKEN, settings.trading.bridgeToken)
 
@@ -111,6 +112,7 @@ class SettingsStore private constructor(context: Context) {
                 geminiApiKey = "", openRouterApiKey = "", groqApiKey = "",
                 openAiApiKey = "", xaiApiKey = "", customApiKey = ""
             ),
+            linked = settings.linked.copy(linkedSites = ""),
             trading = settings.trading.copy(password = "", bridgeToken = "")
         )
         prefs.edit().putString(KEY_SETTINGS_JSON, encode(redacted)).apply()
@@ -152,6 +154,11 @@ class SettingsStore private constructor(context: Context) {
             put("maxTokens", s.ai.maxOutputTokens)
             put("timeout", s.ai.timeoutSeconds)
             put("forceLang", s.ai.forceResponseLanguage)
+        })
+
+        put("evolutionBacklog", s.evolutionBacklog)
+        put("linked", JSONObject().apply {
+            put("instagramHandle", s.linked.instagramHandle)
         })
 
         put("google", JSONObject().apply {
@@ -224,6 +231,14 @@ class SettingsStore private constructor(context: Context) {
                 timeoutSeconds = ai.optInt("timeout", 25),
                 forceResponseLanguage = ai.optBoolean("forceLang", true)
             ),
+            evolutionBacklog = root.optString("evolutionBacklog", ""),
+            linked = run {
+                val l = root.optJSONObject("linked") ?: JSONObject()
+                LinkedAccountSettings(
+                    instagramHandle = l.optString("instagramHandle", ""),
+                    linkedSites = getSecret(SecretKey.LINKED_SITES)
+                )
+            },
             google = run {
                 val g = root.optJSONObject("google") ?: JSONObject()
                 GoogleAccountSettings(
@@ -287,6 +302,7 @@ enum class SecretKey(val vaultKey: String, val labelFa: String, val labelEn: Str
     OPENAI_API_KEY("sec_openai_key", "کلید API چت‌جی‌پی‌تی", "ChatGPT / OpenAI API key"),
     XAI_API_KEY("sec_xai_key", "کلید API گراک", "Grok / xAI API key"),
     GOOGLE_REFRESH_TOKEN("sec_google_refresh", "توکن تازه‌سازی گوگل", "Google refresh token"),
+    LINKED_SITES("sec_linked_sites", "نشست حساب‌های متصل", "Linked site sessions"),
     CUSTOM_API_KEY("sec_custom_key", "کلید سرویس دلخواه", "Custom service key"),
     MT_PASSWORD("sec_mt_password", "رمز حساب متاتریدر", "MetaTrader account password"),
     MT_BRIDGE_TOKEN("sec_mt_token", "توکن پل ارتباطی", "Bridge / gateway token");

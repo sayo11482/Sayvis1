@@ -59,6 +59,16 @@ fun RobotScreen(
     var previewOverride by remember { mutableStateOf<AvatarState?>(null) }
     val shownState = previewOverride ?: avatarState
 
+    // Honest connectivity truth: probe on entry AND every 45s, so the pill
+    // flips to 🟢 by itself the moment the owner switches their VPN on.
+    LaunchedEffect(Unit) {
+        onRefreshConnectivity()
+        while (true) {
+            kotlinx.coroutines.delay(45_000L)
+            onRefreshConnectivity()
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()

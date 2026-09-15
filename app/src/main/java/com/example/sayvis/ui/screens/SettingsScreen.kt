@@ -625,6 +625,31 @@ fun SettingsScreen(
         }
 
         // ============================================================ TRADING
+        // ======================================================= LINKED ACCOUNTS
+        SayvisSectionHeader(title = s.sectionLinked, icon = Icons.Default.Link)
+        SayvisCard {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = s.linkedHint, fontSize = 11.sp, color = SayvisSilverMuted)
+                SayvisField(
+                    label = s.linkedInstagram,
+                    value = settings.linked.instagramHandle,
+                    onValueChange = { onSettingsChange(settings.copy(linked = settings.linked.copy(instagramHandle = it.removePrefix("@").trim()))) },
+                    hint = "username"
+                )
+                SecretField(
+                    label = s.linkedSites,
+                    hint = "[{\"site\":\"…\",\"user\":\"…\",\"token\":\"…\"}]",
+                    value = settings.linked.linkedSites,
+                    reveal = revealKey,
+                    onRevealChange = { revealKey = it },
+                    onValueChange = { onSettingsChange(settings.copy(linked = settings.linked.copy(linkedSites = it.trim()))) },
+                    isPersian = isPersian
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         // ======================================================= GOOGLE ACCOUNT
         SayvisSectionHeader(title = s.googleSectionTitle, icon = Icons.Default.Link)
         SayvisCard {

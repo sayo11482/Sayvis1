@@ -158,6 +158,29 @@ object AiStyleMath {
     /** Atomic breathing envelope 0..1 (one full inhale/exhale per phase turn). */
     fun breath(phase: Float): Float = 0.5f + 0.5f * sin(2.0 * PI * phase).toFloat()
 
+    /**
+     * Natural, organic breathing (unlike the plain sine): a fast eased inhale
+     * (~40% of the cycle) and a slow released exhale (~60%), plus a faint
+     * second-harmonic wobble so the machine never feels mechanical. Pure and
+     * unit-tested: bounds [0,1], period 1, peak near the inhale apex.
+     */
+    fun naturalBreath(phase: Float): Float {
+        val t = ((phase % 1f) + 1f) % 1f
+        val base = if (t < INHALE_SHARE) {
+            // Eased inhale.
+            val p = t / INHALE_SHARE
+            p * p * (3f - 2f * p)
+        } else {
+            // Long, released exhale (slow sine fall).
+            val p = (t - INHALE_SHARE) / (1f - INHALE_SHARE)
+            1f - 0.5f * (1f - cos(PI * p).toFloat())
+        }
+        val wobble = 0.05f * sin(2.0 * PI * (t * 3.0 + 0.25)).toFloat()
+        return ((base + wobble * base * (1f - base) * 4f).coerceIn(0f, 1f))
+    }
+
+    private const val INHALE_SHARE = 0.42f
+
     /** Point on a squashed orbit (electrons); [squash] 0..1 flattens the ellipse. */
     fun orbitPosition(angleRad: Float, squash: Float): Pair<Float, Float> =
         cos(angleRad) to sin(angleRad) * squash
