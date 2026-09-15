@@ -288,11 +288,3 @@ class SayvisAgentProvider : AIProvider {
         }
     }
 }
-
-data class ProbeOutcome(
-    val success: Boolean,
-    val latencyMs: Long,
-    val model: String,
-    val messageFa: String,
-    val messageEn: String
-)
