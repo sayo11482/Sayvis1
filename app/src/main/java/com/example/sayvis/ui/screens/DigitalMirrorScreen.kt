@@ -109,7 +109,7 @@ fun DigitalMirrorScreen(modifier: Modifier = Modifier) {
     val analysisImageHeight = remember { mutableStateOf(1f) }
 
     DisposableEffect(Unit) {
-        onCleanup {
+        onDispose {
             detector.close()
             executor.shutdown()
         }
