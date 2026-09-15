@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.example.sayvis.screentranslate.ScreenPlateStyle
 import com.example.sayvis.screentranslate.ScreenTextColorMode
-import com.example.sayvis.screentranslate.ScreenTranslateGranularity
+import com.example.sayvis.screentranslate.ScreenTranslationGranularity
 import com.example.sayvis.screentranslate.ScreenTranslationMode
 import com.example.sayvis.screentranslate.ScreenTranslationSettings
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -240,7 +240,7 @@ class SettingsStore private constructor(context: Context) {
             screenTranslation = ScreenTranslationSettings(
                 enabled = st.optBoolean("enabled", false),
                 mode = enumOr(st.optString("mode"), ScreenTranslationMode.REPLACE),
-                granularity = enumOr(st.optString("granularity"), ScreenTranslateGranularity.LINE),
+                granularity = enumOr(st.optString("granularity"), ScreenTranslationGranularity.LINE),
                 persianNumbers = st.optBoolean("persianNumbers", true),
                 plateStyle = enumOr(st.optString("plateStyle"), ScreenPlateStyle.SAMPLED),
                 plateOpacityPercent = st.optInt("plateOpacity", 92),

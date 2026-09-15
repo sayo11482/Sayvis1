@@ -10,7 +10,7 @@ import com.example.sayvis.screentranslate.ScreenPlateStyle
 import com.example.sayvis.screentranslate.ScreenRect
 import com.example.sayvis.screentranslate.ScreenTextColorMode
 import com.example.sayvis.screentranslate.ScreenTextPlanner
-import com.example.sayvis.screentranslate.ScreenTranslateGranularity
+import com.example.sayvis.screentranslate.ScreenTranslationGranularity
 import com.example.sayvis.screentranslate.ScreenTranslationCache
 import com.example.sayvis.screentranslate.ScreenTranslationEngine
 import com.example.sayvis.screentranslate.ScreenTranslationMode
@@ -147,7 +147,7 @@ class SayvisScreenTranslateUnitTest {
     fun planner_writes_persian_in_place_of_the_original_rect() {
         val settings = ScreenTranslationSettings(
             mode = ScreenTranslationMode.REPLACE,
-            granularity = ScreenTranslateGranularity.LINE,
+            granularity = ScreenTranslationGranularity.LINE,
             persianNumbers = true,
             plateStyle = ScreenPlateStyle.DARK,
             plateOpacityPercent = 90
@@ -190,7 +190,7 @@ class SayvisScreenTranslateUnitTest {
         val plan = ScreenTextPlanner.plan(
             lines = listOf(line),
             translations = emptyMap(),
-            settings = ScreenTranslationSettings(granularity = ScreenTranslateGranularity.LINE),
+            settings = ScreenTranslationSettings(granularity = ScreenTranslationGranularity.LINE),
             displayWidth = 1080,
             displayHeight = 2400
         )
@@ -208,7 +208,7 @@ class SayvisScreenTranslateUnitTest {
             translations = mapOf(
                 "Save" to TranslatedSegment("Save", "ذخیره", TranslationSource.DICTIONARY)
             ),
-            settings = ScreenTranslationSettings(granularity = ScreenTranslateGranularity.AUTO),
+            settings = ScreenTranslationSettings(granularity = ScreenTranslationGranularity.AUTO),
             displayWidth = 1080,
             displayHeight = 2400
         )
@@ -229,7 +229,7 @@ class SayvisScreenTranslateUnitTest {
                 "Open" to TranslatedSegment("Open", "باز کردن", TranslationSource.DICTIONARY),
                 "Folder" to TranslatedSegment("Folder", "پوشه", TranslationSource.DICTIONARY)
             ),
-            settings = ScreenTranslationSettings(granularity = ScreenTranslateGranularity.WORD),
+            settings = ScreenTranslationSettings(granularity = ScreenTranslationGranularity.WORD),
             displayWidth = 1080,
             displayHeight = 2400
         )

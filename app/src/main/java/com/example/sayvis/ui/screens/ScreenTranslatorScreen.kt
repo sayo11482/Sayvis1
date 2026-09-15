@@ -61,7 +61,7 @@ import com.example.sayvis.i18n.LocalStrings
 import com.example.sayvis.i18n.PersianFormat
 import com.example.sayvis.screentranslate.ScreenPlateStyle
 import com.example.sayvis.screentranslate.ScreenTextColorMode
-import com.example.sayvis.screentranslate.ScreenTranslateGranularity
+import com.example.sayvis.screentranslate.ScreenTranslationGranularity
 import com.example.sayvis.screentranslate.ScreenTranslatePhase
 import com.example.sayvis.screentranslate.ScreenTranslateStatus
 import com.example.sayvis.screentranslate.ScreenTranslationMode
@@ -328,10 +328,10 @@ fun ScreenTranslatorScreen(
             )
             SayvisOptionRow(
                 label = s.stGranularityLabel,
-                options = ScreenTranslateGranularity.entries.map { it.label(isPersian) },
-                selectedIndex = ScreenTranslateGranularity.entries.indexOf(screen.granularity),
+                options = ScreenTranslationGranularity.entries.map { it.label(isPersian) },
+                selectedIndex = ScreenTranslationGranularity.entries.indexOf(screen.granularity),
                 onSelect = { index ->
-                    onSettingsChange { it.copy(granularity = ScreenTranslateGranularity.entries[index]) }
+                    onSettingsChange { it.copy(granularity = ScreenTranslationGranularity.entries[index]) }
                 }
             )
             SayvisOptionRow(
