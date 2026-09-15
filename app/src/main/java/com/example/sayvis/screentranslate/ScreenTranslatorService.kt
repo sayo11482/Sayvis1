@@ -17,8 +17,8 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.IntentCompat
-import com.example.sayvis.MainActivity
-import com.example.sayvis.R
+import com.example.MainActivity
+import com.example.R
 import com.example.sayvis.data.local.SayvisDatabase
 import com.example.sayvis.data.repository.SayvisRepository
 import com.example.sayvis.i18n.SayvisStrings

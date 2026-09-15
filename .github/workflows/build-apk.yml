@@ -54,12 +54,15 @@ jobs:
       - name: Assemble debug APK and run the translator unit tests
         id: build
         run: |
-          set -o pipefail
-          gradle assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee build.log
+          status=0
+          # Both tasks always run, so one failure never hides the other: the compile
+          # errors and the unit-test results arrive together in a single run.
+          gradle assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee build.log || status=1
           # The pure-Kotlin half of the live screen translator (geometry, filters,
           # glossary, cache, engine parsing) is verified here, where it actually runs.
-          gradle testDebugUnitTest --no-daemon --console=plain \
-            --tests "com.example.sayvis.SayvisScreenTranslateUnitTest" 2>&1 | tee -a build.log
+          gradle testDebugUnitTest --no-daemon --stacktrace --console=plain \
+            --tests "com.example.sayvis.SayvisScreenTranslateUnitTest" 2>&1 | tee -a build.log || status=1
+          exit $status
 
       # When compilation fails, surface the actual errors in a place that is
       # readable through the GitHub API (annotations + a PR comment) so they can

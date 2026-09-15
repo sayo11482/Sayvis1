@@ -112,7 +112,7 @@ class ScreenTranslationEngine(
                 taskInstruction = BATCH_INSTRUCTION
             )
             val response = runCatching { provider.generateResponse(context, ai) }.getOrNull()
-            if (response == null || !response.isSuccess) continue
+            if (response == null || !response.isSuccess) return@forEach
             val parsed = parseNumbered(response.text, batch.size)
             parsed.forEach { (index, translation) ->
                 val source = batch.getOrNull(index) ?: return@forEach

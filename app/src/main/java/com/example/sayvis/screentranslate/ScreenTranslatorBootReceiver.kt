@@ -10,8 +10,8 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.example.sayvis.MainActivity
-import com.example.sayvis.R
+import com.example.MainActivity
+import com.example.R
 import com.example.sayvis.i18n.SayvisStrings
 import com.example.sayvis.settings.SettingsStore
 
