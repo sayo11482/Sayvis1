@@ -231,6 +231,12 @@ data class AppSettings(
     val tradeAutomationEnabled: Boolean = false,
     /** GitHub-evolution tuning JSON for the LIT engine (provenance inside). */
     val tradeTuningJson: String = "",
+    /** Assistant brain selector: AUTO or an AiProviderKind name (v5.0.0). */
+    val assistantBrain: String = "AUTO",
+    /** Recent search queries (capped 100) feeding the taste engine (v5.0.0). */
+    val searchTasteJson: String = "",
+    /** Manager-agent business directory entries JSON (v5.0.0). */
+    val bizDirectoryJson: String = "",
     /** Owner-linked non-Google accounts (Instagram handle + pasted sessions). */
     val linked: LinkedAccountSettings = LinkedAccountSettings(),
     val settingsSchemaVersion: Int = 3

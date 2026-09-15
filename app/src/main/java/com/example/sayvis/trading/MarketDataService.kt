@@ -162,6 +162,48 @@ class MarketDataService {
         parseCoinGeckoOhlc(body).map { it[3] }
     }
 
+    /**
+     * Multi-timeframe closes for the MTF entry scanner (v5.0.0). CoinGecko's
+     * free market_chart granularity: 1 day = 5-minute points, 2..90 days =
+     * hourly, 91+ days = daily. Sampling produces true M15/H1/H4/D1 closes.
+     */
+    suspend fun goldMultiTf(): Map<MtfScanner.Tf, List<Double>> = withContext(Dispatchers.IO) {
+        coroutineScope {
+            val m15 = async { runCatching { goldCloses(1) }.getOrNull() }
+            val h1 = async { runCatching { goldCloses(14) }.getOrNull() }
+            val h4 = async { runCatching { goldCloses(60) }.getOrNull() }
+            val d1 = async { runCatching { goldCloses(180) }.getOrNull() }
+            val out = HashMap<MtfScanner.Tf, List<Double>>()
+            m15.await()?.let { raw ->
+                val sampled = raw.filterIndexed { i, _ -> i % 3 == 0 }
+                if (sampled.size >= 30) out[MtfScanner.Tf.M15] = sampled
+            }
+            h1.await()?.let { if (it.size >= 30) out[MtfScanner.Tf.H1] = it }
+            h4.await()?.let { raw ->
+                val sampled = raw.filterIndexed { i, _ -> i % 4 == 0 }
+                if (sampled.size >= 30) out[MtfScanner.Tf.H4] = sampled
+            }
+            d1.await()?.let { if (it.size >= 30) out[MtfScanner.Tf.D1] = it }
+            out
+        }
+    }
+
+    suspend fun goldCloses(days: Int): List<Double> = withContext(Dispatchers.IO) {
+        val body = get(
+            "https://api.coingecko.com/api/v3/coins/pax-gold/market_chart?vs_currency=usd&days=" + days
+        )
+        parseMarketChartPrices(body).also { require(it.size >= 30) { "thin series: " + it.size } }
+    }
+
+    /** Pure: {"prices":[[ts,price],…]} → close prices. */
+    fun parseMarketChartPrices(json: String): List<Double> {
+        val inner = json.substringAfter("\"prices\":[", "").substringBeforeLast(']', "")
+        if (inner.isBlank()) return emptyList()
+        return inner.split(']').mapNotNull { chunk ->
+            Regex("([0-9]+\\.[0-9]+)").findAll(chunk).lastOrNull()?.groupValues?.get(1)?.toDoubleOrNull()
+        }
+    }
+
     // --------------------------------------------------------------- parsing
 
     /** Pure: Frankfurter {"rates":{"2026-..":{"USD":1.15…},…}} → sorted closes. */

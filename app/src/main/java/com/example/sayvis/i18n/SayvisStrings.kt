@@ -633,6 +633,55 @@ class SayvisStrings(val fa: Boolean) {
     )
     val connectManualLink get() = t("پیوند دستی اکانت", "Link manually")
 
+    // ---- v5.0.0 assistant brain / device accounts / MTF / sports / manager ----
+    val assistantBrainLabel get() = t("ایجنت/مغز دستیار", "Assistant agent / brain")
+    val brainAuto get() = t("خودکار", "Auto")
+    val brainActive get() = t("مغز فعال:", "Active brain:")
+    val connectDeviceAccountsTitle get() = t("اکانت‌های گوگل این دستگاه", "Google accounts on this device")
+    val connectDeviceAccountsHint get() = t(
+        "حساب‌هایی که با گوگل روی همین گوشی وارد شده‌اند؛ با یک لمس به‌عنوان هویت سایویس به‌کار گرفته می‌شوند.",
+        "Accounts signed in with Google on this phone; one tap adopts one as the SAYVIS identity."
+    )
+    val connectLinkBtn get() = t("به‌کارگیری", "Use this one")
+    val mtfTitle get() = t("نقشهٔ مولتی‌تایم‌فریم و نقطهٔ ورود", "Multi-timeframe map & entry hunt")
+    val mtfHint get() = t(
+        "چارت در تایم‌فریم‌های ۱۵دقیقه/۱ساعته/۴ساعته/روزانه بررسی می‌شود؛ با همگرایی حداقل دو تایم‌فریم (و مخالفت‌نکردن تایم‌فریم سنگین) نقطهٔ ورود با کف سخت RR≥1:3 پیشنهاد می‌شود.",
+        "The chart is examined on 15m/1h/4h/1d; an entry (hard RR≥1:3 floor) needs ≥2 agreeing timeframes and no heavy-TF opposition."
+    )
+    val mtfScan get() = t("اسکن نقطهٔ ورود", "Scan for entries")
+    val mtfScanning get() = t("در حال بررسی چندتایم‌فریمی…", "Scanning timeframes…")
+    val mtfNoData get() = t("هنوز دادهٔ کافی نیست؛ دوباره تلاش کنید.", "Not enough data yet; try again.")
+    val mtfPlanTitle get() = t("برنامهٔ ورود پیشنهادی", "Proposed entry plan")
+    val mtfAgree get() = t("هم‌نظر:", "Agreeing:")
+    val mtfOppose get() = t("مخالف:", "Opposing:")
+    val sportsTitle get() = t("پیشنهاد ورزشی بر اساس سلیقهٔ شما", "Sports picks from your taste")
+    val sportsHint get() = t(
+        "بر اساس ۱۰۰ جستجوی اخیر شما در سایویس؛ برای استفاده از تاریخچهٔ گوگل خودتان، متن فعالیت اخیر (myactivity.google.com) را بچسبانید — دسترسی مستقیم گوگل برای هیچ اپی وجود ندارد.",
+        "From your last 100 in-SAYVIS searches; to use your own Google history, paste recent activity from myactivity.google.com — no app can read it directly."
+    )
+    val sportsImport get() = t("چسباندن فعالیت اخیر گوگل (اختیاری)", "Paste recent Google activity (optional)")
+    val sportsImportBtn get() = t("شخصی‌سازی", "Personalise")
+    val managerTitle get() = t("ایجنت مدیر — دفترچهٔ بیزینس", "Manager agent — business directory")
+    val managerSmsHint get() = t(
+        "همهٔ پیامک‌های روی همین دستگاه خوانده می‌شوند؛ فرستندگان بیزینس — به‌ویژه تأمین‌کننده‌های مواد اولیه — با نام و فامیل، شرکت، شماره، سایت و آدرس در دسته‌های تأمین/پخش/اداره/تفریح دسته‌بندی می‌شوند. همه‌چیز روی دستگاه می‌ماند.",
+        "Every on-device SMS is read; business senders — especially raw-material suppliers — are classified (supplier / distribution / administration / entertainment) with name, company, phone, site and address. Everything stays on-device."
+    )
+    val managerScan get() = t("اسکن همهٔ پیامک‌ها", "Scan all SMS")
+    val managerScanning get() = t("در حال خواندن و دسته‌بندی…", "Reading & classifying…")
+    val managerPermission get() = t("برای این کار، دسترسی پیامک را تأیید کنید.", "Grant the SMS permission first.")
+    val managerGrant get() = t("اجازهٔ پیامک", "Grant SMS")
+    val managerInstaTitle get() = t("تحلیل اینستاگرام (بیو/فالوور/فالوئینگ)", "Instagram analysis (bio / followers / following)")
+    val managerInstaHint get() = t(
+        "متن بیو و آمار صفحه را بدهید تا بیزینس بودن، دسته و شواهد استخراج شود (API اینستاگرام توکن بیزینسی می‌خواهد؛ این مسیر روی دستگاه است).",
+        "Provide the bio text and account stats to extract business type, category and signals (Instagram's API needs a business token; this path is on-device)."
+    )
+    val managerInstaHandle get() = t("هندل", "Handle")
+    val managerInstaBio get() = t("متن بیو/پروفایل", "Bio / profile text")
+    val managerInstaCtx get() = t("فالوور/فالوئینگ (اختیاری)", "Followers/following (optional)")
+    val managerInstaAdd get() = t("تحلیل و افزودن", "Analyse & add")
+    val managerEmpty get() = t("دفترچه خالی است؛ اسکن بزنید.", "The directory is empty; run a scan.")
+    val brainKindChipsLabel get() = t("کدام ایجنت پاسخ دهد؟", "Which agent answers?")
+
     private fun fmtNum(v: Double): String = if (v >= 1000.0) "%.1f".format(v) else "%.4f".format(v)
 
     companion object {

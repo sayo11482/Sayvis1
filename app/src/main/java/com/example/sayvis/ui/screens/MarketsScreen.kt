@@ -16,7 +16,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -26,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -35,7 +39,13 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.example.sayvis.i18n.LocalStrings
 import com.example.sayvis.trading.LitStrategyEngine
 import com.example.sayvis.trading.MarketDataService
+import com.example.sayvis.trading.LitStrategyEngine
 import com.example.sayvis.ui.SayvisViewModel
+import com.example.sayvis.ui.components.SayvisSectionHeader
+import com.example.sayvis.ui.theme.SayvisGold
+import com.example.sayvis.ui.theme.SayvisGreenSuccess
+import com.example.sayvis.ui.theme.SayvisRedAlert
+import com.example.sayvis.ui.theme.SayvisSurfaceVariant
 import com.example.sayvis.ui.components.ButtonTone
 import com.example.sayvis.ui.components.SayvisButton
 import com.example.sayvis.ui.components.SayvisCard
@@ -69,6 +79,8 @@ fun MarketsScreen(
     val tradeNote by viewModel.tradeNote.collectAsState()
     val tuning by viewModel.tradeTuning.collectAsState()
     val tuningBusy by viewModel.tuningBusy.collectAsState()
+    val mtfBusy by viewModel.mtfBusy.collectAsState()
+    val mtfReports by viewModel.mtfReports.collectAsState()
 
     Column(
         modifier = modifier
@@ -290,6 +302,112 @@ fun MarketsScreen(
                     )
                 }
             }
+        // ============================= MULTI-TIMEFRAME ENTRY HUNT (v5.0.0)
+        Spacer(modifier = Modifier.height(14.dp))
+        SayvisSectionHeader(title = s.mtfTitle, icon = Icons.Default.QueryStats)
+        SayvisCard {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = s.mtfHint, fontSize = 10.5.sp, color = SayvisSilverMuted)
+                SayvisButton(
+                    label = if (mtfBusy) s.mtfScanning else s.mtfScan,
+                    onClick = { viewModel.runMtfScan() },
+                    busy = mtfBusy,
+                    tone = ButtonTone.PRIMARY,
+                    modifier = Modifier.fillMaxWidth().testTag("mtf_scan")
+                )
+                mtfReports.forEach { report ->
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = report.symbolLabel,
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = SayvisSilver
+                        )
+                        // TF verdict pills
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            report.verdicts.forEach { v ->
+                                val bg = when (v.side) {
+                                    LitStrategyEngine.Side.LONG -> SayvisGreenSuccess.copy(alpha = 0.22f)
+                                    LitStrategyEngine.Side.SHORT -> SayvisRedAlert.copy(alpha = 0.22f)
+                                    LitStrategyEngine.Side.WAIT -> SayvisSurfaceVariant
+                                }
+                                val fg = when (v.side) {
+                                    LitStrategyEngine.Side.LONG -> SayvisGreenSuccess
+                                    LitStrategyEngine.Side.SHORT -> SayvisRedAlert
+                                    LitStrategyEngine.Side.WAIT -> SayvisSilverMuted
+                                }
+                                Text(
+                                    text = v.tf.labelFa + " " + v.side.name,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = fg,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(bg)
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .testTag("mtf_tf_" + v.tf.name)
+                                )
+                            }
+                        }
+                        val d = report.decision
+                        Text(
+                            text = d.headline(true),
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (d.isEntry) SayvisGreenSuccess else SayvisSilverMuted,
+                            modifier = Modifier.testTag("mtf_decision")
+                        )
+                        if (d.agreeing.isNotEmpty()) {
+                            Text(
+                                text = s.mtfAgree + " " + d.agreeing.joinToString("، ") { it.labelFa },
+                                fontSize = 10.5.sp,
+                                color = SayvisSilver
+                            )
+                        }
+                        if (d.opposing.isNotEmpty()) {
+                            Text(
+                                text = s.mtfOppose + " " + d.opposing.joinToString("، ") { it.labelFa },
+                                fontSize = 10.5.sp,
+                                color = SayvisRedAlert
+                            )
+                        }
+                        report.plan?.let { plan ->
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(SayvisSurfaceVariant)
+                                    .padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Text(
+                                    text = s.mtfPlanTitle +
+                                        (report.executionTf?.let { " — " + it.labelFa } ?: ""),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SayvisGold
+                                )
+                                Text(
+                                    text = "ورود: " + fmt(plan.entry) + "   |   حد ضرر: " + fmt(plan.stop),
+                                    fontSize = 10.5.sp,
+                                    color = SayvisSilver
+                                )
+                                Text(
+                                    text = plan.targets.mapIndexed { i, t ->
+                                        "TP" + (i + 1) + " (RR " + t.multiple + "): " + fmt(t.price)
+                                    }.joinToString("\n"),
+                                    fontSize = 10.5.sp,
+                                    color = SayvisSilver
+                                )
+                            }
+                        }
+                    }
+                }
+                if (mtfReports.isEmpty() && !mtfBusy) {
+                    Text(text = s.mtfNoData, fontSize = 10.5.sp, color = SayvisSilverMuted)
+                }
+            }
+        }
         } ?: run {
             SayvisCard {
                 Text(

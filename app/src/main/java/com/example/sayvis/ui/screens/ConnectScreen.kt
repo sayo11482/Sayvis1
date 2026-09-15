@@ -196,6 +196,44 @@ fun ConnectScreen(viewModel: SayvisViewModel) {
             }
         }
 
+        // --------------------------------------- device google accounts (v5)
+        SayvisSectionHeader(title = s.connectDeviceAccountsTitle, icon = Icons.Default.AccountCircle)
+        SayvisCard {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = s.connectDeviceAccountsHint, fontSize = 11.sp, color = SayvisSilverMuted)
+                var deviceAccounts by remember { mutableStateOf<List<String>>(emptyList()) }
+                LaunchedEffect(Unit) {
+                    deviceAccounts = runCatching { viewModel.deviceGoogleAccounts() }.getOrDefault(emptyList())
+                }
+                if (deviceAccounts.isEmpty()) {
+                    Text(
+                        text = if (s.connectHubTitle.isNotBlank()) "—" else "",
+                        fontSize = 11.sp,
+                        color = SayvisSilverMuted
+                    )
+                }
+                deviceAccounts.take(5).forEach { account ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = account,
+                            fontSize = 12.sp,
+                            color = SayvisSilver,
+                            modifier = Modifier.weight(1f)
+                        )
+                        SayvisButton(
+                            label = s.connectLinkBtn,
+                            onClick = { viewModel.linkDeviceAccount(account) },
+                            tone = ButtonTone.NEUTRAL,
+                            modifier = Modifier.testTag("connect_link_" + account.substringBefore('@'))
+                        )
+                    }
+                }
+            }
+        }
+
         // ------------------------------------------------------- pairing QR
         SayvisSectionHeader(title = s.connectQrTitle, icon = Icons.Default.QrCode2)
         SayvisCard {

@@ -2,6 +2,7 @@ package com.example.sayvis.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.TravelExplore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -28,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -65,6 +68,15 @@ fun AgentScreen(
     val result by viewModel.agentResult.collectAsState()
     val evolutionBusy by viewModel.evolutionBusy.collectAsState()
     val evolutionReport by viewModel.evolutionReport.collectAsState()
+    val bizDirectory by viewModel.bizDirectory.collectAsState()
+    val bizBusy by viewModel.bizBusy.collectAsState()
+    val bizMessage by viewModel.bizMessage.collectAsState()
+    var instaHandle by remember { mutableStateOf("") }
+    var instaBio by remember { mutableStateOf("") }
+    var instaCtx by remember { mutableStateOf("") }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.loadBizDirectory() }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Column(
         modifier = modifier
@@ -206,6 +218,143 @@ fun AgentScreen(
                         modifier = Modifier.testTag("evolution_report")
                     )
                 }
+            }
+        }
+
+        // ==================== MANAGER AGENT: BUSINESS DIRECTORY (v5.0.0) ====
+        Spacer(modifier = Modifier.height(18.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Contacts, contentDescription = null, tint = SayvisCyan, modifier = Modifier.size(22.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = s.managerTitle, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = SayvisSilver)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        SayvisCard {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = s.managerSmsHint, fontSize = 10.5.sp, color = SayvisSilverMuted)
+                val smsPermission = androidx.activity.compose.rememberLauncherForActivityResult(
+                    androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+                ) { granted ->
+                    if (granted) viewModel.scanSmsDirectory()
+                }
+                SayvisButton(
+                    label = if (bizBusy) s.managerScanning else s.managerScan,
+                    onClick = {
+                        val ctx = context
+                        val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+                            ctx, android.Manifest.permission.READ_SMS
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        if (granted) viewModel.scanSmsDirectory() else smsPermission.launch(android.Manifest.permission.READ_SMS)
+                    },
+                    busy = bizBusy,
+                    tone = ButtonTone.PRIMARY,
+                    modifier = Modifier.fillMaxWidth().testTag("manager_sms_scan")
+                )
+                if (bizMessage.isNotBlank()) {
+                    Text(
+                        text = bizMessage,
+                        fontSize = 11.sp,
+                        color = SayvisGreenSuccess,
+                        modifier = Modifier.testTag("manager_message")
+                    )
+                }
+                // Category summary
+                if (bizDirectory.isNotEmpty()) {
+                    val counts = bizDirectory.groupingBy { it.category }.eachCount()
+                    Text(
+                        text = counts.entries.sortedBy { it.key.ordinal }.joinToString(" | ") { (cat, n) ->
+                            cat.labelFa + ": " + n
+                        },
+                        fontSize = 10.5.sp,
+                        color = SayvisSilver,
+                        modifier = Modifier.testTag("manager_counts")
+                    )
+                }
+                if (bizDirectory.isEmpty()) {
+                    Text(text = s.managerEmpty, fontSize = 10.5.sp, color = SayvisSilverMuted)
+                }
+                bizDirectory.take(12).forEach { entry ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(SayvisSurfaceVariant)
+                            .padding(10.dp)
+                            .testTag("manager_entry")
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = (entry.name + " " + entry.family).trim().ifBlank { entry.phone },
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = SayvisSilver,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = entry.category.labelFa,
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = when (entry.category) {
+                                    com.example.sayvis.agent.BusinessDirectory.Category.SUPPLIER -> SayvisGreenSuccess
+                                    com.example.sayvis.agent.BusinessDirectory.Category.DISTRIBUTION -> SayvisGold
+                                    com.example.sayvis.agent.BusinessDirectory.Category.OFFICE -> SayvisCyan
+                                    else -> SayvisSilverMuted
+                                }
+                            )
+                        }
+                        if (entry.company.isNotBlank()) {
+                            Text(text = "🏢 " + entry.company, fontSize = 10.5.sp, color = SayvisSilver)
+                        }
+                        Text(text = "☎ " + entry.phone, fontSize = 10.5.sp, color = SayvisSilver)
+                        if (entry.site.isNotBlank()) {
+                            Text(text = "🌐 " + entry.site, fontSize = 10.5.sp, color = SayvisCyan)
+                        }
+                        if (entry.address.isNotBlank()) {
+                            Text(text = "📍 " + entry.address, fontSize = 10.5.sp, color = SayvisSilver)
+                        }
+                        if (entry.signals.isNotEmpty()) {
+                            Text(
+                                text = "🔎 " + entry.signals.take(3).joinToString("، "),
+                                fontSize = 9.5.sp,
+                                color = SayvisSilverMuted
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---- Instagram analysis
+        Spacer(modifier = Modifier.height(12.dp))
+        SayvisCard {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = s.managerInstaTitle, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SayvisSilver)
+                Text(text = s.managerInstaHint, fontSize = 10.5.sp, color = SayvisSilverMuted)
+                SayvisField(
+                    label = s.managerInstaHandle,
+                    value = instaHandle,
+                    onValueChange = { instaHandle = it },
+                    hint = "@business_page"
+                )
+                SayvisField(
+                    label = s.managerInstaBio,
+                    value = instaBio,
+                    onValueChange = { instaBio = it },
+                    hint = "تولید و پخش عمده مواد اولیه صنعتی…"
+                )
+                SayvisField(
+                    label = s.managerInstaCtx,
+                    value = instaCtx,
+                    onValueChange = { instaCtx = it },
+                    hint = "followers=12000;following=380"
+                )
+                SayvisButton(
+                    label = s.managerInstaAdd,
+                    onClick = { viewModel.addInstagramProfile(instaHandle, instaBio, instaCtx) },
+                    enabled = instaHandle.isNotBlank() && instaBio.isNotBlank(),
+                    tone = ButtonTone.NEUTRAL,
+                    modifier = Modifier.fillMaxWidth().testTag("manager_insta_add")
+                )
             }
         }
 

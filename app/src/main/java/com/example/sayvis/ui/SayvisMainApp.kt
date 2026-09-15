@@ -128,6 +128,9 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
     val isProbing by viewModel.isProbing.collectAsState()
     val listenLevel by com.example.sayvis.voice.ListenBus.level.collectAsState()
     val connectivity by viewModel.connectivity.collectAsState()
+    val sportsSuggestions by viewModel.sportsSuggestions.collectAsState()
+    val recentSearchCount = viewModel.recentSearches().size
+    var importedNote by remember { mutableStateOf("") }
 
     val strings = remember(isPersian) { SayvisStrings.of(isPersian) }
 
@@ -345,6 +348,18 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         onDismissAction = { viewModel.dismissPendingAction() },
                         voiceListening = viewModel.voiceListening.collectAsState().value,
                         voiceAvailable = viewModel.voiceAvailable,
+                        brainOptions = listOf(
+                            "AUTO" to (if (isPersian) strings.brainAuto else "Auto"),
+                            "GEMINI" to "Gemini",
+                            "GROQ" to "Groq",
+                            "OPENAI" to "ChatGPT",
+                            "XAI" to "Grok",
+                            "OPENROUTER" to "OpenRouter",
+                            "LOCAL" to (if (isPersian) "محلی" else "Local")
+                        ),
+                        activeBrain = settings.assistantBrain,
+                        activeBrainNote = viewModel.brainNoteFor(settings),
+                        onBrainPick = { viewModel.pickAssistantBrain(it) },
                         onVoiceInput = { viewModel.startVoiceInput() }
                     )
 
@@ -416,7 +431,12 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                             persianDigits = settings.localization.persianDigits,
                             onApproveOpportunity = { viewModel.approveOpportunity(it) },
                             onDismissOpportunity = { viewModel.dismissOpportunity(it) },
-                            onRunScan = { viewModel.runAwareScan() }
+                            onRunScan = { viewModel.runAwareScan() },
+                            sportsSuggestions = sportsSuggestions,
+                            tasteSearchCount = recentSearchCount,
+                            onImportTaste = { blob ->
+                                importedNote = viewModel.importSearchTaste(blob).toString()
+                            }
                         )
                     }
 

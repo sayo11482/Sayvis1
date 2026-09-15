@@ -23,6 +23,11 @@
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
 
+    <!-- Manager agent: on-device SMS business directory scan -->
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <!-- Connect hub: identify the Google accounts signed in on this device -->
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />

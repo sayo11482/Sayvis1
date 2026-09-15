@@ -431,6 +431,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
 
         // 2) Live grounding.
         onStep(if (persian) "🔍 جست‌وجوی زندهٔ وب…" else "🔍 Live web search…")
+        recordSearchTaste(goal)
         val sources = runCatching { webSearch.search(goal, persian) }.getOrDefault(emptyList())
         if (sources.isNotEmpty()) {
             onStep(if (persian) "📄 ${sources.size} منبع تازه پیدا شد" else "📄 Found ${sources.size} fresh sources")
@@ -872,6 +873,270 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    // ------------------------------------------------ assistant brain (v5.0.0)
+
+    /**
+     * WHY the assistant looked dead after connecting Gemini: the chat used
+     * `settings.ai.provider` verbatim; if the provider enum stayed LOCAL the
+     * replies silently came from the offline core. Now the chat resolves its
+     * brain every run: AUTO picks the best configured cloud brain
+     * (Gemini first), or the owner's explicit chip choice is honoured.
+     */
+    private fun resolveChatBrain(settings: com.example.sayvis.settings.AppSettings):
+        Pair<com.example.sayvis.settings.AiSettings, String> {
+        val choice = settings.assistantBrain.trim().uppercase()
+        val auto = SpecialistAgent.pickBrain(settings.ai)
+        if (choice == "AUTO" || choice.isBlank()) {
+            val effective = if (auto != null) settings.ai.copy(provider = auto.kind) else settings.ai
+            return effective to (auto?.noteFa ?: "هستهٔ محلی سایویس")
+        }
+        val kinds = com.example.sayvis.settings.AiProviderKind.entries
+        val picked = kinds.firstOrNull { it.name == choice }
+        if (picked == null) {
+            val effective = if (auto != null) settings.ai.copy(provider = auto.kind) else settings.ai
+            return effective to (auto?.noteFa ?: "هستهٔ محلی سایویس (انتخاب نامعتبر — خودکار)")
+        }
+        val configured = picked.isLocal || when (picked) {
+            com.example.sayvis.settings.AiProviderKind.GEMINI -> settings.ai.geminiApiKey.isNotBlank()
+            com.example.sayvis.settings.AiProviderKind.GROQ -> settings.ai.groqApiKey.isNotBlank()
+            com.example.sayvis.settings.AiProviderKind.OPENAI -> settings.ai.openAiApiKey.isNotBlank()
+            com.example.sayvis.settings.AiProviderKind.XAI -> settings.ai.xaiApiKey.isNotBlank()
+            com.example.sayvis.settings.AiProviderKind.OPENROUTER -> settings.ai.openRouterApiKey.isNotBlank()
+            com.example.sayvis.settings.AiProviderKind.CUSTOM -> settings.ai.customBaseUrl.isNotBlank() && settings.ai.customModel.isNotBlank()
+            com.example.sayvis.settings.AiProviderKind.LOCAL -> true
+        }
+        return if (configured) {
+            settings.ai.copy(provider = picked) to picked.labelFa
+        } else {
+            val effective = if (auto != null) settings.ai.copy(provider = auto.kind) else settings.ai
+            effective to (auto?.noteFa ?: "هستهٔ محلی — کلید «${picked.labelFa}» خالی است")
+        }
+    }
+
+    private val _activeBrainNote = MutableStateFlow("")
+    val activeBrainNote: StateFlow<String> = _activeBrainNote.asStateFlow()
+
+    /** Persists the assistant brain chip choice (AUTO or provider name). */
+    fun pickAssistantBrain(choice: String) {
+        settingsStore.update { it.copy(assistantBrain = choice.trim().uppercase().ifBlank { "AUTO" }) }
+        audit("OWNER", "assistant.brain.pick", RiskLevel.LOW_RISK, "OWNER_SESSION", "SUCCESS", "brain=${choice.take(20)}")
+    }
+
+    /** Public helper used by the UI to know which brain a message ran on. */
+    fun brainNoteFor(settings: com.example.sayvis.settings.AppSettings): String =
+        resolveChatBrain(settings).second
+
+    // --------------------------------------------- taste engine (v5.0.0)
+
+    private val _sportsSuggestions = MutableStateFlow<List<com.example.sayvis.ai.SearchTasteEngine.Suggestion>>(emptyList())
+    val sportsSuggestions: StateFlow<List<com.example.sayvis.ai.SearchTasteEngine.Suggestion>> =
+        _sportsSuggestions.asStateFlow()
+
+    /** Recent in-app searches (capped 100) + optional pasted Google activity. */
+    fun recentSearches(): List<String> =
+        com.example.sayvis.ai.SearchTasteEngine.decodeHistory(settingsStore.current().searchTasteJson)
+
+    private fun recordSearchTaste(query: String) {
+        val next = com.example.sayvis.ai.SearchTasteEngine.appendQuery(recentSearches(), query)
+        settingsStore.update { it.copy(searchTasteJson = com.example.sayvis.ai.SearchTasteEngine.encodeHistory(next)) }
+        rebuildSportsSuggestions()
+    }
+
+    fun rebuildSportsSuggestions() {
+        _sportsSuggestions.value = com.example.sayvis.ai.SearchTasteEngine.sportsSuggestions(
+            recentSearches(), isPersian.value
+        )
+    }
+
+    /** Owner pastes recent Google activity text; it is ingested as searches. */
+    fun importSearchTaste(blob: String): Int {
+        val ingested = com.example.sayvis.ai.SearchTasteEngine.ingestImport(blob)
+        var next = recentSearches()
+        for (q in ingested) next = com.example.sayvis.ai.SearchTasteEngine.appendQuery(next, q)
+        settingsStore.update { it.copy(searchTasteJson = com.example.sayvis.ai.SearchTasteEngine.encodeHistory(next)) }
+        rebuildSportsSuggestions()
+        return ingested.size
+    }
+
+    // ------------------------------------------------ MTF scanner (v5.0.0)
+
+    data class MtfSymbolReport(
+        val symbolLabel: String,
+        val verdicts: List<com.example.sayvis.trading.MtfScanner.TfVerdict>,
+        val decision: com.example.sayvis.trading.MtfScanner.Decision,
+        val plan: LitStrategyEngine.TradePlan?,
+        val executionTf: com.example.sayvis.trading.MtfScanner.Tf?
+    )
+
+    private val _mtfBusy = MutableStateFlow(false)
+    val mtfBusy: StateFlow<Boolean> = _mtfBusy.asStateFlow()
+
+    private val _mtfReports = MutableStateFlow<List<MtfSymbolReport>>(emptyList())
+    val mtfReports: StateFlow<List<MtfSymbolReport>> = _mtfReports.asStateFlow()
+
+    /**
+     * Runs the LIT engine on M15/H1/H4/D1 closes and hunts entry points with
+     * the confluence rules (the RR≥1:3 floor is enforced inside the engine).
+     */
+    fun runMtfScan() {
+        if (_mtfBusy.value) return
+        _mtfBusy.value = true
+        viewModelScope.launch {
+            val reports = ArrayList<MtfSymbolReport>()
+            runCatching {
+                val seriesMap = marketData.goldMultiTf()
+                val verdicts = seriesMap.mapNotNull { (tf, closes) ->
+                    runCatching {
+                        val analysis = LitStrategyEngine.analyse(closes, _tradeTuning.value) ?: return@mapNotNull null
+                        com.example.sayvis.trading.MtfScanner.TfVerdict(
+                            tf, analysis.plan.side, analysis.view.rsi14, analysis.view.atr14, closes.size
+                        )
+                    }.getOrNull()
+                }.sortedBy { it.tf.minutes }
+                if (verdicts.isNotEmpty()) {
+                    val decision = com.example.sayvis.trading.MtfScanner.combine(verdicts)
+                    val execTf = com.example.sayvis.trading.MtfScanner.executionTf(decision)
+                    val plan = execTf?.let { tf ->
+                        seriesMap[tf]?.let { closes ->
+                            runCatching { LitStrategyEngine.analyse(closes, _tradeTuning.value)?.plan }.getOrNull()
+                        }
+                    }
+                    reports.add(
+                        MtfSymbolReport("طلا (XAU/USD)", verdicts, decision, plan, execTf)
+                    )
+                }
+            }
+            // EUR/USD — daily-only source, reported honestly as a single TF.
+            runCatching {
+                val closes = _marketSnapshot.value?.series?.get(MarketDataService.Symbol.EURUSD)
+                if (closes != null && closes.size >= 30) {
+                    val analysis = LitStrategyEngine.analyse(closes, _tradeTuning.value)
+                    if (analysis != null) {
+                        val v = listOf(
+                            com.example.sayvis.trading.MtfScanner.TfVerdict(
+                                com.example.sayvis.trading.MtfScanner.Tf.D1,
+                                analysis.plan.side, analysis.view.rsi14, analysis.view.atr14, closes.size
+                            )
+                        )
+                        reports.add(
+                            MtfSymbolReport(
+                                "یورو/دلار (EUR/USD)", v,
+                                com.example.sayvis.trading.MtfScanner.combine(v),
+                                analysis.plan.takeIf {
+                                    it.side != LitStrategyEngine.Side.WAIT
+                                },
+                                null
+                            )
+                        )
+                    }
+                }
+            }
+            _mtfReports.value = reports
+            _mtfBusy.value = false
+            audit(
+                actor = "LIT_MTF",
+                action = "trade.mtf_scan",
+                riskLevel = RiskLevel.LOW_RISK,
+                auth = "OWNER_SESSION",
+                result = "SUCCESS",
+                digest = "symbols=${reports.size} entries=${reports.count { it.decision.isEntry }}"
+            )
+        }
+    }
+
+    // --------------------------- manager agent: business directory (v5.0.0)
+
+    private val smsAgent = com.example.sayvis.agent.SmsDirectoryAgent()
+
+    private val _bizDirectory = MutableStateFlow<List<com.example.sayvis.agent.BusinessDirectory.Entry>>(emptyList())
+    val bizDirectory: StateFlow<List<com.example.sayvis.agent.BusinessDirectory.Entry>> =
+        _bizDirectory.asStateFlow()
+
+    private val _bizBusy = MutableStateFlow(false)
+    val bizBusy: StateFlow<Boolean> = _bizBusy.asStateFlow()
+
+    private val _bizMessage = MutableStateFlow("")
+    val bizMessage: StateFlow<String> = _bizMessage.asStateFlow()
+
+    fun loadBizDirectory() {
+        _bizDirectory.value = runCatching {
+            com.example.sayvis.agent.BusinessDirectory.decode(settingsStore.current().bizDirectoryJson)
+        }.getOrDefault(emptyList())
+    }
+
+    /** Reads every inbox SMS (READ_SMS) and builds the classified directory. */
+    fun scanSmsDirectory() {
+        if (_bizBusy.value) return
+        _bizBusy.value = true
+        _bizMessage.value = ""
+        viewModelScope.launch {
+            val entries = runCatching { smsAgent.buildEntries(getApplication()) }.getOrDefault(emptyList())
+            val merged = com.example.sayvis.agent.BusinessDirectory.merge(loadDirectoryList(), entries)
+            settingsStore.update {
+                it.copy(bizDirectoryJson = com.example.sayvis.agent.BusinessDirectory.encode(merged))
+            }
+            _bizDirectory.value = merged
+            _bizBusy.value = false
+            _bizMessage.value = if (entries.isEmpty())
+                "هیچ پیامک بیزینسی پیدا نشد."
+            else
+                "${entries.size} فرستندهٔ بیزینس دسته‌بندی شد ✅"
+            audit(
+                actor = "MANAGER_AGENT",
+                action = "agent.sms_directory_scan",
+                riskLevel = RiskLevel.MEDIUM_RISK,
+                auth = "OWNER_CONFIRMED",
+                result = "SUCCESS",
+                digest = "senders=${entries.size} suppliers=${entries.count { it.category == com.example.sayvis.agent.BusinessDirectory.Category.SUPPLIER }}"
+            )
+        }
+    }
+
+    private fun loadDirectoryList(): List<com.example.sayvis.agent.BusinessDirectory.Entry> = _bizDirectory.value
+
+    /** Adds an Instagram profile (bio + follower/following context) to the directory. */
+    fun addInstagramProfile(handle: String, bio: String, context: String): Boolean {
+        val entry = smsAgent.instagramEntry(handle, bio, context, System.currentTimeMillis())
+        if (entry == null) {
+            _bizMessage.value = "بیو خالی بود یا سیگنال بیزینس نداشت."
+            return false
+        }
+        val merged = com.example.sayvis.agent.BusinessDirectory.merge(loadDirectoryList(), listOf(entry))
+        settingsStore.update {
+            it.copy(bizDirectoryJson = com.example.sayvis.agent.BusinessDirectory.encode(merged))
+        }
+        _bizDirectory.value = merged
+        _bizMessage.value = "@${handle.trim().removePrefix("@")} به دفترچه اضافه شد (${entry.category.labelFa}) ✅"
+        audit(
+            actor = "MANAGER_AGENT",
+            action = "agent.instagram_classify",
+            riskLevel = RiskLevel.LOW_RISK,
+            auth = "OWNER_SESSION",
+            result = "SUCCESS",
+            digest = "handle=${handle.take(24)} cat=${entry.category.name} score=${entry.score}"
+        )
+        return true
+    }
+
+    // --------------------------- device Google accounts (v5.0.0)
+
+    /** Google accounts signed in on this device (needs the contacts permission). */
+    fun deviceGoogleAccounts(): List<String> = runCatching {
+        val am = android.accounts.AccountManager.get(getApplication())
+        am.getAccountsByType("com.google").map { it.name }.distinct()
+    }.getOrDefault(emptyList())
+
+    /** One-tap link of one of the device's own Google accounts. */
+    fun linkDeviceAccount(email: String): Boolean {
+        val result = com.example.sayvis.identity.GoogleAccountHub.link(getApplication(), email)
+        val ok = result is com.example.sayvis.identity.GoogleAccountHub.LinkResult.Success
+        if (ok) {
+            refreshConnectivity()
+            audit("OWNER", "account.device_link", RiskLevel.MEDIUM_RISK, "OWNER_CONFIRMED", "SUCCESS", "email=${email.take(32)}")
+        }
+        return ok
+    }
+
     fun sendMessage(text: String, fromVoice: Boolean = false) {
         if (text.isBlank()) return
         val current = settingsStore.current()
@@ -980,6 +1245,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             var sources: List<WebSearchService.WebResult> = emptyList()
             var sourcesBlock = ""
             if (searchDecision != null && !current.emergencyLockActive) {
+                recordSearchTaste(searchDecision.query)
                 sources = runCatching { webSearch.search(searchDecision.query, persian) }.getOrDefault(emptyList())
                 if (sources.isNotEmpty()) {
                     sourcesBlock = buildString {
@@ -1032,6 +1298,13 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 (if (sourcesBlock.isNotBlank()) "\n$sourcesBlock" else "")
             val history = _chatMessages.value.takeLast(10).map { ChatTurn(it.sender, it.text) }
 
+            // v5.0.0: AUTO resolves the best configured cloud brain (Gemini
+            // first) so a connected Gemini is ALWAYS used even if the
+            // provider switch was never flipped; an explicit chip choice is
+            // honoured when its key exists.
+            val (brainSettings, brainNote) = resolveChatBrain(current)
+            _activeBrainNote.value = brainNote
+
             val response = aiOrchestrator.querySAYVIS(
                 prompt = text,
                 uicContext = uicSummary,
@@ -1039,7 +1312,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 languageFa = persian,
                 emergencyLockActive = current.emergencyLockActive,
                 forceOffline = current.forceOfflineMode,
-                settings = current.ai,
+                settings = brainSettings,
                 history = history
             )
 

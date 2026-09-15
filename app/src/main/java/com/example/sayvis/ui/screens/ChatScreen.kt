@@ -2,6 +2,7 @@ package com.example.sayvis.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -76,6 +77,10 @@ fun ChatScreen(
     voiceListening: Boolean = false,
     voiceAvailable: Boolean = true,
     onVoiceInput: () -> Unit = {},
+    brainOptions: List<Pair<String, String>> = emptyList(),
+    activeBrain: String = "AUTO",
+    activeBrainNote: String = "",
+    onBrainPick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
@@ -113,12 +118,42 @@ fun ChatScreen(
                 Text(
                     text = if (avatarState == AvatarState.THINKING) {
                         if (isPersian) "در حال پردازش شناختی..." else "Reasoning over UIC context..."
+                    } else if (activeBrainNote.isNotBlank()) {
+                        (if (isPersian) "آنلاین • مغز فعال: " else "Online • brain: ") + activeBrainNote
                     } else {
                         if (isPersian) "آنلاین • مدل ارکستراسیون هوش مصنوعی" else "Online • Multi-Provider Orchestrator"
                     },
                     fontSize = 11.sp,
                     color = SayvisCyan
                 )
+            }
+        }
+
+        // v5.0.0: which agent/brain answers — the owner's variable choice.
+        if (brainOptions.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SayvisSurface)
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .testTag("chat_brain_row"),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                brainOptions.take(7).forEach { (id, label) ->
+                    val selected = id == activeBrain
+                    Text(
+                        text = label,
+                        fontSize = 10.5.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (selected) Color.Black else SayvisSilverMuted,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (selected) SayvisGold else SayvisSurfaceVariant)
+                            .clickable { onBrainPick(id) }
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                            .testTag("chat_brain_" + id.lowercase())
+                    )
+                }
             }
         }
 
