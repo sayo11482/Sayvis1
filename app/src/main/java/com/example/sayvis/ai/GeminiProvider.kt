@@ -37,7 +37,7 @@ class GeminiProvider(
     }
 
     private fun clientFor(settings: AiSettings): OkHttpClient =
-        SayvisNet.client(settings.timeoutSeconds, settings.timeoutSeconds + 10L)
+        SayvisNet.client(settings.timeoutSeconds, settings.timeoutSeconds + 10)
 
     override suspend fun generateResponse(
         context: AiRequestContext,

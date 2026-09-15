@@ -117,7 +117,7 @@ class OpenAiCompatibleProvider(private val kind: AiProviderKind) : AIProvider {
                 builder.header("X-Title", "SAYVIS")
             }
 
-            val client = SayvisNet.client(settings.timeoutSeconds, settings.timeoutSeconds + 10L)
+            val client = SayvisNet.client(settings.timeoutSeconds, settings.timeoutSeconds + 10)
 
             client.newCall(builder.build()).execute().use { response ->
                 val payload = response.body?.string() ?: ""

@@ -1,8 +1,9 @@
 package com.example.sayvis.identity
 
 import android.accounts.Account
+import android.accounts.AccountManager
 import android.content.Context
-import android.content.Intent
+import android.content.IntentSender
 import com.example.sayvis.ai.GoogleAuthManager
 import com.example.sayvis.net.SayvisNet
 import com.example.sayvis.settings.SettingsStore
@@ -14,10 +15,11 @@ import com.example.sayvis.settings.SettingsStore
  * Why this replaces the old flow: the previous sign-in path required an OAuth
  * client ID created in Google Cloud Console and stayed disabled without it —
  * the login problem the owner reported. The system Google account chooser
- * (`AccountPicker`) needs NO console setup, NO SHA-1 fingerprint and NO
- * client ID: it is the same one-tap sheet every mainstream app uses, and it
- * works on any GMS device out of the box. The advanced PKCE/OAuth flow is
- * still available for the Gmail/Calendar/Drive scopes, but it is optional.
+ * (`AccountManager.newChooseAccountIntent`) needs NO console setup, NO SHA-1
+ * fingerprint and NO client ID: it is the same one-tap sheet every mainstream
+ * app uses, and it works on any GMS device out of the box. The advanced
+ * PKCE/OAuth flow is still available for the Gmail/Calendar/Drive scopes,
+ * but it is optional.
  *
  * After linking, [SayvisNet.identityAccount] carries the account into every
  * outgoing request, so the account is factually the centre of all logins and
@@ -45,9 +47,10 @@ object GoogleAccountHub {
         val v = normalizeEmail(raw)
         val parts = v.split("@")
         if (parts.size != 2) return false
-        val (local, domain) = parts
+        val local = parts[0]
+        val domain = parts[1]
         if (local.isEmpty() || local.length > 64) return false
-        if (domain.isEmpty() || !domain.contains('.') ) return false
+        if (domain.isEmpty() || !domain.contains('.')) return false
         if (domain.startsWith(".") || domain.endsWith(".") || domain.contains("..")) return false
         return domain.all { it.isLetterOrDigit() || it == '.' || it == '-' }
     }
@@ -67,12 +70,11 @@ object GoogleAccountHub {
     // ------------------------------------------------------- device chooser
 
     /**
-     * The system "choose a Google account" sheet. Returns the launch intent or
-     * null when no Google account type is offered on this device.
+     * The system "choose a Google account" sheet. Returns the launch
+     * IntentSender, or null when the chooser is unavailable on this device.
      */
-    fun chooseAccountIntent(): Intent? = runCatching {
-        AccountPickerProxy.choose(GOOGLE_TYPE)
-    }.getOrNull()
+    fun chooseAccountSender(context: Context): IntentSender? =
+        AccountManagerProxy.choose(context.applicationContext, GOOGLE_TYPE)
 
     // ---------------------------------------------------------- link/unlink
 
@@ -133,17 +135,20 @@ object GoogleAccountHub {
     fun devicePin(context: Context): String = ensureDevicePin(context)
 }
 
-/** Isolated so the JVM unit tests never load a deprecated platform class. */
-internal object AccountPickerProxy {
+/**
+ * Isolated so the JVM unit tests never touch the deprecated platform method —
+ * uses the deprecated instance form of newChooseAccountIntent, which works on
+ * every supported API level (the static variant is API 26+).
+ */
+internal object AccountManagerProxy {
     @Suppress("DEPRECATION")
-    fun choose(accountType: String): Intent =
-        android.accounts.AccountPicker.newChooseAccountIntent(
+    fun choose(context: Context, accountType: String): IntentSender =
+        AccountManager.get(context).newChooseAccountIntent(
             null as Account?,
             null,
             arrayOf(accountType),
             false,
             null,
-            null as String?,
             null,
             null
         )
