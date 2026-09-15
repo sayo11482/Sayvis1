@@ -3,7 +3,7 @@ package com.example.sayvis.identity
 import android.accounts.Account
 import android.accounts.AccountManager
 import android.content.Context
-import android.content.IntentSender
+import android.content.Intent
 import com.example.sayvis.ai.GoogleAuthManager
 import com.example.sayvis.net.SayvisNet
 import com.example.sayvis.settings.SettingsStore
@@ -70,10 +70,10 @@ object GoogleAccountHub {
     // ------------------------------------------------------- device chooser
 
     /**
-     * The system "choose a Google account" sheet. Returns the launch
-     * IntentSender, or null when the chooser is unavailable on this device.
+     * The system "choose a Google account" sheet. Returns the launch Intent,
+     * or null when the chooser is unavailable on this device.
      */
-    fun chooseAccountSender(context: Context): IntentSender? =
+    fun chooseAccountIntent(context: Context): Intent? =
         AccountManagerProxy.choose(context.applicationContext, GOOGLE_TYPE)
 
     // ---------------------------------------------------------- link/unlink
@@ -136,22 +136,21 @@ object GoogleAccountHub {
 }
 
 /**
- * Isolated so the JVM unit tests never touch the platform class — uses the
- * static newChooseAccountIntent (API 26+); below 26 it returns null and the
- * caller falls back to manual e-mail linking.
+ * Isolated so the JVM unit tests never touch the platform class.
+ * Static form (API 23+):
+ * (Account?, List<Account>?, String[]?, String?, String?, String[]?, Bundle?) -> Intent
  */
 internal object AccountManagerProxy {
-    fun choose(context: Context, accountType: String): IntentSender? {
-        if (android.os.Build.VERSION.SDK_INT < 26) return null
-        // compileSdk 34+ static signature:
-        // (Account?, ArrayList<Account>?, String[]?, String?, Bundle?, Account?)
+    fun choose(context: Context, accountType: String): Intent? {
+        if (android.os.Build.VERSION.SDK_INT < 23) return null
         return AccountManager.newChooseAccountIntent(
             null as Account?,
-            null as java.util.ArrayList<Account>?,
+            null as java.util.List<Account>?,
             arrayOf(accountType),
             null as String?,
-            null as android.os.Bundle?,
-            null as Account?
+            null as String?,
+            null as Array<String>?,
+            null as android.os.Bundle?
         )
     }
 }

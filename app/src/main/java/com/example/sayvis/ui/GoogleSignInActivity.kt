@@ -91,7 +91,7 @@ class GoogleSignInActivity : ComponentActivity() {
     private var browserOpened = false
 
     private val accountPicker =
-        registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val email = result.data?.getStringExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME)
             if (email.isNullOrBlank()) {
                 phase = Phase.MANUAL
@@ -142,13 +142,10 @@ class GoogleSignInActivity : ComponentActivity() {
                         )
                     }
                 }
-                val pick = GoogleAccountHub.chooseAccountSender(applicationContext)
+                val pick = GoogleAccountHub.chooseAccountIntent(applicationContext)
                 if (pick != null) {
-                    runCatching {
-                        accountPicker.launch(
-                            androidx.activity.result.IntentSenderRequest.Builder(pick).build()
-                        )
-                    }.onFailure { phase = Phase.MANUAL }
+                    runCatching { accountPicker.launch(pick) }
+                        .onFailure { phase = Phase.MANUAL }
                 } else {
                     phase = Phase.MANUAL
                 }
