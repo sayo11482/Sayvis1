@@ -94,7 +94,7 @@ class EvolutionService {
         }
 
         private fun stringField(block: String, field: String): String? =
-            Regex("\u0022$field\u0022\\s*:\\s*\u0022((?:\\\\.|[^\u0022\\])*)\u0022")
+            Regex("\u0022$field\u0022\\s*:\\s*\u0022((?:\\\\.|[^\u0022\\\\])*)\u0022")
                 .find(block)?.groupValues?.get(1)?.let { WebSearchService.jsonUnescape(it) }
 
         private fun intField(block: String, field: String): Int =
@@ -103,7 +103,7 @@ class EvolutionService {
         private fun topicsField(block: String): List<String> {
             val array = Regex("\u0022topics\u0022\\s*:\\s*\\[([^]]*)]").find(block)?.groupValues?.get(1)
                 ?: return emptyList()
-            return Regex("\u0022((?:\\\\.|[^\u0022\\])*)\u0022").findAll(array)
+            return Regex("\u0022((?:\\\\.|[^\u0022\\\\])*)\u0022").findAll(array)
                 .mapNotNull { it.groupValues[1].takeIf { s -> s.isNotBlank() } }
                 .toList()
         }
