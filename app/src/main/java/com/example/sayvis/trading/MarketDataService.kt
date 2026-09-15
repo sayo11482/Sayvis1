@@ -175,13 +175,13 @@ class MarketDataService {
         return rates.sortedBy { it.first }.map { it.second }
     }
 
-    /** Pure: CoinGecko OHLC [[ts,o,h,l,c],…] → closes. */
+    /** Pure: CoinGecko OHLC [[ts,o,h,l,c],…] → full rows (close = index 4). */
     fun parseCoinGeckoOhlc(json: String): List<List<Double>> {
         val inner = json.substringAfter('[', "").substringBeforeLast(']', "")
         if (inner.isBlank()) return emptyList()
         return inner.split(']').mapNotNull { chunk ->
-            Regex("([0-9.]+)").findAll(chunk).toList().take(4)
-                .takeIf { it.size == 4 }
+            Regex("([0-9.]+)").findAll(chunk).toList()
+                .takeIf { it.size >= 5 }
                 ?.map { it.groupValues[1].toDouble() }
         }
     }

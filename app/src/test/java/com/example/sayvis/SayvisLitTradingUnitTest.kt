@@ -65,7 +65,8 @@ class SayvisLitTradingUnitTest {
         assertEquals(LitStrategyEngine.Side.SHORT, analysis.plan.side)
         assertTrue(analysis.plan.stop > analysis.plan.entry)
         val targets = analysis.plan.targets
-        assertTrue(targets[0].price < targets[1].price && targets[1].price < targets[2].price)
+        // Short targets DESCEND away from the entry.
+        assertTrue(targets[0].price > targets[1].price && targets[1].price > targets[2].price)
         val r = analysis.plan.stop - analysis.plan.entry
         assertTrue((analysis.plan.entry - targets[0].price) / r >= 3.0 - 1e-9)
     }
@@ -112,8 +113,9 @@ class SayvisLitTradingUnitTest {
         val payload = """[[1788000000000,4200.5,4310.2,4190.1,4305.45],[1788086400000,4305.0,4320.0,4250.0,4299.9]]"""
         val candles = MarketDataService().parseCoinGeckoOhlc(payload)
         assertEquals(2, candles.size)
-        assertEquals(4305.45, candles[0][3], 1e-9)
-        assertEquals(4299.9, candles[1][3], 1e-9)
+        // [ts, o, h, l, close] — the close is the last element.
+        assertEquals(4305.45, candles[0][4], 1e-9)
+        assertEquals(4299.9, candles[1][4], 1e-9)
     }
 
     @Test
