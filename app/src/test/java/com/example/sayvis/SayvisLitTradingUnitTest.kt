@@ -152,7 +152,7 @@ class SayvisLitTradingUnitTest {
             repo("beta/smc-breakout", 800, "Smart money breakout liquidity sweeps with high risk-reward ladder", listOf("smc", "breakout")),
             repo("gamma/meanrev", 300, "Mean reversion on bollinger extremes", listOf("mean-reversion"))
         )
-        val proposal = EvolutionService.deriveTuning(repos)
+        val proposal = EvolutionService().deriveTuning(repos)
         assertEquals(1.2, proposal.atrFactor, 1e-9)          // scalping tightened the stop
         assertEquals(listOf(3.0, 5.0, 8.0), proposal.targetMultiples) // breakout RR ladder
         assertEquals(72.0, proposal.rsiHigh, 1e-9)           // mean-reversion widened the veto
@@ -162,7 +162,7 @@ class SayvisLitTradingUnitTest {
 
     @Test
     fun `no signals keep house tuning defaults`() {
-        val proposal = EvolutionService.deriveTuning(emptyList())
+        val proposal = EvolutionService().deriveTuning(emptyList())
         assertEquals(1.5, proposal.atrFactor, 1e-9)
         assertEquals(75.0, proposal.rsiHigh, 1e-9)
         assertEquals(listOf(3.0, 4.5, 6.0), proposal.targetMultiples)
