@@ -134,7 +134,7 @@ object BusinessDirectory {
             val idx = text.lowercase().indexOf(key.lowercase())
             if (idx >= 0) {
                 val rest = text.substring(idx + key.length).trim()
-                val end = rest.indexOfFirst { it == '\n' || it == '|' || it == '،' }
+val end = rest.indexOfFirst { it == '\n' || it == '|' }
                 val value = (if (end < 0) rest else rest.substring(0, end)).trim()
                 if (value.length >= 5) return value.take(160)
             }
@@ -272,7 +272,7 @@ object BusinessDirectory {
     private fun miniArray(json: String, field: String): List<String> {
         val B = 92.toChar()
         val Q = 34.toChar()
-        val patternText = Q + field + Q + B + "s*:" + B + "s*" + B + "[([^" + B + "]*)" + B + "]"
+        val patternText = Q + field + Q + B + "s*:" + B + "s*" + B + "[([^" + B + B + "]*)" + B + "]"
         val block = Regex(patternText).find(json)?.groupValues?.get(1) ?: return emptyList()
         return Regex(Q + "((?:" + B + B + ".|[^" + Q + B + B + "])*)" + Q).findAll(block)
             .map { unescape(it.groupValues[1]) }
