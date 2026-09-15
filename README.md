@@ -2,6 +2,13 @@
 
 **SAYVIS** (Codename: **SAYO** / **سایویس**) is a Sovereign Personal AI Operating System and Cognitive Platform for Android and multi-device companion environments.
 
+> 🚀 **NEW: Professional AI Agent - Self-Hosted AI Starter Kit**
+> Full-stack professional AI agent with n8n, Ollama, Qdrant, Postgres - see [`agent/README.md`](agent/README.md)
+> ```bash
+> cd agent && docker compose --profile cpu up
+> # n8n: http://localhost:5678 | Agent API: http://localhost:8000 | Qdrant: http://localhost:6333/dashboard
+> ```
+
 ## Core Philosophical Tenets
 - **Human Sovereignty**: The human owner maintains irrevocable supreme authority over all actions and data.
 - **Zero Trust**: No AI model, remote server, background agent, or external hardware peripheral is implicitly trusted.

@@ -1,0 +1,171 @@
+{
+  "name": "SAYVIS Trading Analysis & Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "sayvis-trading-alert",
+        "options": {}
+      },
+      "id": "webhook-trading",
+      "name": "Trading Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "webhookId": "sayvis-trading-webhook"
+    },
+    {
+      "parameters": {
+        "url": "http://agent:8000/api/v1/chat",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "=Analyze {{ $json.symbol || 'EURUSD' }} on {{ $json.timeframe || 'H1' }} timeframe. Provide technical analysis with support/resistance and signal. Context: {{ JSON.stringify($json) }}"
+            },
+            {
+              "name": "session_id",
+              "value": "=trading-{{ $json.symbol || 'EURUSD' }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language || 'en' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-analysis",
+      "name": "SAYVIS Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.response }}",
+              "operation": "contains",
+              "value2": "BUY"
+            }
+          ]
+        }
+      },
+      "id": "if-buy",
+      "name": "Is BUY Signal?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.response }}",
+              "operation": "contains",
+              "value2": "SELL"
+            }
+          ]
+        }
+      },
+      "id": "if-sell",
+      "name": "Is SELL Signal?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "channel": "={{ $json.channel || '#trading-alerts' }}",
+        "text": "=🚀 *BUY Signal* for {{ $('Trading Webhook').first().json.symbol || 'EURUSD' }}\n\n{{ $json.response }}\n\n_Time: {{ $now }}_",
+        "otherOptions": {}
+      },
+      "id": "slack-buy",
+      "name": "Slack BUY Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [1120, 100],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-api",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseData": "={\n  \"symbol\": \"{{ $('Trading Webhook').first().json.symbol }}\",\n  \"signal\": \"{{ $json.response.includes('BUY') ? 'BUY' : $json.response.includes('SELL') ? 'SELL' : 'HOLD' }}\",\n  \"analysis\": {{ JSON.stringify($json.response) }},\n  \"timestamp\": \"{{ $now }}\"\n}",
+        "options": {}
+      },
+      "id": "respond-trading",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "Trading Webhook": {
+      "main": [
+        [
+          {
+            "node": "SAYVIS Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SAYVIS Analysis": {
+      "main": [
+        [
+          {
+            "node": "Is BUY Signal?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is SELL Signal?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is BUY Signal?": {
+      "main": [
+        [
+          {
+            "node": "Slack BUY Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1.0",
+  "id": "sayvis-trading-analysis",
+  "meta": {
+    "instanceId": "sayvis-n8n"
+  },
+  "tags": [
+    {
+      "name": "sayvis"
+    },
+    {
+      "name": "trading"
+    }
+  ]
+}

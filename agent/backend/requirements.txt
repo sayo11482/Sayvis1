@@ -1,0 +1,57 @@
+# SAYVIS Professional AI Agent - Backend Dependencies
+# Core
+fastapi==0.110.2
+uvicorn[standard]==0.29.0
+pydantic==2.8.2
+pydantic-settings==2.4.0
+python-multipart==0.0.9
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.1
+
+# Database
+sqlalchemy==2.0.30
+alembic==1.13.1
+psycopg2-binary==2.9.9
+asyncpg==0.29.0
+
+# Vector DB & Embeddings
+qdrant-client==1.9.1
+sentence-transformers==3.0.1
+numpy==1.26.4
+
+# LLM & AI
+ollama==0.3.3
+openai==1.35.13
+groq==0.9.8
+google-generativeai==0.5.4
+langchain==0.2.11
+langchain-community==0.2.10
+langchain-ollama==0.1.3
+langchain-qdrant==0.1.3
+
+# Tools & Integrations
+httpx==0.27.0
+requests==2.32.3
+beautifulsoup4==4.12.3
+tavily-python==0.3.6
+redis==5.0.4
+celery==5.4.0
+
+# Security & Utils
+cryptography==42.0.8
+structlog==24.4.0
+tenacity==8.5.0
+jinja2==3.1.4
+aiofiles==23.2.1
+jdatetime==5.1.0
+
+# Trading (optional)
+pandas==2.2.2
+
+# Testing
+pytest==8.2.2
+pytest-asyncio==0.23.7
+pytest-cov==5.0.0
+faker==25.2.0
+anyio==4.4.0

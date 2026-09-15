@@ -9,6 +9,7 @@ enum class ProviderType(val displayName: String, val displayNameFa: String) {
     OPEN_ROUTER("OpenRouter", "اوپن‌روتر"),
     GROQ_ROUTER("Groq LPU", "گروک"),
     CUSTOM_ENDPOINT("Custom endpoint", "سرویس دلخواه"),
+    SAYVIS_AGENT("SAYVIS Professional Agent", "عامل حرفه‌ای سایویس"),
     LOCAL_COGNITIVE("SAYVIS local core", "هستهٔ محلی سایویس");
 
     fun display(isPersian: Boolean): String = if (isPersian) displayNameFa else displayName
@@ -16,6 +17,7 @@ enum class ProviderType(val displayName: String, val displayNameFa: String) {
     companion object {
         fun from(kind: AiProviderKind): ProviderType = when (kind) {
             AiProviderKind.LOCAL -> LOCAL_COGNITIVE
+            AiProviderKind.SAYVIS_AGENT -> SAYVIS_AGENT
             AiProviderKind.GEMINI -> GEMINI
             AiProviderKind.OPENROUTER -> OPEN_ROUTER
             AiProviderKind.GROQ -> GROQ_ROUTER

@@ -226,6 +226,46 @@ fun SettingsScreen(
                     color = SayvisSilverMuted
                 )
 
+                AiProviderKind.SAYVIS_AGENT -> {
+                    Text(
+                        text = if (isPersian) "🚀 عامل حرفه‌ای سایویس - شامل n8n, Ollama, Qdrant, Postgres\nدستور راه‌اندازی: git clone https://github.com/n8n-io/self-hosted-ai-starter-kit.git && docker compose --profile cpu up"
+                        else "🚀 SAYVIS Professional Agent - includes n8n, Ollama, Qdrant, Postgres\nSetup: git clone https://github.com/n8n-io/self-hosted-ai-starter-kit.git && docker compose --profile cpu up",
+                        fontSize = 11.sp,
+                        color = SayvisCyan
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SayvisField(
+                        label = if (isPersian) "نشانی عامل سایویس" else "SAYVIS Agent URL",
+                        value = settings.ai.sayvisAgentBaseUrl,
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(sayvisAgentBaseUrl = it.trim()))) },
+                        hint = "http://192.168.1.100:8000",
+                        keyboardType = KeyboardType.Uri,
+                        monospace = true
+                    )
+                    SayvisField(
+                        label = s.model,
+                        value = settings.ai.sayvisAgentModel,
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(sayvisAgentModel = it.trim()))) },
+                        hint = "sayvis-agent",
+                        monospace = true
+                    )
+                    SecretField(
+                        label = s.apiKey,
+                        hint = if (isPersian) "اختیاری - کلید API عامل" else "optional - agent API key",
+                        value = settings.ai.sayvisAgentApiKey,
+                        reveal = revealKey,
+                        onRevealChange = { revealKey = it },
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(sayvisAgentApiKey = it.trim()))) },
+                        isPersian = isPersian
+                    )
+                    Text(
+                        text = if (isPersian) "💡 نکته: اگر روی گوشی تست می‌کنید، به جای localhost از IP کامپیوتر استفاده کنید (مثلاً 192.168.1.100:8000)"
+                        else "💡 Tip: If testing from phone, use computer's local IP instead of localhost (e.g. 192.168.1.100:8000)",
+                        fontSize = 10.5.sp,
+                        color = SayvisGold
+                    )
+                }
+
                 AiProviderKind.GEMINI -> {
                     SecretField(
                         label = s.apiKey,

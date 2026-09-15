@@ -20,6 +20,7 @@ enum class AppLanguage(val labelFa: String, val labelEn: String) {
 /** Selectable AI inference backends. */
 enum class AiProviderKind(val labelFa: String, val labelEn: String, val isLocal: Boolean) {
     LOCAL("هستهٔ محلی سایویس (آفلاین)", "SAYVIS Local Core (offline)", true),
+    SAYVIS_AGENT("عامل حرفه‌ای سایویس (Self-hosted)", "SAYVIS Professional Agent (Self-hosted)", false),
     GEMINI("گوگل جمینای", "Google Gemini", false),
     OPENROUTER("اوپن‌روتر (چندمدلی)", "OpenRouter (multi-model)", false),
     GROQ("گروک (پاسخ سریع)", "Groq (fast LPU)", false),
@@ -112,6 +113,9 @@ data class AiSettings(
     val customBaseUrl: String = "",
     val customApiKey: String = "",
     val customModel: String = "",
+    val sayvisAgentBaseUrl: String = "http://localhost:8000",
+    val sayvisAgentApiKey: String = "",
+    val sayvisAgentModel: String = "sayvis-agent",
     val systemPersona: String = "",
     val temperature: Double = 0.7,
     val maxOutputTokens: Int = 2048,
@@ -122,6 +126,7 @@ data class AiSettings(
     /** True when the selected provider has everything it needs to actually run. */
     fun isProviderConfigured(): Boolean = when (provider) {
         AiProviderKind.LOCAL -> true
+        AiProviderKind.SAYVIS_AGENT -> sayvisAgentBaseUrl.isNotBlank()
         AiProviderKind.GEMINI -> geminiApiKey.isNotBlank()
         AiProviderKind.OPENROUTER -> openRouterApiKey.isNotBlank()
         AiProviderKind.GROQ -> groqApiKey.isNotBlank()
@@ -130,6 +135,7 @@ data class AiSettings(
 
     fun activeModel(): String = when (provider) {
         AiProviderKind.LOCAL -> "sayvis-local-core"
+        AiProviderKind.SAYVIS_AGENT -> sayvisAgentModel
         AiProviderKind.GEMINI -> geminiModel
         AiProviderKind.OPENROUTER -> openRouterModel
         AiProviderKind.GROQ -> groqModel
