@@ -136,14 +136,14 @@ object GoogleAccountHub {
 }
 
 /**
- * Isolated so the JVM unit tests never touch the deprecated platform method —
- * uses the deprecated instance form of newChooseAccountIntent, which works on
- * every supported API level (the static variant is API 26+).
+ * Isolated so the JVM unit tests never touch the platform class — uses the
+ * static newChooseAccountIntent (API 26+); below 26 it returns null and the
+ * caller falls back to manual e-mail linking.
  */
 internal object AccountManagerProxy {
-    @Suppress("DEPRECATION")
-    fun choose(context: Context, accountType: String): IntentSender =
-        AccountManager.get(context).newChooseAccountIntent(
+    fun choose(context: Context, accountType: String): IntentSender? {
+        if (android.os.Build.VERSION.SDK_INT < 26) return null
+        return AccountManager.newChooseAccountIntent(
             null as Account?,
             null,
             arrayOf(accountType),
@@ -152,4 +152,5 @@ internal object AccountManagerProxy {
             null,
             null
         )
+    }
 }
