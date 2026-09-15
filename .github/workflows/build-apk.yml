@@ -54,6 +54,7 @@ jobs:
       - name: Assemble debug APK and run the translator unit tests
         id: build
         run: |
+          set -o pipefail
           status=0
           # Both tasks always run, so one failure never hides the other: the compile
           # errors and the unit-test results arrive together in a single run.
@@ -74,7 +75,7 @@ jobs:
         run: |
           grep -E "^e: |error:|What went wrong|Caused by|Could not|FAILED|Unresolved|> Task .* FAILED" build.log | head -300 > errors.txt || true
           [ -s errors.txt ] || tail -n 200 build.log > errors.txt
-          head -n 10 errors.txt | while IFS= read -r line; do echo "::error::${line}"; done
+          head -n 40 errors.txt | while IFS= read -r line; do echo "::error::${line}"; done
           {
             echo "### ❌ Build failed for \`${GITHUB_SHA::7}\`"
             echo
