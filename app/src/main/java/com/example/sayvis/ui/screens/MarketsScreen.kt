@@ -39,7 +39,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.example.sayvis.i18n.LocalStrings
 import com.example.sayvis.trading.LitStrategyEngine
 import com.example.sayvis.trading.MarketDataService
-import com.example.sayvis.trading.LitStrategyEngine
 import com.example.sayvis.ui.SayvisViewModel
 import com.example.sayvis.ui.components.SayvisSectionHeader
 import com.example.sayvis.ui.theme.SayvisGold
@@ -394,7 +393,7 @@ fun MarketsScreen(
                                 )
                                 Text(
                                     text = plan.targets.mapIndexed { i, t ->
-                                        "TP" + (i + 1) + " (RR " + t.multiple + "): " + fmt(t.price)
+                                        "TP" + (i + 1) + " (RR " + t.rr + "): " + fmt(t.price)
                                     }.joinToString("\n"),
                                     fontSize = 10.5.sp,
                                     color = SayvisSilver
