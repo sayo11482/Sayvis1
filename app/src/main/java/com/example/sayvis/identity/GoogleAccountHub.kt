@@ -143,14 +143,15 @@ object GoogleAccountHub {
 internal object AccountManagerProxy {
     fun choose(context: Context, accountType: String): IntentSender? {
         if (android.os.Build.VERSION.SDK_INT < 26) return null
-        // compileSdk 34+ signature: (Account, List<Account>, String[], String, Bundle, Account)
+        // compileSdk 34+ static signature:
+        // (Account?, ArrayList<Account>?, String[]?, String?, Bundle?, Account?)
         return AccountManager.newChooseAccountIntent(
             null as Account?,
-            null,
+            null as java.util.ArrayList<Account>?,
             arrayOf(accountType),
-            null,
-            null,
-            null
+            null as String?,
+            null as android.os.Bundle?,
+            null as Account?
         )
     }
 }
