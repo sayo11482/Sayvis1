@@ -17,8 +17,8 @@ android {
     applicationId = "com.odin.agent"
     minSdk = 26
     targetSdk = 36
-    versionCode = 21
-    versionName = "1.0.21-real-only-meta-fix"
+    versionCode = 22
+    versionName = "1.0.22-aware-comprehensive-fa"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
