@@ -52,6 +52,8 @@ enum class ChartTimeframe(val label: String, val labelFa: String, val minutes: I
     D1("1D", "روزانه", 1440)
 }
 
+enum class SymbolSortMode { POPULAR, ALL, CRYPTO, FOREX, IRR, METALS, SEARCH }
+
 @Composable
 fun LiveChartScreen(
     isPersian: Boolean,
@@ -71,6 +73,9 @@ fun LiveChartScreen(
     var totalPnL by remember { mutableStateOf(0.0) }
     var winrate by remember { mutableStateOf(0.0) }
     var priceSource by remember { mutableStateOf("REAL") }
+    var searchQuery by remember { mutableStateOf("") }
+    var sortMode by remember { mutableStateOf(SymbolSortMode.POPULAR) }
+    var usdtTomanPrice by remember { mutableStateOf(231493.0) }
 
     LaunchedEffect(isLive, selectedSymbol, selectedTF) {
         if (isLive) {
@@ -112,6 +117,9 @@ fun LiveChartScreen(
                             priceSource = if (isPersian) "بازار واقعی" else "REAL Market"
                         }
                     }
+                    // Update USDT Toman
+                    realPrices["USDT/IRR"]?.let { usdtTomanPrice = it.price }
+                    realPrices["USDT/IRT"]?.let { usdtTomanPrice = it.price }
 
                     if (Random.nextDouble() < 0.10) {
                         val isBuy = Random.nextBoolean()
@@ -172,62 +180,136 @@ fun LiveChartScreen(
         }
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(Color.Black).padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+    val filteredSymbols = remember(searchQuery, sortMode, realPrices) {
+        val base = when (sortMode) {
+            SymbolSortMode.POPULAR -> SymbolManager.getPopular()
+            SymbolSortMode.ALL -> SymbolManager.allSymbols
+            SymbolSortMode.CRYPTO -> SymbolManager.getCrypto()
+            SymbolSortMode.FOREX -> SymbolManager.getForexAll()
+            SymbolSortMode.IRR -> SymbolManager.getIRRPairs()
+            SymbolSortMode.METALS -> SymbolManager.getMetals()
+            SymbolSortMode.SEARCH -> SymbolManager.allSymbols
+        }
+        if (searchQuery.isBlank()) base.take(30) else SymbolManager.allSymbols.filter { it.symbol.contains(searchQuery, ignoreCase = true) || it.displayName.contains(searchQuery, ignoreCase = true) || it.nameFa.contains(searchQuery) }.take(20)
+    }
+
+    val symInfo = SymbolManager.find(selectedSymbol)
+    val unitLabel = symInfo?.unit ?: "USDT"
+    val tomanValue = if (symInfo?.category == SymbolCategory.FOREX_IRR) currentPrice else currentPrice * usdtTomanPrice
+    val usdtValue = if (symInfo?.category == SymbolCategory.FOREX_IRR) currentPrice / usdtTomanPrice else currentPrice
+
+    LazyColumn(modifier = Modifier.fillMaxSize().background(Color.Black).padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
-                border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(12.dp)
-            ) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)), border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.5f)), shape = RoundedCornerShape(12.dp)) {
                 Column(modifier = Modifier.padding(10.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(text = "odin metatrading", fontSize = 14.sp, fontWeight = FontWeight.Black, color = OdinGoldLight)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier.clip(RoundedCornerShape(6.dp))
-                                    .background(if (isLive) OdinGreen.copy(alpha = 0.2f) else OdinRed.copy(alpha = 0.2f))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp)
-                            ) {
-                                Text(
-                                    text = if (isLive) if (isPersian) "● زنده واقعی" else "● LIVE REAL" else if (isPersian) "○ متوقف" else "○ PAUSED",
-                                    fontSize = 8.sp, fontWeight = FontWeight.Black, color = if (isLive) OdinGreen else OdinRed
-                                )
+                            Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(if (isLive) OdinGreen.copy(alpha = 0.2f) else OdinRed.copy(alpha = 0.2f)).padding(horizontal = 8.dp, vertical = 3.dp)) {
+                                Text(text = if (isLive) if (isPersian) "● زنده واقعی" else "● LIVE REAL" else if (isPersian) "○ متوقف" else "○ PAUSED", fontSize = 8.sp, fontWeight = FontWeight.Black, color = if (isLive) OdinGreen else OdinRed)
                             }
                             Spacer(modifier = Modifier.width(6.dp))
                             Switch(checked = isLive, onCheckedChange = { isLive = it }, colors = SwitchDefaults.colors(checkedThumbColor = OdinGreen, checkedTrackColor = OdinGreen.copy(alpha = 0.3f)), modifier = Modifier.size(28.dp))
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column {
-                            Text(text = selectedSymbol, fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.White)
-                            Text(text = SymbolManager.formatPrice(selectedSymbol, currentPrice), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = OdinGoldLight)
-                            Text(
-                                text = if (isPersian) "خرید ${SymbolManager.formatPrice(selectedSymbol, bidPrice)} فروش ${SymbolManager.formatPrice(selectedSymbol, askPrice)}"
-                                else "Bid ${SymbolManager.formatPrice(selectedSymbol, bidPrice)} Ask ${SymbolManager.formatPrice(selectedSymbol, askPrice)}",
-                                fontSize = 7.sp, color = OdinSilverMuted
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(text = if (isPersian) "تایم فریم: ${selectedTF.labelFa} • واقعی" else "TF: ${selectedTF.label} • REAL", fontSize = 8.sp, color = OdinCyan)
-                            Text(text = priceSource.take(18), fontSize = 7.sp, color = OdinGreen)
-                            Text(
-                                text = if (isPersian) "سود ${if (totalPnL >= 0) "+" else ""}${String.format("%.2f", totalPnL)} تتر وین‌ریت ${String.format("%.0f", winrate)}%"
-                                else "PnL ${if (totalPnL >= 0) "+" else ""}${String.format("%.2f", totalPnL)} USDT WR ${String.format("%.0f", winrate)}%",
-                                fontSize = 8.sp, color = if (totalPnL >= 0) OdinGreen else OdinRed, fontWeight = FontWeight.Bold
-                            )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // Real unit and value display - critical requirement
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = OdinGold.copy(alpha = 0.08f)), border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.3f)), shape = RoundedCornerShape(8.dp)) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Column {
+                                    Text(text = if (isPersian) "نماد" else "Symbol", fontSize = 8.sp, color = OdinSilverMuted)
+                                    Text(text = selectedSymbol, fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.White)
+                                    Text(text = symInfo?.nameFa ?: symInfo?.displayName ?: "", fontSize = 8.sp, color = OdinSilverDim)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(text = if (isPersian) "واحد واقعی" else "Real Unit", fontSize = 8.sp, color = OdinSilverMuted)
+                                    Text(text = unitLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinGold)
+                                    Text(text = symInfo?.category?.labelFa ?: "", fontSize = 7.sp, color = OdinSilverDim)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(text = if (isPersian) "ارزش واقعی" else "Real Value", fontSize = 8.sp, color = OdinSilverMuted)
+                                    Text(text = SymbolManager.formatPrice(selectedSymbol, currentPrice), fontSize = 13.sp, fontWeight = FontWeight.Black, color = OdinGoldLight)
+                                    Text(
+                                        text = if (symInfo?.category == SymbolCategory.FOREX_IRR) "${String.format("%.4f", usdtValue)} USDT" else "${String.format("%,.0f تومان", tomanValue)}",
+                                        fontSize = 8.sp, color = OdinSilverMuted
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(text = if (isPersian) "خرید ${SymbolManager.formatPrice(selectedSymbol, bidPrice)}" else "Bid ${SymbolManager.formatPrice(selectedSymbol, bidPrice)}", fontSize = 8.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
+                                Text(text = if (isPersian) "فروش ${SymbolManager.formatPrice(selectedSymbol, askPrice)}" else "Ask ${SymbolManager.formatPrice(selectedSymbol, askPrice)}", fontSize = 8.sp, color = OdinRed, fontWeight = FontWeight.Bold)
+                                Text(text = "${if (isPersian) "اسپرد" else "Spread"} ${symInfo?.spreadTypical} | ${priceSource.take(16)}", fontSize = 7.sp, color = OdinCyan)
+                            }
                         }
                     }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(text = if (isPersian) "تایم فریم: ${selectedTF.labelFa} • تحلیل TradingView / بایتیکل" else "TF: ${selectedTF.label} • Analysis TradingView / Byticle", fontSize = 8.sp, color = OdinCyan)
+                        Text(text = if (isPersian) "سود ${if (totalPnL >= 0) "+" else ""}${String.format("%.2f", totalPnL)} تتر وین‌ریت ${String.format("%.0f", winrate)}%" else "PnL ${if (totalPnL >= 0) "+" else ""}${String.format("%.2f", totalPnL)} USDT WR ${String.format("%.0f", winrate)}%", fontSize = 8.sp, color = if (totalPnL >= 0) OdinGreen else OdinRed, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        item {
+            // Search + ordering - critical requirement
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it; if (it.isNotBlank()) sortMode = SymbolSortMode.SEARCH },
+                label = { Text(if (isPersian) "جستجو نماد معاملاتی..." else "Search trading symbols...", fontSize = 9.sp) },
+                placeholder = { Text(if (isPersian) "مثلا EURUSD یا تتر یا طلا" else "e.g. EURUSD or BTC or Gold", fontSize = 8.sp, color = OdinSilverDim) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = OdinGold, modifier = Modifier.size(18.dp)) },
+                trailingIcon = { if (searchQuery.isNotBlank()) IconButton(onClick = { searchQuery = ""; sortMode = SymbolSortMode.POPULAR }) { Icon(Icons.Default.Clear, contentDescription = null, tint = OdinSilverMuted, modifier = Modifier.size(16.dp)) } },
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OdinGold, unfocusedBorderColor = OdinBorder, focusedTextColor = Color.White, unfocusedTextColor = Color.White),
+                singleLine = true,
+                shape = RoundedCornerShape(10.dp)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                item {
+                    FilterChip(selected = sortMode == SymbolSortMode.POPULAR, onClick = { sortMode = SymbolSortMode.POPULAR; searchQuery = "" }, label = { Text(if (isPersian) "محبوب" else "Popular", fontSize = 8.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OdinGold.copy(alpha = 0.25f), selectedLabelColor = Color.White))
+                }
+                item {
+                    FilterChip(selected = sortMode == SymbolSortMode.ALL, onClick = { sortMode = SymbolSortMode.ALL; searchQuery = "" }, label = { Text(if (isPersian) "همه" else "All", fontSize = 8.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OdinCyan.copy(alpha = 0.2f), selectedLabelColor = Color.White))
+                }
+                item {
+                    FilterChip(selected = sortMode == SymbolSortMode.CRYPTO, onClick = { sortMode = SymbolSortMode.CRYPTO; searchQuery = "" }, label = { Text("Crypto", fontSize = 8.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OdinCyan.copy(alpha = 0.2f), selectedLabelColor = Color.White))
+                }
+                item {
+                    FilterChip(selected = sortMode == SymbolSortMode.FOREX, onClick = { sortMode = SymbolSortMode.FOREX; searchQuery = "" }, label = { Text("Forex", fontSize = 8.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OdinGreen.copy(alpha = 0.2f), selectedLabelColor = Color.White))
+                }
+                item {
+                    FilterChip(selected = sortMode == SymbolSortMode.IRR, onClick = { sortMode = SymbolSortMode.IRR; searchQuery = "" }, label = { Text(if (isPersian) "ریالی" else "IRR", fontSize = 8.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OdinRed.copy(alpha = 0.25f), selectedLabelColor = Color.White))
+                }
+                item {
+                    FilterChip(selected = sortMode == SymbolSortMode.METALS, onClick = { sortMode = SymbolSortMode.METALS; searchQuery = "" }, label = { Text(if (isPersian) "فلزات" else "Metals", fontSize = 8.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OdinGold.copy(alpha = 0.2f), selectedLabelColor = Color.White))
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(filteredSymbols) { sym ->
+                    val rp = realPrices[sym.symbol] ?: realPrices[sym.symbol.replace("/", "")]
+                    FilterChip(
+                        selected = selectedSymbol == sym.symbol,
+                        onClick = { selectedSymbol = sym.symbol },
+                        label = {
+                            Column {
+                                Text(sym.symbol, fontSize = 8.sp, maxLines = 1, fontWeight = if (selectedSymbol == sym.symbol) FontWeight.Black else FontWeight.Normal)
+                                rp?.let { Text(String.format(if (it.price > 1000) "%,.0f" else "%.2f", it.price), fontSize = 6.sp, color = OdinSilverDim) }
+                            }
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = when (sym.category) {
+                                SymbolCategory.FOREX_IRR -> OdinRed.copy(alpha = 0.3f)
+                                SymbolCategory.CRYPTO -> OdinCyan.copy(alpha = 0.2f)
+                                else -> OdinGold.copy(alpha = 0.2f)
+                            }, selectedLabelColor = Color.White
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(borderColor = if (selectedSymbol == sym.symbol) OdinGold else Color(0xFF1A1A1A), selectedBorderColor = OdinGold, borderWidth = 1.dp, selectedBorderWidth = 1.dp, enabled = true, selected = selectedSymbol == sym.symbol)
+                    )
                 }
             }
         }
@@ -240,73 +322,24 @@ fun LiveChartScreen(
                         onClick = { selectedTF = tf },
                         label = { Text(if (isPersian) tf.labelFa else tf.label, fontSize = 10.sp, fontWeight = if (selectedTF == tf) FontWeight.Black else FontWeight.Normal) },
                         colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OdinGold.copy(alpha = 0.25f), selectedLabelColor = Color.White),
-                        border = FilterChipDefaults.filterChipBorder(
-                            borderColor = if (selectedTF == tf) OdinGold else Color(0xFF1A1A1A),
-                            selectedBorderColor = OdinGold, borderWidth = 1.dp, selectedBorderWidth = 1.2.dp, enabled = true, selected = selectedTF == tf
-                        )
+                        border = FilterChipDefaults.filterChipBorder(borderColor = if (selectedTF == tf) OdinGold else Color(0xFF1A1A1A), selectedBorderColor = OdinGold, borderWidth = 1.dp, selectedBorderWidth = 1.2.dp, enabled = true, selected = selectedTF == tf)
                     )
                 }
             }
         }
 
         item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SymbolManager.getPopular().take(5).forEach { sym ->
-                    FilterChip(
-                        selected = selectedSymbol == sym.symbol,
-                        onClick = { selectedSymbol = sym.symbol },
-                        label = { Text(sym.symbol, fontSize = 8.sp, maxLines = 1) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = when (sym.category) {
-                                SymbolCategory.FOREX_IRR -> OdinRed.copy(alpha = 0.3f)
-                                SymbolCategory.CRYPTO -> OdinCyan.copy(alpha = 0.2f)
-                                else -> OdinGold.copy(alpha = 0.2f)
-                            }, selectedLabelColor = Color.White
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            borderColor = if (selectedSymbol == sym.symbol) OdinGold else Color(0xFF1A1A1A),
-                            selectedBorderColor = OdinGold, borderWidth = 1.dp, selectedBorderWidth = 1.dp, enabled = true, selected = selectedSymbol == sym.symbol
-                        )
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SymbolManager.getIRRPairs().forEach { sym ->
-                    FilterChip(
-                        selected = selectedSymbol == sym.symbol,
-                        onClick = { selectedSymbol = sym.symbol },
-                        label = { Text(sym.symbol, fontSize = 8.sp) },
-                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OdinRed.copy(alpha = 0.2f), selectedLabelColor = OdinGoldLight),
-                        border = FilterChipDefaults.filterChipBorder(borderColor = if (selectedSymbol == sym.symbol) OdinRed else Color(0xFF1A1A1A), selectedBorderColor = OdinRed, borderWidth = 1.dp, selectedBorderWidth = 1.dp, enabled = true, selected = selectedSymbol == sym.symbol)
-                    )
-                }
-            }
-        }
-
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF050505)),
-                border = BorderStroke(1.dp, Color(0xFF1A1A1A)),
-                shape = RoundedCornerShape(14.dp)
-            ) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF050505)), border = BorderStroke(1.dp, Color(0xFF1A1A1A)), shape = RoundedCornerShape(14.dp)) {
                 Column(modifier = Modifier.padding(10.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = if (isPersian) "واقعی $selectedSymbol ${selectedTF.labelFa} - تریدینگ ویو - LIT + TV80"
-                            else "REAL $selectedSymbol ${selectedTF.label} - TradingView Style - LIT + TV80",
-                            fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White
-                        )
+                        Text(text = if (isPersian) "واقعی $selectedSymbol ${selectedTF.labelFa} - TradingView / بایتیکل - LIT + TV80" else "REAL $selectedSymbol ${selectedTF.label} - TradingView / Byticle - LIT + TV80", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         Row {
                             Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(OdinGreen.copy(alpha = 0.2f)).padding(horizontal = 6.dp, vertical = 2.dp)) { Text(text = if (isPersian) "خرید" else "BUY", fontSize = 8.sp, fontWeight = FontWeight.Black, color = OdinGreen) }
                             Spacer(modifier = Modifier.width(4.dp))
                             Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(OdinRed.copy(alpha = 0.2f)).padding(horizontal = 6.dp, vertical = 2.dp)) { Text(text = if (isPersian) "فروش" else "SELL", fontSize = 8.sp, fontWeight = FontWeight.Black, color = OdinRed) }
                         }
                     }
-
                     Spacer(modifier = Modifier.height(8.dp))
-
                     Box(modifier = Modifier.fillMaxWidth().height(300.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black)) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             if (candles.isEmpty()) return@Canvas
@@ -346,20 +379,15 @@ fun LiveChartScreen(
                         }
                         Box(modifier = Modifier.fillMaxSize().padding(8.dp)) {
                             Column {
-                                Text(
-                                    text = if (isPersian) "واقعی ${selectedSymbol} ${selectedTF.labelFa} • تریدینگ ویو • LIT ۵۰% اردر بلاک"
-                                    else "REAL ${selectedSymbol} ${selectedTF.label} • TradingView • LIT 50% OB",
-                                    fontSize = 8.sp, color = OdinGold, fontWeight = FontWeight.Bold
-                                )
-                                Text(text = if (isPersian) "منبع: $priceSource • واحد تتر" else "Source: $priceSource • Tether Unit", fontSize = 7.sp, color = OdinGreen)
+                                Text(text = if (isPersian) "واقعی ${selectedSymbol} ${selectedTF.labelFa} • TradingView • بایتیکل فال‌بک • LIT ۵۰% اردر بلاک" else "REAL ${selectedSymbol} ${selectedTF.label} • TradingView • Byticle fallback • LIT 50% OB", fontSize = 8.sp, color = OdinGold, fontWeight = FontWeight.Bold)
+                                Text(text = if (isPersian) "منبع: $priceSource • واحد: $unitLabel • ارزش: ${SymbolManager.formatPrice(selectedSymbol, currentPrice)}" else "Source: $priceSource • Unit: $unitLabel • Value: ${SymbolManager.formatPrice(selectedSymbol, currentPrice)}", fontSize = 7.sp, color = OdinGreen)
                             }
                         }
                     }
-
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(text = if (isPersian) "حد ضرر" else "SL", fontSize = 8.sp, color = OdinRed)
-                        Text(text = if (isPersian) "ورود ${selectedSymbol} ${selectedTF.labelFa} واقعی" else "Entry ${selectedSymbol} ${selectedTF.label} REAL", fontSize = 8.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(text = if (isPersian) "ورود ${selectedSymbol} ${selectedTF.labelFa} واقعی - واحد $unitLabel" else "Entry ${selectedSymbol} ${selectedTF.label} REAL - Unit $unitLabel", fontSize = 8.sp, color = Color.White, fontWeight = FontWeight.Bold)
                         Text(text = if (isPersian) "حد سود" else "TP", fontSize = 8.sp, color = OdinGreen)
                     }
                 }
@@ -369,20 +397,12 @@ fun LiveChartScreen(
         item {
             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)), border = BorderStroke(1.dp, OdinBorder), shape = RoundedCornerShape(12.dp)) {
                 Column(modifier = Modifier.padding(10.dp)) {
-                    Text(
-                        text = if (isPersian) "نقاط ورود واقعی ${selectedSymbol} ${selectedTF.labelFa} (${entryPoints.filter { it.symbol == selectedSymbol }.size})"
-                        else "REAL Entry Points ${selectedSymbol} ${selectedTF.label} (${entryPoints.filter { it.symbol == selectedSymbol }.size})",
-                        fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White
-                    )
+                    Text(text = if (isPersian) "نقاط ورود واقعی ${selectedSymbol} ${selectedTF.labelFa} (${entryPoints.filter { it.symbol == selectedSymbol }.size}) - واحد $unitLabel" else "REAL Entry Points ${selectedSymbol} ${selectedTF.label} (${entryPoints.filter { it.symbol == selectedSymbol }.size}) - Unit $unitLabel", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     Spacer(modifier = Modifier.height(6.dp))
                     val filtered = entryPoints.filter { it.symbol == selectedSymbol }
                     if (filtered.isEmpty()) {
                         Box(modifier = Modifier.fillMaxWidth().height(50.dp), contentAlignment = Alignment.Center) {
-                            Text(
-                                text = if (isPersian) "در انتظار سیگنال واقعی LIT $selectedSymbol ${selectedTF.labelFa}..."
-                                else "Waiting for REAL LIT signal $selectedSymbol ${selectedTF.label}...",
-                                fontSize = 10.sp, color = OdinSilverMuted
-                            )
+                            Text(text = if (isPersian) "در انتظار سیگنال واقعی LIT $selectedSymbol ${selectedTF.labelFa}... واحد $unitLabel" else "Waiting for REAL LIT signal $selectedSymbol ${selectedTF.label}... Unit $unitLabel", fontSize = 10.sp, color = OdinSilverMuted)
                         }
                     } else {
                         filtered.takeLast(5).reversed().forEach { entry ->
