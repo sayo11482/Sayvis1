@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
 
 enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageVector) {
     DASHBOARD("Dashboard", "داشبورد", Icons.Default.Dashboard),
+    LIVE_CHART("Live Chart", "چارت زنده", Icons.Default.ShowChart),
     LIT_MONITOR("80% Monitor", "مانیتور 80%", Icons.Default.Radar),
     STRATEGIES("Strategies", "استراتژی‌ها", Icons.Default.Psychology),
     BACKTEST("Backtest", "بک‌تست", Icons.Default.Analytics),
@@ -70,16 +71,23 @@ fun OdinApp() {
         containerColor = OdinDeepSpace,
         bottomBar = {
             NavigationBar(
-                containerColor = OdinSurface,
+                containerColor = Color(0xFF0A0A0A),
                 contentColor = OdinSilver
             ) {
-                OdinScreen.values().forEach { screen ->
+                // Show only 5 main tabs in bottom bar for space, rest in more menu
+                val mainTabs = listOf(
+                    OdinScreen.DASHBOARD,
+                    OdinScreen.LIVE_CHART,
+                    OdinScreen.LIT_MONITOR,
+                    OdinScreen.STRATEGIES,
+                    OdinScreen.SETTINGS
+                )
+                mainTabs.forEach { screen ->
                     NavigationBarItem(
                         icon = { Icon(screen.icon, contentDescription = null) },
                         label = { 
                             Text(
                                 text = if (isPersian) screen.titleFa else screen.titleEn,
-                                fontSize = androidx.compose.ui.unit.TextUnit.Unspecified,
                                 maxLines = 1
                             ) 
                         },
@@ -88,7 +96,7 @@ fun OdinApp() {
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = OdinGoldLight,
                             selectedTextColor = OdinGoldLight,
-                            indicatorColor = OdinGold.copy(alpha = 0.2f),
+                            indicatorColor = OdinGold.copy(alpha = 0.15f),
                             unselectedIconColor = OdinSilverMuted,
                             unselectedTextColor = OdinSilverMuted
                         )
@@ -106,6 +114,8 @@ fun OdinApp() {
                         Text(text = "ODIN", color = OdinGoldLight, fontWeight = FontWeight.Black)
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(text = if (isPersian) "اودین ایجنت" else "AGENT", color = OdinSilver, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "• PURE BLACK • NO SAYVIS", color = OdinSilverDim, fontSize = androidx.compose.ui.unit.TextUnit.Unspecified, fontWeight = FontWeight.Bold)
                     }
                 },
                 actions = {
@@ -114,7 +124,7 @@ fun OdinApp() {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = OdinSurface,
+                    containerColor = Color(0xFF050505),
                     titleContentColor = OdinSilver
                 )
             )
@@ -131,6 +141,7 @@ fun OdinApp() {
                     onNavigateToPaperTrade = { currentScreen = OdinScreen.LIT_MONITOR },
                     onNavigateToGmailNews = { currentScreen = OdinScreen.GMAIL_NEWS }
                 )
+                OdinScreen.LIVE_CHART -> LiveChartScreen(isPersian = isPersian)
                 OdinScreen.LIT_MONITOR -> MultiSymbolScreen(isPersian = isPersian)
                 OdinScreen.STRATEGIES -> StrategiesScreen(
                     isPersian = isPersian,
