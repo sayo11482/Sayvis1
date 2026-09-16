@@ -33,9 +33,10 @@ class MainActivity : ComponentActivity() {
 enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageVector) {
     DASHBOARD("Dashboard", "داشبورد", Icons.Default.Dashboard),
     LIVE_CHART("Live Chart", "چارت زنده", Icons.Default.ShowChart),
+    BACKTEST_CONT("Backtest Cont", "بک‌تست دائمی", Icons.Default.AllInclusive),
+    SCANNER_ALARM("Scanner Alarm", "اسکنر آلارم", Icons.Default.NotificationImportant),
     LIT_MONITOR("80% Monitor", "مانیتور 80%", Icons.Default.Radar),
     STRATEGIES("Strategies", "استراتژی‌ها", Icons.Default.Psychology),
-    BACKTEST("Backtest", "بک‌تست", Icons.Default.Analytics),
     GMAIL_NEWS("Gmail News", "اخبار جیمیل", Icons.Default.Email),
     SETTINGS("Settings", "تنظیمات", Icons.Default.Settings)
 }
@@ -72,15 +73,15 @@ fun OdinApp() {
         containerColor = OdinDeepSpace,
         bottomBar = {
             NavigationBar(
-                containerColor = Color(0xFF0A0A0A),
+                containerColor = Color(0xFF050505),
                 contentColor = OdinSilver
             ) {
-                // Show only 5 main tabs in bottom bar for space, rest in more menu
+                // Show 5 main tabs: Dashboard, Live Chart, Backtest Cont, Scanner Alarm, Settings
                 val mainTabs = listOf(
                     OdinScreen.DASHBOARD,
                     OdinScreen.LIVE_CHART,
-                    OdinScreen.LIT_MONITOR,
-                    OdinScreen.STRATEGIES,
+                    OdinScreen.BACKTEST_CONT,
+                    OdinScreen.SCANNER_ALARM,
                     OdinScreen.SETTINGS
                 )
                 mainTabs.forEach { screen ->
@@ -89,7 +90,8 @@ fun OdinApp() {
                         label = { 
                             Text(
                                 text = if (isPersian) screen.titleFa else screen.titleEn,
-                                maxLines = 1
+                                maxLines = 1,
+                                fontSize = androidx.compose.ui.unit.TextUnit.Unspecified
                             ) 
                         },
                         selected = currentScreen == screen,
@@ -138,11 +140,13 @@ fun OdinApp() {
                     currentRegime = currentRegime,
                     isPersian = isPersian,
                     onNavigateToStrategies = { currentScreen = OdinScreen.STRATEGIES },
-                    onNavigateToBacktest = { currentScreen = OdinScreen.BACKTEST },
+                    onNavigateToBacktest = { currentScreen = OdinScreen.BACKTEST_CONT },
                     onNavigateToPaperTrade = { currentScreen = OdinScreen.LIT_MONITOR },
                     onNavigateToGmailNews = { currentScreen = OdinScreen.GMAIL_NEWS }
                 )
                 OdinScreen.LIVE_CHART -> LiveChartScreen(isPersian = isPersian)
+                OdinScreen.BACKTEST_CONT -> ContinuousBacktestScreen(isPersian = isPersian)
+                OdinScreen.SCANNER_ALARM -> EntryScannerScreen(isPersian = isPersian)
                 OdinScreen.LIT_MONITOR -> MultiSymbolScreen(isPersian = isPersian)
                 OdinScreen.STRATEGIES -> StrategiesScreen(
                     isPersian = isPersian,
@@ -155,7 +159,6 @@ fun OdinApp() {
                         }
                     }
                 )
-                OdinScreen.BACKTEST -> BacktestScreen(isPersian = isPersian)
                 OdinScreen.GMAIL_NEWS -> GmailNewsScreen(isPersian = isPersian)
                 OdinScreen.SETTINGS -> SettingsScreen(isPersian = isPersian)
             }

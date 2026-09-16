@@ -400,16 +400,43 @@ fun DashboardScreen(
             }
         }
 
-        // Quick Actions - 3 main
+        // Quick Actions - 4 main including new ones
         item {
             Text(
-                text = if (isPersian) "اقدامات سریع - دوزبانه کامل" else "Quick Actions - Fully Bilingual",
+                text = if (isPersian) "اقدامات سریع - دوزبانه + بک‌تست دائمی + آلارم" else "Quick Actions - Bilingual + Cont Backtest + Alarm",
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
-                fontSize = 14.sp
+                fontSize = 13.sp
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ActionCard(
+                    title = if (isPersian) "چارت زنده" else "Live Chart",
+                    subtitle = "100ms μs",
+                    icon = Icons.Default.ShowChart,
+                    tint = OdinGoldLight,
+                    modifier = Modifier.weight(1f),
+                    onClick = onNavigateToPaperTrade
+                )
+                ActionCard(
+                    title = if (isPersian) "بک‌تست دائمی" else "Cont Backtest",
+                    subtitle = "10$→15$",
+                    icon = Icons.Default.AllInclusive,
+                    tint = OdinRed,
+                    modifier = Modifier.weight(1f),
+                    onClick = onNavigateToBacktest
+                )
+                ActionCard(
+                    title = if (isPersian) "اسکنر آلارم" else "Scanner Alarm",
+                    subtitle = "Beep + Auto",
+                    icon = Icons.Default.NotificationImportant,
+                    tint = OdinCyan,
+                    modifier = Modifier.weight(1f),
+                    onClick = onNavigateToPaperTrade
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ActionCard(
                     title = if (isPersian) "مانیتور 80%" else "80% Monitor",
                     subtitle = "TV 20+ | RR 1:2",
@@ -434,6 +461,72 @@ fun DashboardScreen(
                     modifier = Modifier.weight(1f),
                     onClick = onNavigateToBacktest
                 )
+            }
+        }
+
+        // New Rule: 10$ -> 15$ else banned
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
+                border = BorderStroke(1.dp, OdinRed.copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Gavel, contentDescription = null, tint = OdinRed, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isPersian) "قانون جدید: 10$ → زیر 15$ بعد 5 تست = ممنوع 🚫" else "NEW Rule: $10 → <$15 after 5 tests = BANNED 🚫",
+                            fontWeight = FontWeight.Black,
+                            color = OdinRed,
+                            fontSize = 12.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = if (isPersian)
+                            "✅ تمام استراتژی‌ها دائم بک‌تست برای قدرت\n✅ هر استراتژی 5 بار با 10 دلار تست\n✅ اگر میانگین یا کمترین زیر 15$ → ممنوع\n✅ WR تست‌ها زیر 60% → ممنوع\n✅ پایداری و امتیاز قدرت لحظه‌ای"
+                        else
+                            "✅ All strategies continuous backtest for power\n✅ Each strategy 5 times with $10\n✅ If avg or min < $15 → BANNED\n✅ Test WR <60% → BANNED\n✅ Stability & power score live",
+                        fontSize = 10.sp,
+                        color = OdinSilver,
+                        lineHeight = 13.sp
+                    )
+                }
+            }
+        }
+
+        // Scanner + Auto Trade
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
+                border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.NotificationImportant, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isPersian) "اسکنر + آلارم تک بوق + ترید اتومات" else "Scanner + Single Beep Alarm + Auto Trade",
+                            fontWeight = FontWeight.Bold,
+                            color = OdinCyan,
+                            fontSize = 12.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = if (isPersian)
+                            "✅ جستجوی دائمی نقطه ورود مناسب\n✅ هر موقع پیدا کرد تک بوق صوتی 🔊\n✅ اگر ترید اتومات روشن: بر اساس تعداد مجاز ترید می‌کند\n✅ تنظیم: حداکثر ترید باز + روزانه + حداقل اعتماد 80%"
+                        else
+                            "✅ Continuous search for suitable entry\n✅ Single beep audio alarm when found 🔊\n✅ If auto trade ON: trades based on allowed count\n✅ Config: Max open + daily + min conf 80%",
+                        fontSize = 10.sp,
+                        color = OdinSilver,
+                        lineHeight = 13.sp
+                    )
+                }
             }
         }
 
