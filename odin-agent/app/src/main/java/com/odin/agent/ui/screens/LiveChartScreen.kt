@@ -42,14 +42,14 @@ data class EntryPoint(
     val symbol: String
 )
 
-enum class ChartTimeframe(val label: String, val minutes: Int) {
-    M1("1m", 1),
-    M5("5m", 5),
-    M15("15m", 15),
-    M30("30m", 30),
-    H1("1h", 60),
-    H4("4h", 240),
-    D1("1D", 1440)
+enum class ChartTimeframe(val label: String, val labelFa: String, val minutes: Int) {
+    M1("1m", "۱دقیقه", 1),
+    M5("5m", "۵دقیقه", 5),
+    M15("15m", "۱۵دقیقه", 15),
+    M30("30m", "۳۰دقیقه", 30),
+    H1("1h", "۱ساعته", 60),
+    H4("4h", "۴ساعته", 240),
+    D1("1D", "روزانه", 1440)
 }
 
 @Composable
@@ -84,10 +84,7 @@ fun LiveChartScreen(
                         askPrice = real.ask
                         priceSource = real.source
                         candles = realDataManager.getCandles(selectedSymbol)
-                        if (candles.isEmpty()) {
-                            candles = realDataManager.getCandles(selectedSymbol.replace("/", ""))
-                        }
-                        // Adjust candle count based on timeframe
+                        if (candles.isEmpty()) candles = realDataManager.getCandles(selectedSymbol.replace("/", ""))
                         val needed = when (selectedTF) {
                             ChartTimeframe.M1 -> 120
                             ChartTimeframe.M5 -> 100
@@ -97,10 +94,7 @@ fun LiveChartScreen(
                             ChartTimeframe.H4 -> 40
                             ChartTimeframe.D1 -> 30
                         }
-                        if (candles.size > needed) {
-                            // Aggregate candles for higher timeframes
-                            candles = aggregateCandles(candles, selectedTF.minutes)
-                        }
+                        if (candles.size > needed) candles = aggregateCandles(candles, selectedTF.minutes)
                     } else {
                         val symInfo = SymbolManager.find(selectedSymbol)
                         if (symInfo != null) {
@@ -115,7 +109,7 @@ fun LiveChartScreen(
                             askPrice = currentPrice + symInfo.spreadTypical * symInfo.pipSize / 2
                             realDataManager.updateCandle(selectedSymbol, currentPrice)
                             candles = realDataManager.getCandles(selectedSymbol)
-                            priceSource = "REAL Market"
+                            priceSource = if (isPersian) "بازار واقعی" else "REAL Market"
                         }
                     }
 
@@ -127,7 +121,6 @@ fun LiveChartScreen(
                         val tp = if (isBuy) currentPrice + atr * 3.0 else currentPrice - atr * 3.0
                         val rr = 2.0 + Random.nextDouble() * 2.0
                         val conf = 75 + Random.nextInt(25)
-
                         val entry = EntryPoint(
                             id = "entry_${System.currentTimeMillis()}",
                             time = System.currentTimeMillis(),
@@ -145,11 +138,9 @@ fun LiveChartScreen(
                         totalPnL += if (Random.nextDouble() < 0.65) atr * 3.0 * 0.5 else -atr * 1.5 * 0.5
                         winrate = 60 + Random.nextDouble() * 20
                     }
-
                 } catch (e: Exception) {
-                    priceSource = "REAL"
+                    priceSource = if (isPersian) "واقعی" else "REAL"
                 }
-
                 delay((selectedTF.minutes * 100L).coerceAtMost(2000L).coerceAtLeast(1000L))
             }
         }
@@ -182,10 +173,7 @@ fun LiveChartScreen(
     }
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .padding(10.dp),
+        modifier = Modifier.fillMaxSize().background(Color.Black).padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
@@ -204,12 +192,14 @@ fun LiveChartScreen(
                         Text(text = "odin metatrading", fontSize = 14.sp, fontWeight = FontWeight.Black, color = OdinGoldLight)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
+                                modifier = Modifier.clip(RoundedCornerShape(6.dp))
                                     .background(if (isLive) OdinGreen.copy(alpha = 0.2f) else OdinRed.copy(alpha = 0.2f))
                                     .padding(horizontal = 8.dp, vertical = 3.dp)
                             ) {
-                                Text(text = if (isLive) "● LIVE REAL" else "○ PAUSED", fontSize = 8.sp, fontWeight = FontWeight.Black, color = if (isLive) OdinGreen else OdinRed)
+                                Text(
+                                    text = if (isLive) if (isPersian) "● زنده واقعی" else "● LIVE REAL" else if (isPersian) "○ متوقف" else "○ PAUSED",
+                                    fontSize = 8.sp, fontWeight = FontWeight.Black, color = if (isLive) OdinGreen else OdinRed
+                                )
                             }
                             Spacer(modifier = Modifier.width(6.dp))
                             Switch(checked = isLive, onCheckedChange = { isLive = it }, colors = SwitchDefaults.colors(checkedThumbColor = OdinGreen, checkedTrackColor = OdinGreen.copy(alpha = 0.3f)), modifier = Modifier.size(28.dp))
@@ -222,12 +212,20 @@ fun LiveChartScreen(
                         Column {
                             Text(text = selectedSymbol, fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.White)
                             Text(text = SymbolManager.formatPrice(selectedSymbol, currentPrice), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = OdinGoldLight)
-                            Text(text = "Bid ${SymbolManager.formatPrice(selectedSymbol, bidPrice)} Ask ${SymbolManager.formatPrice(selectedSymbol, askPrice)}", fontSize = 7.sp, color = OdinSilverMuted)
+                            Text(
+                                text = if (isPersian) "خرید ${SymbolManager.formatPrice(selectedSymbol, bidPrice)} فروش ${SymbolManager.formatPrice(selectedSymbol, askPrice)}"
+                                else "Bid ${SymbolManager.formatPrice(selectedSymbol, bidPrice)} Ask ${SymbolManager.formatPrice(selectedSymbol, askPrice)}",
+                                fontSize = 7.sp, color = OdinSilverMuted
+                            )
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(text = "TF: ${selectedTF.label} • REAL", fontSize = 8.sp, color = OdinCyan)
+                            Text(text = if (isPersian) "تایم فریم: ${selectedTF.labelFa} • واقعی" else "TF: ${selectedTF.label} • REAL", fontSize = 8.sp, color = OdinCyan)
                             Text(text = priceSource.take(18), fontSize = 7.sp, color = OdinGreen)
-                            Text(text = "PnL ${if (totalPnL >= 0) "+" else ""}${String.format("%.2f", totalPnL)} USDT WR ${String.format("%.0f", winrate)}%", fontSize = 8.sp, color = if (totalPnL >= 0) OdinGreen else OdinRed, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = if (isPersian) "سود ${if (totalPnL >= 0) "+" else ""}${String.format("%.2f", totalPnL)} تتر وین‌ریت ${String.format("%.0f", winrate)}%"
+                                else "PnL ${if (totalPnL >= 0) "+" else ""}${String.format("%.2f", totalPnL)} USDT WR ${String.format("%.0f", winrate)}%",
+                                fontSize = 8.sp, color = if (totalPnL >= 0) OdinGreen else OdinRed, fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -235,24 +233,16 @@ fun LiveChartScreen(
         }
 
         item {
-            // Timeframe selector - TradingView style
             LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(ChartTimeframe.values().toList()) { tf ->
                     FilterChip(
                         selected = selectedTF == tf,
                         onClick = { selectedTF = tf },
-                        label = { Text(tf.label, fontSize = 10.sp, fontWeight = if (selectedTF == tf) FontWeight.Black else FontWeight.Normal) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = OdinGold.copy(alpha = 0.25f),
-                            selectedLabelColor = Color.White
-                        ),
+                        label = { Text(if (isPersian) tf.labelFa else tf.label, fontSize = 10.sp, fontWeight = if (selectedTF == tf) FontWeight.Black else FontWeight.Normal) },
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OdinGold.copy(alpha = 0.25f), selectedLabelColor = Color.White),
                         border = FilterChipDefaults.filterChipBorder(
                             borderColor = if (selectedTF == tf) OdinGold else Color(0xFF1A1A1A),
-                            selectedBorderColor = OdinGold,
-                            borderWidth = 1.dp,
-                            selectedBorderWidth = 1.2.dp,
-                            enabled = true,
-                            selected = selectedTF == tf
+                            selectedBorderColor = OdinGold, borderWidth = 1.dp, selectedBorderWidth = 1.2.dp, enabled = true, selected = selectedTF == tf
                         )
                     )
                 }
@@ -271,16 +261,11 @@ fun LiveChartScreen(
                                 SymbolCategory.FOREX_IRR -> OdinRed.copy(alpha = 0.3f)
                                 SymbolCategory.CRYPTO -> OdinCyan.copy(alpha = 0.2f)
                                 else -> OdinGold.copy(alpha = 0.2f)
-                            },
-                            selectedLabelColor = Color.White
+                            }, selectedLabelColor = Color.White
                         ),
                         border = FilterChipDefaults.filterChipBorder(
                             borderColor = if (selectedSymbol == sym.symbol) OdinGold else Color(0xFF1A1A1A),
-                            selectedBorderColor = OdinGold,
-                            borderWidth = 1.dp,
-                            selectedBorderWidth = 1.dp,
-                            enabled = true,
-                            selected = selectedSymbol == sym.symbol
+                            selectedBorderColor = OdinGold, borderWidth = 1.dp, selectedBorderWidth = 1.dp, enabled = true, selected = selectedSymbol == sym.symbol
                         )
                     )
                 }
@@ -308,11 +293,15 @@ fun LiveChartScreen(
             ) {
                 Column(modifier = Modifier.padding(10.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "REAL $selectedSymbol ${selectedTF.label} - TradingView Style - LIT + TV80", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(
+                            text = if (isPersian) "واقعی $selectedSymbol ${selectedTF.labelFa} - تریدینگ ویو - LIT + TV80"
+                            else "REAL $selectedSymbol ${selectedTF.label} - TradingView Style - LIT + TV80",
+                            fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White
+                        )
                         Row {
-                            Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(OdinGreen.copy(alpha = 0.2f)).padding(horizontal = 6.dp, vertical = 2.dp)) { Text(text = "BUY", fontSize = 8.sp, fontWeight = FontWeight.Black, color = OdinGreen) }
+                            Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(OdinGreen.copy(alpha = 0.2f)).padding(horizontal = 6.dp, vertical = 2.dp)) { Text(text = if (isPersian) "خرید" else "BUY", fontSize = 8.sp, fontWeight = FontWeight.Black, color = OdinGreen) }
                             Spacer(modifier = Modifier.width(4.dp))
-                            Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(OdinRed.copy(alpha = 0.2f)).padding(horizontal = 6.dp, vertical = 2.dp)) { Text(text = "SELL", fontSize = 8.sp, fontWeight = FontWeight.Black, color = OdinRed) }
+                            Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(OdinRed.copy(alpha = 0.2f)).padding(horizontal = 6.dp, vertical = 2.dp)) { Text(text = if (isPersian) "فروش" else "SELL", fontSize = 8.sp, fontWeight = FontWeight.Black, color = OdinRed) }
                         }
                     }
 
@@ -327,12 +316,10 @@ fun LiveChartScreen(
                             val priceRange = maxPrice - minPrice
                             if (priceRange == 0.0) return@Canvas
                             val candleWidth = size.width / displayCandles.size
-
                             for (i in 0..4) {
                                 val y = size.height * i / 4
                                 drawLine(color = Color(0xFF1A1A1A), start = Offset(0f, y), end = Offset(size.width, y), strokeWidth = 1f)
                             }
-
                             displayCandles.forEachIndexed { index, candle ->
                                 val x = index * candleWidth + candleWidth / 2
                                 val openY = size.height - ((candle.open - minPrice) / priceRange * size.height).toFloat()
@@ -347,7 +334,6 @@ fun LiveChartScreen(
                                 val bodyHeight = max(2f, bodyBottom - bodyTop)
                                 drawRect(color = color, topLeft = Offset(x - candleWidth * 0.35f, bodyTop), size = androidx.compose.ui.geometry.Size(candleWidth * 0.7f, bodyHeight))
                             }
-
                             entryPoints.filter { it.symbol == selectedSymbol }.takeLast(8).forEach { entry ->
                                 val entryY = size.height - ((entry.price - minPrice) / priceRange * size.height).toFloat()
                                 val entryColor = if (entry.side == SignalSide.BUY) OdinGreen else OdinRed
@@ -358,20 +344,23 @@ fun LiveChartScreen(
                                 drawLine(color = OdinGreen.copy(alpha = 0.6f), start = Offset(0f, tpY), end = Offset(size.width, tpY), strokeWidth = 1f)
                             }
                         }
-
                         Box(modifier = Modifier.fillMaxSize().padding(8.dp)) {
                             Column {
-                                Text(text = "REAL ${selectedSymbol} ${selectedTF.label} • TradingView • LIT 50% OB", fontSize = 8.sp, color = OdinGold, fontWeight = FontWeight.Bold)
-                                Text(text = "Source: $priceSource • Tether Unit", fontSize = 7.sp, color = OdinGreen)
+                                Text(
+                                    text = if (isPersian) "واقعی ${selectedSymbol} ${selectedTF.labelFa} • تریدینگ ویو • LIT ۵۰% اردر بلاک"
+                                    else "REAL ${selectedSymbol} ${selectedTF.label} • TradingView • LIT 50% OB",
+                                    fontSize = 8.sp, color = OdinGold, fontWeight = FontWeight.Bold
+                                )
+                                Text(text = if (isPersian) "منبع: $priceSource • واحد تتر" else "Source: $priceSource • Tether Unit", fontSize = 7.sp, color = OdinGreen)
                             }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(text = "SL", fontSize = 8.sp, color = OdinRed)
-                        Text(text = "Entry ${selectedSymbol} ${selectedTF.label} REAL", fontSize = 8.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                        Text(text = "TP", fontSize = 8.sp, color = OdinGreen)
+                        Text(text = if (isPersian) "حد ضرر" else "SL", fontSize = 8.sp, color = OdinRed)
+                        Text(text = if (isPersian) "ورود ${selectedSymbol} ${selectedTF.labelFa} واقعی" else "Entry ${selectedSymbol} ${selectedTF.label} REAL", fontSize = 8.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(text = if (isPersian) "حد سود" else "TP", fontSize = 8.sp, color = OdinGreen)
                     }
                 }
             }
@@ -380,14 +369,24 @@ fun LiveChartScreen(
         item {
             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)), border = BorderStroke(1.dp, OdinBorder), shape = RoundedCornerShape(12.dp)) {
                 Column(modifier = Modifier.padding(10.dp)) {
-                    Text(text = "REAL Entry Points ${selectedSymbol} ${selectedTF.label} (${entryPoints.filter { it.symbol == selectedSymbol }.size})", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(
+                        text = if (isPersian) "نقاط ورود واقعی ${selectedSymbol} ${selectedTF.labelFa} (${entryPoints.filter { it.symbol == selectedSymbol }.size})"
+                        else "REAL Entry Points ${selectedSymbol} ${selectedTF.label} (${entryPoints.filter { it.symbol == selectedSymbol }.size})",
+                        fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White
+                    )
                     Spacer(modifier = Modifier.height(6.dp))
                     val filtered = entryPoints.filter { it.symbol == selectedSymbol }
                     if (filtered.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxWidth().height(50.dp), contentAlignment = Alignment.Center) { Text(text = "Waiting for REAL LIT signal $selectedSymbol ${selectedTF.label}...", fontSize = 10.sp, color = OdinSilverMuted) }
+                        Box(modifier = Modifier.fillMaxWidth().height(50.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = if (isPersian) "در انتظار سیگنال واقعی LIT $selectedSymbol ${selectedTF.labelFa}..."
+                                else "Waiting for REAL LIT signal $selectedSymbol ${selectedTF.label}...",
+                                fontSize = 10.sp, color = OdinSilverMuted
+                            )
+                        }
                     } else {
                         filtered.takeLast(5).reversed().forEach { entry ->
-                            EntryPointCard(entry = entry)
+                            EntryPointCard(entry = entry, isPersian = isPersian)
                             Spacer(modifier = Modifier.height(6.dp))
                         }
                     }
@@ -401,7 +400,7 @@ fun LiveChartScreen(
 
 private fun aggregateCandles(candles: List<RealCandle>, tfMinutes: Int): List<RealCandle> {
     if (tfMinutes <= 1) return candles
-    val factor = tfMinutes / 1
+    val factor = tfMinutes
     if (factor <= 1) return candles
     val result = mutableListOf<RealCandle>()
     var i = 0
@@ -422,20 +421,22 @@ private fun aggregateCandles(candles: List<RealCandle>, tfMinutes: Int): List<Re
 }
 
 @Composable
-private fun EntryPointCard(entry: EntryPoint) {
+private fun EntryPointCard(entry: EntryPoint, isPersian: Boolean) {
     val isBuy = entry.side == SignalSide.BUY
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = if (isBuy) OdinGreen.copy(alpha = 0.08f) else OdinRed.copy(alpha = 0.08f)), border = BorderStroke(1.dp, if (isBuy) OdinGreen.copy(alpha = 0.3f) else OdinRed.copy(alpha = 0.3f)), shape = RoundedCornerShape(8.dp)) {
         Row(modifier = Modifier.padding(8.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(if (isBuy) OdinGreen else OdinRed).padding(horizontal = 5.dp, vertical = 1.dp)) { Text(text = if (isBuy) "BUY" else "SELL", fontSize = 8.sp, fontWeight = FontWeight.Black, color = Color.White) }
+                    Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(if (isBuy) OdinGreen else OdinRed).padding(horizontal = 5.dp, vertical = 1.dp)) {
+                        Text(text = if (isBuy) if (isPersian) "خرید" else "BUY" else if (isPersian) "فروش" else "SELL", fontSize = 8.sp, fontWeight = FontWeight.Black, color = Color.White)
+                    }
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(text = "${entry.type} ${entry.symbol} ${entry.rr.toInt()}R", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = OdinGold)
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(text = "${entry.confidence.toInt()}%", fontSize = 8.sp, color = OdinSilverMuted)
                 }
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(text = "${SymbolManager.formatPrice(entry.symbol, entry.price)} | SL ${SymbolManager.formatPrice(entry.symbol, entry.sl)} | TP ${SymbolManager.formatPrice(entry.symbol, entry.tp)} | RR 1:${String.format("%.1f", entry.rr)}", fontSize = 7.sp, color = OdinSilver, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                Text(text = "${SymbolManager.formatPrice(entry.symbol, entry.price)} | ${if (isPersian) "ضرر" else "SL"} ${SymbolManager.formatPrice(entry.symbol, entry.sl)} | ${if (isPersian) "سود" else "TP"} ${SymbolManager.formatPrice(entry.symbol, entry.tp)} | RR 1:${String.format("%.1f", entry.rr)}", fontSize = 7.sp, color = OdinSilver, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
             }
             Icon(imageVector = if (isBuy) Icons.Default.TrendingUp else Icons.Default.TrendingDown, contentDescription = null, tint = if (isBuy) OdinGreen else OdinRed, modifier = Modifier.size(16.dp))
         }

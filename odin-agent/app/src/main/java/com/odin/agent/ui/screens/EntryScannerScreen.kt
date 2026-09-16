@@ -261,7 +261,7 @@ fun EntryScannerScreen(
                             Column {
                                 Text(text = if (isPersian) "فعلی" else "Current", fontSize = 9.sp, color = OdinSilverMuted)
                                 Text(text = "$currentTrades", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                Text(text = "$tradesToday today", fontSize = 8.sp, color = OdinSilverMuted)
+                                Text(text = "$tradesToday ${if (isPersian) "امروز" else "today"}", fontSize = 8.sp, color = OdinSilverMuted)
                             }
                         }
 
@@ -359,7 +359,7 @@ private fun SignalCardWithAlarm(signal: EntrySignal, isPersian: Boolean, onClick
                             .background(if (isBuy) OdinGreen else OdinRed)
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
-                        Text(text = if (isBuy) "BUY" else "SELL", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color.White)
+                        Text(text = if (isBuy) if (isPersian) "خرید" else "BUY" else if (isPersian) "فروش" else "SELL", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color.White)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = signal.symbol, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 12.sp)
@@ -368,7 +368,7 @@ private fun SignalCardWithAlarm(signal: EntrySignal, isPersian: Boolean, onClick
                 }
 
                 Text(
-                    text = "${signal.confidence.toInt()}% Conf",
+                    text = "${signal.confidence.toInt()}% ${if (isPersian) "اطمینان" else "Conf"}",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = OdinGold,
@@ -382,13 +382,13 @@ private fun SignalCardWithAlarm(signal: EntrySignal, isPersian: Boolean, onClick
             Spacer(modifier = Modifier.height(6.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(text = "Price ${String.format("%.2f", signal.price)}", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(text = "${if (isPersian) "قیمت" else "Price"} ${String.format("%.2f", signal.price)}", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
                 Text(text = "RR 1:${String.format("%.1f", signal.rr)}", fontSize = 10.sp, color = OdinGold, fontWeight = FontWeight.Bold)
-                Text(text = "Confl ${signal.confluence}", fontSize = 10.sp, color = OdinCyan)
+                Text(text = "${if (isPersian) "تایید" else "Confl"} ${signal.confluence}", fontSize = 10.sp, color = OdinCyan)
             }
 
             Spacer(modifier = Modifier.height(2.dp))
-            Text(text = "Bid ${String.format("%.2f", signal.bid)} Ask ${String.format("%.2f", signal.ask)} • ${signal.source}", fontSize = 8.sp, color = OdinSilverMuted)
+            Text(text = "${if (isPersian) "خرید" else "Bid"} ${String.format("%.2f", signal.bid)} ${if (isPersian) "فروش" else "Ask"} ${String.format("%.2f", signal.ask)} • ${signal.source}", fontSize = 8.sp, color = OdinSilverMuted)
 
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -407,7 +407,7 @@ private fun SignalCardWithAlarm(signal: EntrySignal, isPersian: Boolean, onClick
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${(System.currentTimeMillis() - signal.timestamp) / 1000}s ago • ${signal.strategy.name}",
+                    text = "${(System.currentTimeMillis() - signal.timestamp) / 1000}${if (isPersian) "ثانیه پیش" else "s ago"} • ${signal.strategy.name}",
                     fontSize = 8.sp,
                     color = OdinSilverMuted
                 )

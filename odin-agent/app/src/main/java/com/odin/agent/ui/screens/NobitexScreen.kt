@@ -6,7 +6,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -16,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,7 +30,6 @@ import kotlinx.coroutines.launch
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun NobitexScreen(isPersian: Boolean) {
-    val context = LocalContext.current
     val webGateway = remember { NobitexWebViewGateway() }
     val apiManager = remember { NobitexApiManager() }
     val marketProvider = remember { NobitexMarketProvider() }
@@ -40,7 +37,7 @@ fun NobitexScreen(isPersian: Boolean) {
 
     var webState by remember { mutableStateOf(webGateway.state.value) }
     var apiState by remember { mutableStateOf(apiManager.state.value) }
-    var selectedTab by remember { mutableStateOf(0) } // 0=WebView Spot, 1=API Trading, 2=Market REAL
+    var selectedTab by remember { mutableStateOf(0) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var currentUrl by remember { mutableStateOf(webGateway.getDefaultUrl()) }
     var extractedIRT by remember { mutableStateOf(0.0) }
@@ -50,7 +47,6 @@ fun NobitexScreen(isPersian: Boolean) {
     var isConnecting by remember { mutableStateOf(false) }
     var realPrices by remember { mutableStateOf<Map<String, com.odin.agent.trading.RealPrice>>(emptyMap()) }
     var usdtPrice by remember { mutableStateOf<com.odin.agent.trading.NobitexPrice?>(null) }
-
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -70,20 +66,23 @@ fun NobitexScreen(isPersian: Boolean) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text(text = "odin metatrading - Nobitex REAL Gateway", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color.White)
-            Text(text = "نوبیتکس - بزرگترین صرافی ایران 11M کاربر - موجودی اسپات REAL + معامله API + قیمت REAL 231K تومان", fontSize = 9.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
+            Text(text = if (isPersian) "نوبیتکس - درگاه واقعی - ۱۱ میلیون کاربر" else "odin metatrading - Nobitex REAL Gateway", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color.White)
+            Text(
+                text = if (isPersian) "بزرگترین صرافی ایران - موجودی اسپات واقعی + معامله API + قیمت واقعی ۲۳۱K تومان"
+                else "Iran largest exchange 11M users - Spot Balance REAL + API Trading + Price REAL 231K Toman",
+                fontSize = 9.sp, color = OdinGreen, fontWeight = FontWeight.Bold
+            )
         }
 
         item {
             TabRow(selectedTabIndex = selectedTab, containerColor = Color(0xFF0A0A0A), contentColor = OdinGreen) {
-                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("WebView Spot REAL", fontSize = 9.sp, fontWeight = FontWeight.Bold) })
-                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("API Trading REAL", fontSize = 9.sp) })
-                Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Market REAL Price", fontSize = 9.sp) })
+                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text(if (isPersian) "موجودی اسپات واقعی" else "WebView Spot REAL", fontSize = 9.sp, fontWeight = FontWeight.Bold) })
+                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text(if (isPersian) "معامله API واقعی" else "API Trading REAL", fontSize = 9.sp) })
+                Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text(if (isPersian) "قیمت بازار واقعی" else "Market REAL Price", fontSize = 9.sp) })
             }
         }
 
         if (selectedTab == 0) {
-            // WEBVIEW SPOT TAB - like MT5 WebView
             item {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)), border = BorderStroke(1.dp, if (webState.isConnected || extractedIRT > 0) OdinGreen.copy(alpha = 0.4f) else OdinGold.copy(alpha = 0.3f)), shape = RoundedCornerShape(12.dp)) {
                     Column(modifier = Modifier.padding(10.dp)) {
@@ -91,16 +90,21 @@ fun NobitexScreen(isPersian: Boolean) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = OdinGreen, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(text = "Nobitex WebView REAL - Spot Balance - Captcha Manual", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(text = if (isPersian) "درگاه WebView واقعی نوبیتکس - موجودی اسپات - کپچا دستی" else "Nobitex WebView REAL - Spot Balance - Captcha Manual", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                             Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(if (webState.isConnected || extractedIRT > 0) OdinGreen.copy(alpha = 0.2f) else OdinGold.copy(alpha = 0.15f)).padding(horizontal = 8.dp, vertical = 3.dp)) {
-                                Text(text = if (webState.isConnected || extractedIRT > 0) "● CONNECTED REAL BALANCE" else if (webState.isLoading) "● LOADING..." else "○ READY FOR LOGIN", fontSize = 7.sp, fontWeight = FontWeight.Black, color = if (webState.isConnected || extractedIRT > 0) OdinGreen else OdinGold)
+                                Text(
+                                    text = if (webState.isConnected || extractedIRT > 0) if (isPersian) "● متصل موجودی واقعی" else "● CONNECTED REAL BALANCE"
+                                    else if (webState.isLoading) if (isPersian) "● در حال بارگذاری..." else "● LOADING..."
+                                    else if (isPersian) "○ آماده برای لاگین" else "○ READY FOR LOGIN",
+                                    fontSize = 7.sp, fontWeight = FontWeight.Black, color = if (webState.isConnected || extractedIRT > 0) OdinGreen else OdinGold
+                                )
                             }
                         }
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(text = "درگاه واقعی نوبیتکس - https://nobitex.ir/panel/balance/spot/ - کپچای دستی وارد شود - بعد کانکت موجودی نشان داده شود - 11M کاربر", fontSize = 8.sp, color = OdinSilverMuted, lineHeight = 10.sp)
+                        Text(text = if (isPersian) "درگاه واقعی نوبیتکس - https://nobitex.ir/panel/balance/spot/ - کپچای دستی وارد شود - بعد کانکت موجودی نشان داده شود - ۱۱ میلیون کاربر" else "Real Nobitex gateway - https://nobitex.ir/panel/balance/spot/ - manual captcha - after connect balance shown - 11M users", fontSize = 8.sp, color = OdinSilverMuted, lineHeight = 10.sp)
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(text = "Nobitex URLs REAL", fontSize = 9.sp, color = OdinCyan, fontWeight = FontWeight.Bold)
+                        Text(text = if (isPersian) "آدرس‌های نوبیتکس واقعی" else "Nobitex URLs REAL", fontSize = 9.sp, color = OdinCyan, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
                         webGateway.getAllUrls().forEach { (url, name) ->
                             FilterChip(
@@ -117,27 +121,21 @@ fun NobitexScreen(isPersian: Boolean) {
                             Button(onClick = { webViewRef?.reload() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = OdinCyan.copy(alpha = 0.15f)), border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.3f)), shape = RoundedCornerShape(8.dp)) {
                                 Icon(Icons.Default.Refresh, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(text = "Reload", fontSize = 9.sp, color = OdinCyan)
+                                Text(text = if (isPersian) "بارگذاری مجدد" else "Reload", fontSize = 9.sp, color = OdinCyan)
                             }
                             Button(onClick = { if (webViewRef?.canGoBack() == true) webViewRef?.goBack() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)), shape = RoundedCornerShape(8.dp)) {
                                 Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(text = "Back", fontSize = 9.sp, color = Color.White)
+                                Text(text = if (isPersian) "بازگشت" else "Back", fontSize = 9.sp, color = Color.White)
                             }
                             Button(onClick = {
                                 webViewRef?.let { wv ->
-                                    webGateway.extractBalanceFromPage(wv) { irt, usdt ->
-                                        extractedIRT = irt
-                                        extractedUSDT = usdt
-                                    }
-                                    webGateway.extractAllBalances(wv) { balances ->
-                                        // Could show all balances
-                                    }
+                                    webGateway.extractBalanceFromPage(wv) { irt, usdt -> extractedIRT = irt; extractedUSDT = usdt }
                                 }
                             }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = OdinGreen.copy(alpha = 0.15f)), border = BorderStroke(1.dp, OdinGreen.copy(alpha = 0.3f)), shape = RoundedCornerShape(8.dp)) {
                                 Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = OdinGreen, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(text = "Balance", fontSize = 9.sp, color = OdinGreen)
+                                Text(text = if (isPersian) "موجودی" else "Balance", fontSize = 9.sp, color = OdinGreen)
                             }
                         }
                         Spacer(modifier = Modifier.height(6.dp))
@@ -148,13 +146,13 @@ fun NobitexScreen(isPersian: Boolean) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = OdinGreen.copy(alpha = 0.08f)), border = BorderStroke(1.dp, OdinGreen.copy(alpha = 0.4f)), shape = RoundedCornerShape(8.dp)) {
                                 Column(modifier = Modifier.padding(8.dp)) {
-                                    Text(text = "Balance REAL after connect - Must show - Nobitex Spot", fontSize = 9.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
+                                    Text(text = if (isPersian) "موجودی واقعی بعد اتصال - حتما نمایش داده شود - نوبیتکس اسپات" else "Balance REAL after connect - Must show - Nobitex Spot", fontSize = 9.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Column { Text(text = "IRT Balance REAL", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "${String.format("%,.0f", if (extractedIRT > 0) extractedIRT else webState.balanceIRT)} Toman", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.White) }
-                                        Column { Text(text = "USDT Balance REAL", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "${String.format("%.2f", if (extractedUSDT > 0) extractedUSDT else webState.balanceUSDT)} USDT", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OdinGold) }
-                                        Column { Text(text = "Source", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "Nobitex REAL", fontSize = 9.sp, color = OdinCyan) }
+                                        Column { Text(text = if (isPersian) "موجودی تومانی واقعی" else "IRT Balance REAL", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "${String.format("%,.0f", if (extractedIRT > 0) extractedIRT else webState.balanceIRT)} ${if (isPersian) "تومان" else "Toman"}", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.White) }
+                                        Column { Text(text = if (isPersian) "موجودی تتر واقعی" else "USDT Balance REAL", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "${String.format("%.2f", if (extractedUSDT > 0) extractedUSDT else webState.balanceUSDT)} USDT", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OdinGold) }
+                                        Column { Text(text = if (isPersian) "منبع" else "Source", fontSize = 8.sp, color = OdinSilverMuted); Text(text = if (isPersian) "نوبیتکس واقعی" else "Nobitex REAL", fontSize = 9.sp, color = OdinCyan) }
                                     }
-                                    Text(text = "REAL Nobitex WebView Gateway - Captcha manually entered - Balance extracted via JS - https://nobitex.ir/panel/balance/spot/", fontSize = 7.sp, color = OdinSilverDim)
+                                    Text(text = "REAL Nobitex WebView - https://nobitex.ir/panel/balance/spot/", fontSize = 7.sp, color = OdinSilverDim)
                                 }
                             }
                         }
@@ -177,10 +175,13 @@ fun NobitexScreen(isPersian: Boolean) {
                         modifier = Modifier.fillMaxSize()
                     )
                 }
-                Text(text = "REAL Nobitex WebView - Manual captcha entry supported - After login balance extracted - Spot Balance REAL - This is REAL gateway not fake", fontSize = 8.sp, color = OdinSilverMuted, lineHeight = 10.sp)
+                Text(
+                    text = if (isPersian) "WebView واقعی نوبیتکس - ورود کپچا دستی پشتیبانی می‌شود - بعد لاگین موجودی استخراج می‌شود - موجودی اسپات واقعی - درگاه واقعی نه تقلبی"
+                    else "REAL Nobitex WebView - Manual captcha entry supported - After login balance extracted - Spot Balance REAL - REAL gateway not fake",
+                    fontSize = 8.sp, color = OdinSilverMuted, lineHeight = 10.sp
+                )
             }
         } else if (selectedTab == 1) {
-            // API TRADING TAB
             item {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = if (apiState.isConnected) OdinGreen.copy(alpha = 0.08f) else Color(0xFF0A0A0A)), border = BorderStroke(1.dp, if (apiState.isConnected) OdinGreen.copy(alpha = 0.4f) else OdinGold.copy(alpha = 0.3f)), shape = RoundedCornerShape(12.dp)) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -188,10 +189,10 @@ fun NobitexScreen(isPersian: Boolean) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Key, contentDescription = null, tint = OdinGoldLight, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(text = "Nobitex API REAL Trading - Token", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(text = if (isPersian) "معامله واقعی API نوبیتکس - توکن" else "Nobitex API REAL Trading - Token", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                             Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(if (apiState.isConnected) OdinGreen.copy(alpha = 0.2f) else OdinRed.copy(alpha = 0.2f)).padding(horizontal = 8.dp, vertical = 3.dp)) {
-                                Text(text = if (apiState.isConnected) "● CONNECTED REAL" else "○ DISCONNECTED", fontSize = 8.sp, fontWeight = FontWeight.Black, color = if (apiState.isConnected) OdinGreen else OdinRed)
+                                Text(text = if (apiState.isConnected) if (isPersian) "● متصل واقعی" else "● CONNECTED REAL" else if (isPersian) "○ قطع" else "○ DISCONNECTED", fontSize = 8.sp, fontWeight = FontWeight.Black, color = if (apiState.isConnected) OdinGreen else OdinRed)
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -199,8 +200,8 @@ fun NobitexScreen(isPersian: Boolean) {
                             OutlinedTextField(
                                 value = apiToken,
                                 onValueChange = { apiToken = it },
-                                label = { Text("Nobitex API Token", fontSize = 10.sp) },
-                                placeholder = { Text("Token from https://nobitex.ir/panel/settings/api/", fontSize = 9.sp, color = OdinSilverDim) },
+                                label = { Text(if (isPersian) "توکن API نوبیتکس" else "Nobitex API Token", fontSize = 10.sp) },
+                                placeholder = { Text(if (isPersian) "توکن از پنل تنظیمات API" else "Token from https://nobitex.ir/panel/settings/api/", fontSize = 9.sp, color = OdinSilverDim) },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OdinGold, unfocusedBorderColor = OdinBorder, focusedTextColor = Color.White, unfocusedTextColor = Color.White),
                                 singleLine = true,
@@ -213,10 +214,7 @@ fun NobitexScreen(isPersian: Boolean) {
                                 onClick = {
                                     if (isConnecting) return@Button
                                     isConnecting = true
-                                    scope.launch {
-                                        val success = apiManager.connect(apiToken)
-                                        isConnecting = false
-                                    }
+                                    scope.launch { apiManager.connect(apiToken); isConnecting = false }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = OdinGreen),
@@ -226,27 +224,27 @@ fun NobitexScreen(isPersian: Boolean) {
                                 if (isConnecting) {
                                     CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = "Connecting REAL...", fontSize = 12.sp)
+                                    Text(text = if (isPersian) "در حال اتصال واقعی..." else "Connecting REAL...", fontSize = 12.sp)
                                 } else {
                                     Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text(text = "Connect REAL to Nobitex API", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                    Text(text = if (isPersian) "اتصال واقعی به API نوبیتکس" else "Connect REAL to Nobitex API", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                 }
                             }
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text(text = "💡 از پنل نوبیتکس: تنظیمات → API → توکن بساز - Token lasts 4h or 30 days", fontSize = 8.sp, color = OdinSilverMuted)
-                            Text(text = "⚠️ توکن را امن نگه دار - 2025 هک 90M$ - منبع کد لو رفت", fontSize = 8.sp, color = OdinRed.copy(alpha = 0.7f))
+                            Text(text = if (isPersian) "💡 از پنل نوبیتکس: تنظیمات → API → توکن بساز - ۴ ساعته یا ۳۰ روزه" else "💡 From Nobitex panel: Settings → API → Create token - 4h or 30 days", fontSize = 8.sp, color = OdinSilverMuted)
+                            Text(text = if (isPersian) "⚠️ توکن را امن نگه دار - ۲۰۲۵ هک ۹۰ میلیون دلار" else "⚠️ Keep token secure - 2025 breach $90M", fontSize = 8.sp, color = OdinRed.copy(alpha = 0.7f))
                         } else {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Column { Text(text = "IRT Balance REAL", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "${String.format("%,.0f", apiState.totalIRT)} Toman", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.White) }
-                                Column { Text(text = "USDT Balance REAL", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "${String.format("%.2f", apiState.totalUSDT)} USDT", fontSize = 13.sp, fontWeight = FontWeight.Black, color = OdinGold) }
-                                Column { Text(text = "Wallets", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "${apiState.wallets.size} REAL", fontSize = 11.sp, color = OdinCyan) }
+                                Column { Text(text = if (isPersian) "موجودی تومانی واقعی" else "IRT Balance REAL", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "${String.format("%,.0f", apiState.totalIRT)} ${if (isPersian) "تومان" else "Toman"}", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.White) }
+                                Column { Text(text = if (isPersian) "موجودی تتر واقعی" else "USDT Balance REAL", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "${String.format("%.2f", apiState.totalUSDT)} USDT", fontSize = 13.sp, fontWeight = FontWeight.Black, color = OdinGold) }
+                                Column { Text(text = if (isPersian) "کیف پول" else "Wallets", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "${apiState.wallets.size} ${if (isPersian) "واقعی" else "REAL"}", fontSize = 11.sp, color = OdinCyan) }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Button(onClick = { scope.launch { apiManager.disconnect() } }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = OdinRed.copy(alpha = 0.15f)), border = BorderStroke(1.dp, OdinRed.copy(alpha = 0.3f)), shape = RoundedCornerShape(8.dp)) {
                                 Icon(Icons.Default.Logout, contentDescription = null, tint = OdinRed, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(text = "Disconnect", color = OdinRed, fontSize = 12.sp)
+                                Text(text = if (isPersian) "قطع اتصال" else "Disconnect", color = OdinRed, fontSize = 12.sp)
                             }
                         }
                         apiState.lastError?.let { err ->
@@ -263,7 +261,7 @@ fun NobitexScreen(isPersian: Boolean) {
                 item {
                     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)), border = BorderStroke(1.dp, OdinGreen.copy(alpha = 0.3f)), shape = RoundedCornerShape(12.dp)) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text(text = "Wallets REAL - Spot Balance", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 12.sp)
+                            Text(text = if (isPersian) "کیف پول واقعی - موجودی اسپات" else "Wallets REAL - Spot Balance", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 12.sp)
                             Spacer(modifier = Modifier.height(8.dp))
                             apiState.wallets.values.sortedByDescending { it.balance }.forEach { wallet ->
                                 if (wallet.balance > 0) {
@@ -275,19 +273,19 @@ fun NobitexScreen(isPersian: Boolean) {
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Column {
                                                 Text(text = wallet.currency.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                                Text(text = "Active: ${String.format("%.6f", wallet.activeBalance)}", fontSize = 8.sp, color = OdinSilverMuted)
+                                                Text(text = "${if (isPersian) "فعال" else "Active"}: ${String.format("%.6f", wallet.activeBalance)}", fontSize = 8.sp, color = OdinSilverMuted)
                                             }
                                         }
                                         Column(horizontalAlignment = Alignment.End) {
                                             Text(text = String.format("%.6f", wallet.balance), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                            if (wallet.blocked > 0) Text(text = "Blocked ${String.format("%.4f", wallet.blocked)}", fontSize = 7.sp, color = OdinRed)
+                                            if (wallet.blocked > 0) Text(text = "${if (isPersian) "بلوکه" else "Blocked"} ${String.format("%.4f", wallet.blocked)}", fontSize = 7.sp, color = OdinRed)
                                         }
                                     }
                                     Spacer(modifier = Modifier.height(6.dp))
                                 }
                             }
                             if (apiState.wallets.values.none { it.balance > 0 }) {
-                                Text(text = "No balance - کیف پول خالی", fontSize = 10.sp, color = OdinSilverMuted)
+                                Text(text = if (isPersian) "موجودی نیست - کیف پول خالی" else "No balance - کیف پول خالی", fontSize = 10.sp, color = OdinSilverMuted)
                             }
                         }
                     }
@@ -296,20 +294,20 @@ fun NobitexScreen(isPersian: Boolean) {
                 item {
                     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)), border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.3f)), shape = RoundedCornerShape(12.dp)) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text(text = "Quick Trade REAL - Nobitex", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 12.sp)
+                            Text(text = if (isPersian) "معامله سریع واقعی - نوبیتکس" else "Quick Trade REAL - Nobitex", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 12.sp)
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = "Buy/Sell via API - POST /market/orders/add - REAL trading", fontSize = 9.sp, color = OdinSilverMuted)
+                            Text(text = if (isPersian) "خرید/فروش با API - POST /market/orders/add - معامله واقعی" else "Buy/Sell via API - POST /market/orders/add - REAL trading", fontSize = 9.sp, color = OdinSilverMuted)
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = { scope.launch { apiManager.fetchWallets(apiState.token) } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = OdinCyan.copy(alpha = 0.15f)), border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.3f)), shape = RoundedCornerShape(8.dp)) {
                                     Icon(Icons.Default.Refresh, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(14.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text(text = "Refresh REAL", fontSize = 9.sp, color = OdinCyan)
+                                    Text(text = if (isPersian) "بارگذاری واقعی" else "Refresh REAL", fontSize = 9.sp, color = OdinCyan)
                                 }
-                                Button(onClick = { scope.launch { val orders = apiManager.fetchOrders(apiState.token); /* show */ } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = OdinGold.copy(alpha = 0.15f)), border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.3f)), shape = RoundedCornerShape(8.dp)) {
+                                Button(onClick = { scope.launch { apiManager.fetchOrders(apiState.token) } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = OdinGold.copy(alpha = 0.15f)), border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.3f)), shape = RoundedCornerShape(8.dp)) {
                                     Icon(Icons.Default.List, contentDescription = null, tint = OdinGold, modifier = Modifier.size(14.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text(text = "Orders REAL", fontSize = 9.sp, color = OdinGold)
+                                    Text(text = if (isPersian) "سفارشات واقعی" else "Orders REAL", fontSize = 9.sp, color = OdinGold)
                                 }
                             }
                         }
@@ -317,36 +315,39 @@ fun NobitexScreen(isPersian: Boolean) {
                 }
             }
         } else {
-            // MARKET REAL PRICE TAB
             item {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)), border = BorderStroke(1.dp, OdinGreen.copy(alpha = 0.4f)), shape = RoundedCornerShape(12.dp)) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.CurrencyExchange, contentDescription = null, tint = OdinGreen, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(text = "Nobitex REAL Market Prices - 11M users", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                            Text(text = if (isPersian) "قیمت بازار واقعی نوبیتکس - ۱۱ میلیون کاربر" else "Nobitex REAL Market Prices - 11M users", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         usdtPrice?.let { price ->
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Column { Text(text = "USDT/IRR REAL", fontSize = 9.sp, color = OdinSilverMuted); Text(text = "${String.format("%,.0f", price.priceToman)} Toman", fontSize = 16.sp, fontWeight = FontWeight.Black, color = OdinGoldLight) }
-                                Column { Text(text = "Source", fontSize = 9.sp, color = OdinSilverMuted); Text(text = price.source.take(20), fontSize = 9.sp, color = OdinGreen) }
-                                Column { Text(text = "Change 24h", fontSize = 9.sp, color = OdinSilverMuted); Text(text = "${String.format("%.2f", price.change24h)}%", fontSize = 10.sp, color = if (price.change24h >= 0) OdinGreen else OdinRed) }
+                                Column { Text(text = if (isPersian) "تتر/تومان واقعی" else "USDT/IRR REAL", fontSize = 9.sp, color = OdinSilverMuted); Text(text = "${String.format("%,.0f", price.priceToman)} ${if (isPersian) "تومان" else "Toman"}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = OdinGoldLight) }
+                                Column { Text(text = if (isPersian) "منبع" else "Source", fontSize = 9.sp, color = OdinSilverMuted); Text(text = price.source.take(20), fontSize = 9.sp, color = OdinGreen) }
+                                Column { Text(text = if (isPersian) "تغییر ۲۴ساعته" else "Change 24h", fontSize = 9.sp, color = OdinSilverMuted); Text(text = "${String.format("%.2f", price.change24h)}%", fontSize = 10.sp, color = if (price.change24h >= 0) OdinGreen else OdinRed) }
                             }
                             Spacer(modifier = Modifier.height(6.dp))
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(text = "Best Buy ${String.format("%,.0f", price.bestBuy)}", fontSize = 8.sp, color = OdinSilverMuted)
-                                Text(text = "Best Sell ${String.format("%,.0f", price.bestSell)}", fontSize = 8.sp, color = OdinSilverMuted)
-                                Text(text = "Rial ${String.format("%,.0f", price.priceRial)}", fontSize = 8.sp, color = OdinSilverDim)
+                                Text(text = "${if (isPersian) "بهترین خرید" else "Best Buy"} ${String.format("%,.0f", price.bestBuy)}", fontSize = 8.sp, color = OdinSilverMuted)
+                                Text(text = "${if (isPersian) "بهترین فروش" else "Best Sell"} ${String.format("%,.0f", price.bestSell)}", fontSize = 8.sp, color = OdinSilverMuted)
+                                Text(text = "ریال ${String.format("%,.0f", price.priceRial)}", fontSize = 8.sp, color = OdinSilverDim)
                             }
                         } ?: run {
-                            Text(text = "Loading REAL Nobitex price... 231,493 Toman from https://nobitex.ir/price/usdt/", fontSize = 10.sp, color = OdinSilverMuted)
+                            Text(
+                                text = if (isPersian) "در حال بارگذاری قیمت واقعی نوبیتکس... ۲۳۱,۴۹۳ تومان از https://nobitex.ir/price/usdt/"
+                                else "Loading REAL Nobitex price... 231,493 Toman from https://nobitex.ir/price/usdt/",
+                                fontSize = 10.sp, color = OdinSilverMuted
+                            )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(onClick = { scope.launch { usdtPrice = marketProvider.fetchUSDTPrice(); realPrices = realDataManager.fetchRealPrices() } }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = OdinGreen.copy(alpha = 0.15f)), border = BorderStroke(1.dp, OdinGreen.copy(alpha = 0.3f)), shape = RoundedCornerShape(8.dp)) {
                             Icon(Icons.Default.Refresh, contentDescription = null, tint = OdinGreen, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(text = "Refresh REAL Nobitex Price", fontSize = 11.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
+                            Text(text = if (isPersian) "بارگذاری مجدد قیمت واقعی نوبیتکس" else "Refresh REAL Nobitex Price", fontSize = 11.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -355,25 +356,15 @@ fun NobitexScreen(isPersian: Boolean) {
             item {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)), border = BorderStroke(1.dp, OdinBorder), shape = RoundedCornerShape(12.dp)) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "All REAL Prices - Nobitex + Binance + Forex - Tether Unit", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 12.sp)
+                        Text(text = if (isPersian) "تمام قیمت‌های واقعی - نوبیتکس + بایننس + فارکس - واحد تتر" else "All REAL Prices - Nobitex + Binance + Forex - Tether Unit", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(8.dp))
                         realPrices.values.sortedByDescending { it.price }.take(15).forEach { price ->
                             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(text = price.symbol, fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                                Text(text = if (price.symbol.contains("IRR")) String.format("%,.0f Toman", price.price) else String.format("%.2f USDT", price.price), fontSize = 9.sp, color = OdinGold)
+                                Text(text = if (price.symbol.contains("IRR")) String.format("%,.0f تومان", price.price) else String.format("%.2f USDT", price.price), fontSize = 9.sp, color = OdinGold)
                                 Text(text = price.source.take(18), fontSize = 7.sp, color = OdinSilverDim)
                             }
                         }
-                    }
-                }
-            }
-
-            item {
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = OdinCyan.copy(alpha = 0.05f)), border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.2f)), shape = RoundedCornerShape(12.dp)) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "Nobitex API Docs - REAL", fontWeight = FontWeight.Bold, color = OdinCyan, fontSize = 11.sp)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(text = "Public: POST /market/stats srcCurrency=usdt dstCurrency=rls → latest (Rial/10=Toman)\nPrivate: POST /users/wallets/list + /users/wallets/balance + /market/orders/add\nWebSocket: wss://api.nobitex.ir/ws/ for live\nDocs: https://apidocs.nobitex.ir\nRate limit: 15 req/min public, 1000/10min private", fontSize = 8.sp, color = OdinSilverMuted, lineHeight = 10.sp)
                     }
                 }
             }
