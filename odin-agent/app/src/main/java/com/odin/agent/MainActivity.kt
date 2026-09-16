@@ -32,10 +32,11 @@ class MainActivity : ComponentActivity() {
 
 enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageVector) {
     DASHBOARD("Dashboard", "داشبورد", Icons.Default.Dashboard),
-    LIVE_CHART("Live Chart", "چارت زنده", Icons.Default.ShowChart),
-    BACKTEST_CONT("Backtest Cont", "بک‌تست دائمی", Icons.Default.AllInclusive),
-    SCANNER_ALARM("Scanner Alarm", "اسکنر آلارم", Icons.Default.NotificationImportant),
+    LIVE_CHART("Real Chart", "چارت واقعی", Icons.Default.ShowChart),
+    BACKTEST_CONT("No Ban", "بدون ممنوعیت", Icons.Default.AllInclusive),
+    SCANNER_ALARM("Real Scanner", "اسکنر واقعی", Icons.Default.NotificationImportant),
     AWARE("AWARE", "آگاه", Icons.Default.Psychology),
+    MT5_REAL("MT5 Real", "MT5 واقعی", Icons.Default.AccountBalance),
     LIT_MONITOR("80% Monitor", "مانیتور 80%", Icons.Default.Radar),
     STRATEGIES("Strategies", "استراتژی‌ها", Icons.Default.AutoAwesome),
     GMAIL_NEWS("Gmail News", "اخبار جیمیل", Icons.Default.Email),
@@ -79,12 +80,12 @@ fun OdinApp() {
                 containerColor = Color(0xFF050505),
                 contentColor = OdinSilver
             ) {
-                // Show 5 main tabs: Dashboard, Live Chart, Backtest Cont, Scanner Alarm, AWARE
+                // Show 5 main tabs: Dashboard, Real Chart, No Ban Backtest, Real Scanner, MT5 Real
                 val mainTabs = listOf(
                     OdinScreen.DASHBOARD,
                     OdinScreen.LIVE_CHART,
-                    OdinScreen.BACKTEST_CONT,
                     OdinScreen.SCANNER_ALARM,
+                    OdinScreen.MT5_REAL,
                     OdinScreen.AWARE
                 )
                 mainTabs.forEach { screen ->
@@ -115,13 +116,11 @@ fun OdinApp() {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        Text(text = "🐕", fontSize = androidx.compose.ui.unit.TextUnit.Unspecified)
-                        Spacer(modifier = Modifier.width(4.dp))
                         Text(text = "ODIN", color = OdinGoldLight, fontWeight = FontWeight.Black)
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = if (isPersian) "اودین ایجنت" else "AGENT", color = OdinSilver, fontWeight = FontWeight.Bold)
+                        Text(text = if (isPersian) "اودین ایجنت - واقعی ویتاورس" else "AGENT - REAL Vittaverse", color = OdinSilver, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "• PURE BLACK • NO SAYVIS", color = OdinSilverDim, fontSize = androidx.compose.ui.unit.TextUnit.Unspecified, fontWeight = FontWeight.Bold)
+                        Text(text = "• REAL MT5 • IRR • No Ban", color = OdinGreen, fontSize = androidx.compose.ui.unit.TextUnit.Unspecified, fontWeight = FontWeight.Bold)
                     }
                 },
                 actions = {
@@ -142,7 +141,7 @@ fun OdinApp() {
                     riskStatus = riskStatus,
                     currentRegime = currentRegime,
                     isPersian = isPersian,
-                    onNavigateToStrategies = { currentScreen = OdinScreen.STRATEGIES },
+                    onNavigateToStrategies = { currentScreen = OdinScreen.MT5_REAL },
                     onNavigateToBacktest = { currentScreen = OdinScreen.BACKTEST_CONT },
                     onNavigateToPaperTrade = { currentScreen = OdinScreen.LIVE_CHART },
                     onNavigateToGmailNews = { currentScreen = OdinScreen.GMAIL_NEWS }
@@ -166,6 +165,7 @@ fun OdinApp() {
                         currentScreen = OdinScreen.LIVE_CHART
                     }
                 )
+                OdinScreen.MT5_REAL -> MT5SettingsScreen(isPersian = isPersian)
                 OdinScreen.AWARE -> AwareScreen(isPersian = isPersian)
                 OdinScreen.LIT_MONITOR -> MultiSymbolScreen(isPersian = isPersian)
                 OdinScreen.STRATEGIES -> StrategiesScreen(

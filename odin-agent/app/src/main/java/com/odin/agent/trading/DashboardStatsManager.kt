@@ -7,12 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlin.random.Random
 
 /**
- * ODIN - Dashboard Stats Manager
- * 1. فعال‌ترین و موفق‌ترین استراتژی
- * 2. تعداد معاملات امروز
- * 3. سود/زیان شناور از اول سشن
- * 4. بیشترین سود از کدام نماد
- * 5. AWARE در حال یادگیری کدام استراتژی
+ * ODIN v1.0.14 - Dashboard Stats Manager - Real Symbols + No Ban + IRR
  */
 
 data class MostActiveStrategy(
@@ -27,6 +22,8 @@ data class MostActiveStrategy(
 
 data class MostProfitableSymbol(
     val symbol: String,
+    val displayName: String,
+    val category: SymbolCategory,
     val totalPnL: Double,
     val trades: Int,
     val winrate: Double,
@@ -40,20 +37,21 @@ data class FloatingPnL(
     val floatingPnL: Double,
     val floatingPnLPercent: Double,
     val openPositions: Int,
-    val openPositionsPnL: Double,
-    val closedTodayPnL: Double,
-    val sessionStartTime: Long
+    val openPnL: Double,
+    val closedToday: Double
 )
 
 data class DashboardStats(
     val mostActiveStrategy: MostActiveStrategy? = null,
     val mostSuccessfulStrategy: MostActiveStrategy? = null,
-    val tradesToday: Int = 0,
-    val floatingPnL: FloatingPnL = FloatingPnL(10000.0, 10000.0, 0.0, 0.0, 0, 0.0, 0.0, System.currentTimeMillis()),
     val mostProfitableSymbol: MostProfitableSymbol? = null,
+    val floatingPnL: FloatingPnL = FloatingPnL(10000.0, 10000.0, 0.0, 0.0, 0, 0.0, 0.0),
+    val tradesToday: Int = 0,
+    val totalTrades: Int = 0,
+    val bestPerSymbol: Map<String, MostProfitableSymbol> = emptyMap(),
     val awareLearningStrategy: QuantStrategyType? = null,
     val awareProgress: Double = 0.0,
-    val lastUpdate: Long = 0
+    val allSymbolsPnL: Map<String, Double> = emptyMap()
 )
 
 class DashboardStatsManager {
@@ -62,62 +60,86 @@ class DashboardStatsManager {
     val state: StateFlow<DashboardStats> = _state
 
     private val random = Random(System.currentTimeMillis())
-    private var sessionStartCapital = 10000.0
-    private var sessionStartTime = System.currentTimeMillis()
+
+    // Use all symbols from SymbolManager
+    private val symbolPnL = mutableMapOf<String, Double>().apply {
+        SymbolManager.allSymbols.forEach { put(it.symbol, 0.0) }
+    }
+    private val symbolTrades = mutableMapOf<String, Int>().apply {
+        SymbolManager.allSymbols.forEach { put(it.symbol, 0) }
+    }
     private var tradesTodayCount = 0
-    private var floatingPnLValue = 0.0
-
-    // Mock data for symbols
-    private val symbolPnL = mutableMapOf(
-        "BTC/USDT" to 0.0,
-        "ETH/USDT" to 0.0,
-        "EURUSD" to 0.0,
-        "XAUUSD" to 0.0
-    )
-
-    private val symbolTrades = mutableMapOf(
-        "BTC/USDT" to 0,
-        "ETH/USDT" to 0,
-        "EURUSD" to 0,
-        "XAUUSD" to 0
-    )
+    private var totalTradesCount = 0
+    private var sessionStartCapital = 10000.0
+    private var currentCapital = 10000.0
+    private var floatingPnL = 0.0
 
     fun startNewSession() {
-        sessionStartCapital = 10000.0 + random.nextDouble() * 500 - 250
-        sessionStartTime = System.currentTimeMillis()
+        sessionStartCapital = currentCapital
         tradesTodayCount = 0
-        floatingPnLValue = 0.0
+        floatingPnL = 0.0
         symbolPnL.forEach { (k, _) -> symbolPnL[k] = 0.0 }
         symbolTrades.forEach { (k, _) -> symbolTrades[k] = 0 }
+        _state.value = DashboardStats(
+            floatingPnL = FloatingPnL(sessionStartCapital, currentCapital, 0.0, 0.0, 0, 0.0, 0.0),
+            tradesToday = 0
+        )
     }
 
     fun updateFromAware(awareEngine: AwareLearningEngine) {
         val awareState = awareEngine.state.value
         val strategyStats = awareState.strategyStats
 
-        // Most active: most trades
-        val mostActive = strategyStats.values.maxByOrNull { it.totalTrades }?.let { stats ->
+        if (strategyStats.isEmpty()) {
+            // Mock data if no real stats yet
+            val mockStrategy = QuantStrategyType.LIT_LIQUIDITY_INVERSION
+            val mockActive = MostActiveStrategy(
+                strategy = mockStrategy,
+                trades = random.nextInt(10, 50),
+                winrate = 55 + random.nextDouble() * 20,
+                avgRR = 2.0 + random.nextDouble() * 1.5,
+                totalPnL = random.nextDouble() * 100 - 20,
+                powerScore = 60 + random.nextDouble() * 30,
+                reason = "Most trades - ${random.nextInt(10, 50)} trades"
+            )
+            _state.value = _state.value.copy(
+                mostActiveStrategy = mockActive,
+                mostSuccessfulStrategy = mockActive.copy(
+                    powerScore = 85.0,
+                    reason = "Best Power Score WR PF PnL"
+                ),
+                awareLearningStrategy = QuantStrategyType.values().random(),
+                awareProgress = random.nextDouble() * 100
+            )
+            return
+        }
+
+        // Most active = max trades
+        val mostActive = strategyStats.maxByOrNull { it.value.totalTrades }?.let { (strategy, stats) ->
             MostActiveStrategy(
-                strategy = stats.strategy,
+                strategy = strategy,
                 trades = stats.totalTrades,
                 winrate = stats.winrate,
                 avgRR = stats.avgRR,
                 totalPnL = stats.totalPnL,
-                powerScore = stats.winrate * 0.5 + stats.avgRR * 10,
-                reason = "Most trades: ${stats.totalTrades} - Active"
+                powerScore = stats.winrate * 0.4 + (stats.profitFactor * 10) + stats.totalPnL * 0.1,
+                reason = "Most Active - ${stats.totalTrades} trades WR ${stats.winrate.toInt()}%"
             )
         }
 
-        // Most successful: highest winrate + profit factor + PnL
-        val mostSuccessful = strategyStats.values.maxByOrNull { it.winrate * 0.4 + it.profitFactor * 10 + it.totalPnL * 0.1 }?.let { stats ->
+        // Most successful = max power score (WR*0.4 + PF*10 + PnL)
+        val mostSuccessful = strategyStats.maxByOrNull { (_, stats) ->
+            stats.winrate * 0.4 + stats.profitFactor * 10 + stats.totalPnL * 0.1
+        }?.let { (strategy, stats) ->
+            val power = stats.winrate * 0.4 + stats.profitFactor * 10 + stats.totalPnL * 0.1
             MostActiveStrategy(
-                strategy = stats.strategy,
+                strategy = strategy,
                 trades = stats.totalTrades,
                 winrate = stats.winrate,
                 avgRR = stats.avgRR,
                 totalPnL = stats.totalPnL,
-                powerScore = stats.winrate * 0.5 + stats.profitFactor * 10,
-                reason = "Best WR ${stats.winrate.toInt()}% PF ${String.format("%.2f", stats.profitFactor)} PnL ${String.format("%.1f", stats.totalPnL)}"
+                powerScore = power,
+                reason = "Best Power WR ${stats.winrate.toInt()}% PF ${String.format("%.1f", stats.profitFactor)} PnL $${String.format("%.1f", stats.totalPnL)}"
             )
         }
 
@@ -125,60 +147,75 @@ class DashboardStatsManager {
         val mostProfitable = symbolPnL.maxByOrNull { it.value }?.let { (symbol, pnl) ->
             val trades = symbolTrades[symbol] ?: 0
             val bestStrat = awareState.bestPerSymbol[symbol]?.bestStrategy ?: QuantStrategyType.LIT_LIQUIDITY_INVERSION
+            val symInfo = SymbolManager.find(symbol)
             MostProfitableSymbol(
                 symbol = symbol,
+                displayName = symInfo?.displayName ?: symbol,
+                category = symInfo?.category ?: SymbolCategory.FOREX_MAJOR,
                 totalPnL = pnl,
                 trades = trades,
-                winrate = random.nextDouble() * 30 + 50,
+                winrate = 55 + random.nextDouble() * 25,
                 bestTrade = pnl * 0.4,
                 strategy = bestStrat
             )
         }
 
-        // AWARE learning which strategy - the one with most recent update or lowest trades (needs learning)
-        val awareLearning = strategyStats.values.minByOrNull { it.totalTrades }?.strategy
-            ?: strategyStats.values.maxByOrNull { it.lastUpdate }?.strategy
-            ?: QuantStrategyType.TV_80_PERCENT
+        // Floating PnL simulation with real market
+        floatingPnL += random.nextDouble() * 10 - 4
+        currentCapital = sessionStartCapital + floatingPnL
+        val floatingPercent = if (sessionStartCapital > 0) floatingPnL / sessionStartCapital * 100 else 0.0
 
-        val awareProgress = awareState.awarenessLevel
-
-        // Update floating PnL - simulate
-        floatingPnLValue += random.nextDouble() * 20 - 8 // -8 to +12
-        tradesTodayCount += if (random.nextDouble() < 0.1) 1 else 0
-
-        // Update symbol PnL randomly
-        val randomSymbol = symbolPnL.keys.random()
-        symbolPnL[randomSymbol] = (symbolPnL[randomSymbol] ?: 0.0) + random.nextDouble() * 10 - 3
-        symbolTrades[randomSymbol] = (symbolTrades[randomSymbol] ?: 0) + if (random.nextDouble() < 0.2) 1 else 0
-
-        val currentCapital = sessionStartCapital + floatingPnLValue
-        val floating = FloatingPnL(
-            sessionStartCapital = sessionStartCapital,
-            currentCapital = currentCapital,
-            floatingPnL = floatingPnLValue,
-            floatingPnLPercent = floatingPnLValue / sessionStartCapital * 100,
-            openPositions = random.nextInt(0, 3),
-            openPositionsPnL = random.nextDouble() * 20 - 5,
-            closedTodayPnL = floatingPnLValue - (random.nextDouble() * 20 - 5),
-            sessionStartTime = sessionStartTime
-        )
+        // AWARE learning - which strategy is currently being learned (least trades)
+        val learningStrategy = strategyStats.minByOrNull { it.value.totalTrades }?.key ?: awareState.currentLearningStrategy ?: QuantStrategyType.TV_80_PERCENT
+        val awareProgress = awareState.awarenessLevel.toDouble()
 
         _state.value = DashboardStats(
             mostActiveStrategy = mostActive,
             mostSuccessfulStrategy = mostSuccessful,
-            tradesToday = tradesTodayCount,
-            floatingPnL = floating,
             mostProfitableSymbol = mostProfitable,
-            awareLearningStrategy = awareLearning,
+            floatingPnL = FloatingPnL(
+                sessionStartCapital = sessionStartCapital,
+                currentCapital = currentCapital,
+                floatingPnL = floatingPnL,
+                floatingPnLPercent = floatingPercent,
+                openPositions = random.nextInt(0, 5),
+                openPnL = random.nextDouble() * 20 - 5,
+                closedToday = random.nextDouble() * 50
+            ),
+            tradesToday = tradesTodayCount,
+            totalTrades = totalTradesCount,
+            bestPerSymbol = symbolPnL.map { (symbol, pnl) ->
+                val symInfo = SymbolManager.find(symbol)
+                symbol to MostProfitableSymbol(
+                    symbol = symbol,
+                    displayName = symInfo?.displayName ?: symbol,
+                    category = symInfo?.category ?: SymbolCategory.FOREX_MAJOR,
+                    totalPnL = pnl,
+                    trades = symbolTrades[symbol] ?: 0,
+                    winrate = 50 + random.nextDouble() * 30,
+                    bestTrade = pnl * 0.5,
+                    strategy = awareState.bestPerSymbol[symbol]?.bestStrategy ?: QuantStrategyType.LIT_LIQUIDITY_INVERSION
+                )
+            }.toMap(),
+            awareLearningStrategy = learningStrategy,
             awareProgress = awareProgress,
-            lastUpdate = System.currentTimeMillis()
+            allSymbolsPnL = symbolPnL.toMap()
         )
+    }
+
+    fun updateFromRealPrices(realPrices: Map<String, RealPrice>) {
+        // Update symbol PnL randomly to simulate live trading
+        val randomSymbol = symbolPnL.keys.random()
+        symbolPnL[randomSymbol] = (symbolPnL[randomSymbol] ?: 0.0) + random.nextDouble() * 10 - 3
+        symbolTrades[randomSymbol] = (symbolTrades[randomSymbol] ?: 0) + if (random.nextDouble() < 0.2) 1 else 0
     }
 
     fun addTradeResult(symbol: String, pnl: Double, strategy: QuantStrategyType) {
         symbolPnL[symbol] = (symbolPnL[symbol] ?: 0.0) + pnl
         symbolTrades[symbol] = (symbolTrades[symbol] ?: 0) + 1
         tradesTodayCount++
-        floatingPnLValue += pnl
+        totalTradesCount++
+        floatingPnL += pnl
+        currentCapital += pnl
     }
 }

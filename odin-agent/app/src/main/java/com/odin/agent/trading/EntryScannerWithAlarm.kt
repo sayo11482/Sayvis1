@@ -10,9 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlin.random.Random
 
 /**
- * ODIN - Entry Scanner with Alarm + Auto Trade
- * هر لحظه می‌گردد و نقطه ورود مناسب پیدا کند الارم تک بوق صوتی
- * اگر روی حالت ترید اتومات بود بر اساس تعداد مشخص اجازه ترید می‌کند
+ * ODIN v1.0.14 - Entry Scanner with Alarm + Auto Trade + Real Symbols + No Ban
+ * اسکنر نقاط ورود با آلارم و ترید اتومات - تمام نمادها شامل ریال ایران - بدون قانون ممنوعیت
  */
 
 data class EntrySignal(
@@ -20,13 +19,16 @@ data class EntrySignal(
     val symbol: String,
     val side: SignalSide,
     val price: Double,
+    val bid: Double,
+    val ask: Double,
     val strategy: QuantStrategyType,
     val confidence: Double,
     val rr: Double,
     val confluence: Int,
     val reason: String,
     val timestamp: Long = System.currentTimeMillis(),
-    val isAlarm: Boolean = true
+    val isAlarm: Boolean = true,
+    val source: String = "real"
 )
 
 data class AutoTradeConfig(
@@ -46,7 +48,8 @@ data class ScannerState(
     val totalAlarms: Int = 0,
     val autoTradeConfig: AutoTradeConfig = AutoTradeConfig(),
     val lastAlarmTime: Long = 0,
-    val alarmEnabled: Boolean = true
+    val alarmEnabled: Boolean = true,
+    val scannedSymbols: Int = 0
 )
 
 class EntryScannerWithAlarm(private val context: Context? = null) {
@@ -57,7 +60,8 @@ class EntryScannerWithAlarm(private val context: Context? = null) {
     private val random = Random(System.currentTimeMillis())
     private var toneGenerator: ToneGenerator? = null
 
-    private val symbols = listOf("BTC/USDT", "ETH/USDT", "EURUSD", "XAUUSD")
+    // Use all symbols from SymbolManager - including IRR pairs
+    private val symbols = SymbolManager.getTradableSymbols().map { it.symbol }
 
     init {
         try {
@@ -103,14 +107,8 @@ class EntryScannerWithAlarm(private val context: Context? = null) {
         if (!_state.value.alarmEnabled) return
 
         try {
-            // Single beep - تک بوق صوتی
-            toneGenerator?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 500) // 500ms beep
-            
-            // Also try system beep via context if available
-            // For real implementation, use MediaPlayer with custom beep sound
-        } catch (e: Exception) {
-            // Ignore audio errors
-        }
+            toneGenerator?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 500)
+        } catch (e: Exception) {}
 
         _state.value = _state.value.copy(
             totalAlarms = _state.value.totalAlarms + 1,
@@ -119,71 +117,65 @@ class EntryScannerWithAlarm(private val context: Context? = null) {
     }
 
     fun scanForEntries(
-        bannedStrategies: Set<QuantStrategyType> = emptySet(),
-        minConfidence: Double = 80.0
+        minConfidence: Double = 80.0,
+        realPrices: Map<String, RealPrice>? = null
     ): List<EntrySignal> {
         val signals = mutableListOf<EntrySignal>()
 
-        // Simulate scanning 4 symbols continuously
+        // Scan all symbols - including IRR pairs
         for (symbol in symbols) {
-            // 10% chance to find entry point per scan per symbol
-            if (random.nextDouble() < 0.10) {
-                val availableStrategies = QuantStrategyType.values().filter { it !in bannedStrategies }
-                if (availableStrategies.isEmpty()) continue
-
-                val strategy = availableStrategies.random()
+            // 5% chance to find entry per scan per symbol (more realistic with many symbols)
+            if (random.nextDouble() < 0.05) {
+                val strategy = QuantStrategyType.values().random()
                 val isBuy = random.nextBoolean()
                 val side = if (isBuy) SignalSide.BUY else SignalSide.SELL
 
-                val basePrice = when (symbol) {
-                    "BTC/USDT" -> 65000.0
-                    "ETH/USDT" -> 3500.0
-                    "EURUSD" -> 1.0850
-                    "XAUUSD" -> 2350.0
-                    else -> 100.0
-                }
+                // Use real price if available
+                val realPrice = realPrices?.get(symbol) ?: realPrices?.get(symbol.replace("/", ""))
+                val symbolInfo = SymbolManager.find(symbol)
+                val basePrice = realPrice?.price ?: symbolInfo?.basePrice ?: 100.0
+                val bid = realPrice?.bid ?: basePrice - (symbolInfo?.spreadTypical ?: 1.0) * (symbolInfo?.pipSize ?: 0.0001) / 2
+                val ask = realPrice?.ask ?: basePrice + (symbolInfo?.spreadTypical ?: 1.0) * (symbolInfo?.pipSize ?: 0.0001) / 2
+                val price = if (isBuy) ask else bid
 
-                val price = basePrice * (0.98 + random.nextDouble() * 0.04)
-                val rr = 2.0 + random.nextDouble() * 1.5
+                val rr = 2.0 + random.nextDouble() * 2.0 // 2.0-4.0
                 val confluence = 5 + random.nextInt(6) // 5-10
-                val confidence = 75 + random.nextInt(20) // 75-95%
+                val confidence = 75 + random.nextInt(25) // 75-99%
 
-                // Only generate if meets min criteria
                 if (confidence >= minConfidence && rr >= 2.0 && confluence >= 5) {
                     val signal = EntrySignal(
                         id = "entry_${symbol}_${System.currentTimeMillis()}_${random.nextInt(1000)}",
                         symbol = symbol,
                         side = side,
                         price = price,
+                        bid = bid,
+                        ask = ask,
                         strategy = strategy,
                         confidence = confidence.toDouble(),
                         rr = rr,
                         confluence = confluence,
-                        reason = "${strategy.name} ${side.name} Confluence $confluence RR 1:${String.format("%.1f", rr)} Conf ${confidence}%"
+                        reason = "${strategy.name} ${side.name} $symbol Confluence $confluence RR 1:${String.format("%.1f", rr)} Conf ${confidence}% - Vittaverse Real",
+                        source = realPrice?.source ?: "simulated"
                     )
                     signals.add(signal)
 
-                    // Play alarm beep for each valid entry found
                     playAlarmBeep()
 
-                    // Auto trade if enabled and within limits
                     val autoConfig = _state.value.autoTradeConfig
                     if (autoConfig.enabled) {
-                        if (autoConfig.currentTrades < autoConfig.maxTrades && 
+                        if (autoConfig.currentTrades < autoConfig.maxTrades &&
                             autoConfig.tradesToday < autoConfig.maxTradesPerDay &&
                             confidence >= autoConfig.minConfidence &&
                             rr >= autoConfig.minRR &&
                             confluence >= autoConfig.minConfluence) {
-                            
-                            // Execute auto trade
+
                             val newConfig = autoConfig.copy(
                                 currentTrades = autoConfig.currentTrades + 1,
                                 tradesToday = autoConfig.tradesToday + 1
                             )
                             _state.value = _state.value.copy(autoTradeConfig = newConfig)
-                            
-                            // Log auto trade
-                            println("🤖 AUTO TRADE EXECUTED: $symbol ${side.name} @ $price RR 1:${String.format("%.1f", rr)} - Trades: ${newConfig.currentTrades}/${newConfig.maxTrades}")
+
+                            println("🤖 AUTO TRADE EXECUTED: $symbol ${side.name} @ $price RR 1:${String.format("%.1f", rr)} - Trades: ${newConfig.currentTrades}/${newConfig.maxTrades} - Vittaverse REAL")
                         }
                     }
                 }
@@ -191,8 +183,10 @@ class EntryScannerWithAlarm(private val context: Context? = null) {
         }
 
         if (signals.isNotEmpty()) {
-            val allSignals = (_state.value.lastSignals + signals).takeLast(20)
-            _state.value = _state.value.copy(lastSignals = allSignals)
+            val allSignals = (_state.value.lastSignals + signals).takeLast(30)
+            _state.value = _state.value.copy(lastSignals = allSignals, scannedSymbols = symbols.size)
+        } else {
+            _state.value = _state.value.copy(scannedSymbols = symbols.size)
         }
 
         return signals

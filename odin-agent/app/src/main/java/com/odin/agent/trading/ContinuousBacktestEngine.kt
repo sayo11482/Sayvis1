@@ -6,9 +6,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlin.random.Random
 
 /**
- * ODIN - Continuous Backtest Engine
- * تمام استراتژی‌ها هر لحظه دائم در حال بک‌تست برای تحلیل قدرت
- * اگر بعد از 5 بک‌تست 10 دلار زیر 15 دلار → ممنوع
+ * ODIN v1.0.14 - Continuous Backtest Engine WITHOUT BAN RULE
+ * تمام استراتژی‌ها همیشه مجاز - فقط امتیازدهی بر اساس قدرت
+ * No more $10->$15 ban - all strategies scored by Power Score
  */
 
 data class BacktestResult(
@@ -20,7 +20,8 @@ data class BacktestResult(
     val profitPercent: Double,
     val winrate: Double,
     val trades: Int,
-    val passed: Boolean, // >= $15 ?
+    val profitFactor: Double,
+    val sharpe: Double,
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -30,11 +31,13 @@ data class StrategyPower(
     val avgFinal: Double = 0.0,
     val minFinal: Double = 0.0,
     val maxFinal: Double = 0.0,
-    val winrateTests: Double = 0.0, // % of tests that passed >=$15
-    val isBanned: Boolean = false,
-    val banReason: String = "",
-    val powerScore: Double = 0.0, // 0-100
-    val stability: Double = 0.0, // 0-100
+    val avgProfit: Double = 0.0,
+    val avgWinrate: Double = 0.0,
+    val avgProfitFactor: Double = 0.0,
+    val avgSharpe: Double = 0.0,
+    val powerScore: Double = 0.0, // 0-100 based on profit, WR, PF, Sharpe
+    val stability: Double = 0.0, // consistency of results
+    val rank: Int = 0,
     val lastUpdate: Long = System.currentTimeMillis()
 )
 
@@ -42,8 +45,7 @@ data class ContinuousBacktestState(
     val strategies: Map<QuantStrategyType, StrategyPower> = emptyMap(),
     val isRunning: Boolean = false,
     val totalTests: Int = 0,
-    val bannedCount: Int = 0,
-    val validCount: Int = 0,
+    val bestStrategy: QuantStrategyType? = null,
     val lastUpdate: Long = 0
 )
 
@@ -53,18 +55,16 @@ class ContinuousBacktestEngine {
     val state: StateFlow<ContinuousBacktestState> = _state
 
     private val random = Random(System.currentTimeMillis())
-    private val minFinal = 15.0
-    private val initialCapital = 10.0
-    private val numTestsRequired = 5
+    private val initialCapital = 100.0 // Now 100$ base for realistic testing
 
     private val strategyParams = mapOf(
-        QuantStrategyType.TV_80_PERCENT to Pair(70 to 85, 2.0 to 3.0),
-        QuantStrategyType.LIT_LIQUIDITY_INVERSION to Pair(50 to 65, 2.0 to 2.8),
-        QuantStrategyType.TREND_FOLLOWING to Pair(35 to 50, 1.5 to 2.5),
-        QuantStrategyType.MEAN_REVERSION to Pair(45 to 60, 1.2 to 2.0),
-        QuantStrategyType.MOMENTUM_BREAKOUT to Pair(30 to 45, 1.8 to 3.0),
-        QuantStrategyType.PAIRS_TRADING to Pair(50 to 65, 1.0 to 1.5),
-        QuantStrategyType.VOLATILITY_REGIME to Pair(40 to 55, 1.3 to 2.2)
+        QuantStrategyType.TV_80_PERCENT to Triple(70 to 85, 2.0 to 3.5, 1.5 to 2.5),
+        QuantStrategyType.LIT_LIQUIDITY_INVERSION to Triple(55 to 70, 2.2 to 3.8, 1.8 to 3.0),
+        QuantStrategyType.TREND_FOLLOWING to Triple(40 to 55, 1.8 to 2.8, 1.2 to 2.0),
+        QuantStrategyType.MEAN_REVERSION to Triple(48 to 62, 1.3 to 2.2, 1.0 to 1.8),
+        QuantStrategyType.MOMENTUM_BREAKOUT to Triple(35 to 50, 2.0 to 3.2, 1.3 to 2.2),
+        QuantStrategyType.PAIRS_TRADING to Triple(52 to 65, 1.1 to 1.6, 0.9 to 1.5),
+        QuantStrategyType.VOLATILITY_REGIME to Triple(42 to 58, 1.4 to 2.4, 1.1 to 1.9)
     )
 
     fun startContinuous() {
@@ -76,42 +76,51 @@ class ContinuousBacktestEngine {
     }
 
     private fun runSingleBacktest(strategy: QuantStrategyType): BacktestResult {
-        val params = strategyParams[strategy] ?: Pair(40 to 55, 1.5 to 2.0)
+        val params = strategyParams[strategy] ?: Triple(40 to 55, 1.5 to 2.0, 1.0 to 1.5)
         val wrRange = params.first
         val rrRange = params.second
+        val pfRange = params.third
 
         val wr = random.nextDouble() * (wrRange.second - wrRange.first) + wrRange.first
         val rr = random.nextDouble() * (rrRange.second - rrRange.first) + rrRange.first
+        val pf = random.nextDouble() * (pfRange.second - pfRange.first) + pfRange.first
 
-        // Simulate 20 trades with 1% risk
+        // Simulate 50 trades with 1% risk - more realistic
         var capital = initialCapital
         var wins = 0
-        repeat(20) {
+        var totalWin = 0.0
+        var totalLoss = 0.0
+        repeat(50) {
             val win = random.nextDouble() * 100 < wr
             val riskAmount = capital * 0.01
             if (win) {
-                capital += riskAmount * rr
+                val profit = riskAmount * rr * (0.8 + random.nextDouble() * 0.4)
+                capital += profit
+                totalWin += profit
                 wins++
             } else {
                 capital -= riskAmount
+                totalLoss += riskAmount
             }
         }
-        capital *= random.nextDouble() * 0.2 + 0.9 // noise 0.9-1.1
+        capital *= random.nextDouble() * 0.15 + 0.92 // noise 0.92-1.07
 
         val profit = capital - initialCapital
         val profitPercent = profit / initialCapital * 100
-        val passed = capital >= minFinal
+        val actualPF = if (totalLoss > 0) totalWin / totalLoss else pf
+        val sharpe = (profitPercent / 15.0).coerceIn(0.0, 3.0) + random.nextDouble() * 0.3
 
         return BacktestResult(
             strategy = strategy,
             testNumber = 0,
             initialCapital = initialCapital,
-            finalCapital = maxOf(0.1, capital),
+            finalCapital = maxOf(1.0, capital),
             profit = profit,
             profitPercent = profitPercent,
             winrate = wr,
-            trades = 20,
-            passed = passed
+            trades = 50,
+            profitFactor = actualPF,
+            sharpe = sharpe
         )
     }
 
@@ -122,33 +131,32 @@ class ContinuousBacktestEngine {
             val existing = _state.value.strategies[strategy]
             val existingResults = existing?.results ?: emptyList()
 
-            // Run one new test
+            // Run one new test - keep last 10 for better stats
             val newResult = runSingleBacktest(strategy).copy(testNumber = existingResults.size + 1)
-            val allResults = (existingResults + newResult).takeLast(numTestsRequired)
+            val allResults = (existingResults + newResult).takeLast(10)
 
             val avgFinal = if (allResults.isNotEmpty()) allResults.map { it.finalCapital }.average() else 0.0
             val minFinalVal = if (allResults.isNotEmpty()) allResults.minOf { it.finalCapital } else 0.0
             val maxFinalVal = if (allResults.isNotEmpty()) allResults.maxOf { it.finalCapital } else 0.0
-            val winrateTests = if (allResults.isNotEmpty()) allResults.count { it.passed }.toDouble() / allResults.size * 100 else 0.0
+            val avgProfit = if (allResults.isNotEmpty()) allResults.map { it.profitPercent }.average() else 0.0
+            val avgWR = if (allResults.isNotEmpty()) allResults.map { it.winrate }.average() else 0.0
+            val avgPF = if (allResults.isNotEmpty()) allResults.map { it.profitFactor }.average() else 0.0
+            val avgSharpe = if (allResults.isNotEmpty()) allResults.map { it.sharpe }.average() else 0.0
 
-            // Ban logic: if after 5 tests, avg < $15 OR min < $15 OR winrate <60% → banned
-            val isBanned = if (allResults.size >= numTestsRequired) {
-                avgFinal < minFinal || minFinalVal < minFinal || winrateTests < 60
-            } else {
-                false // Not enough tests yet
-            }
+            // Power score: profit 40% + WR 30% + PF 20% + Sharpe 10%
+            val profitScore = ((avgProfit / 50.0 * 40).coerceIn(0.0, 40.0))
+            val wrScore = (avgWR / 100.0 * 30)
+            val pfScore = ((avgPF / 3.0 * 20).coerceIn(0.0, 20.0))
+            val sharpeScore = ((avgSharpe / 3.0 * 10).coerceIn(0.0, 10.0))
+            val powerScore = profitScore + wrScore + pfScore + sharpeScore
 
-            val banReason = if (isBanned) {
-                "Avg $${String.format("%.2f", avgFinal)} < $$minFinal or Min $${String.format("%.2f", minFinalVal)} < $$minFinal or WR ${String.format("%.0f", winrateTests)}% <60%"
-            } else if (allResults.size < numTestsRequired) {
-                "Testing ${allResults.size}/$numTestsRequired"
-            } else {
-                "Avg $${String.format("%.2f", avgFinal)} >= $$minFinal and WR ${String.format("%.0f", winrateTests)}% >=60%"
-            }
-
-            // Power score: based on avg final and winrate
-            val powerScore = ((avgFinal / minFinal * 50).coerceAtMost(50.0) + (winrateTests * 0.5)).coerceAtMost(100.0)
-            val stability = winrateTests // stability = % of tests passed
+            // Stability: inverse of std dev of final capitals
+            val mean = avgFinal
+            val variance = if (allResults.size > 1) {
+                allResults.map { (it.finalCapital - mean) * (it.finalCapital - mean) }.average()
+            } else 0.0
+            val stdDev = kotlin.math.sqrt(variance)
+            val stability = if (mean > 0) (100 - (stdDev / mean * 100)).coerceIn(0.0, 100.0) else 0.0
 
             val power = StrategyPower(
                 strategy = strategy,
@@ -156,10 +164,11 @@ class ContinuousBacktestEngine {
                 avgFinal = avgFinal,
                 minFinal = minFinalVal,
                 maxFinal = maxFinalVal,
-                winrateTests = winrateTests,
-                isBanned = isBanned,
-                banReason = banReason,
-                powerScore = powerScore,
+                avgProfit = avgProfit,
+                avgWinrate = avgWR,
+                avgProfitFactor = avgPF,
+                avgSharpe = avgSharpe,
+                powerScore = powerScore.coerceIn(0.0, 100.0),
                 stability = stability,
                 lastUpdate = System.currentTimeMillis()
             )
@@ -167,30 +176,35 @@ class ContinuousBacktestEngine {
             newPowers[strategy] = power
         }
 
-        val bannedCount = newPowers.values.count { it.isBanned }
-        val validCount = newPowers.values.count { !it.isBanned && it.results.size >= numTestsRequired }
+        // Rank by power score
+        val sorted = newPowers.values.sortedByDescending { it.powerScore }
+        sorted.forEachIndexed { index, power ->
+            newPowers[power.strategy] = power.copy(rank = index + 1)
+        }
+
+        val best = sorted.firstOrNull()?.strategy
 
         _state.value = ContinuousBacktestState(
             strategies = newPowers,
             isRunning = _state.value.isRunning,
             totalTests = _state.value.totalTests + QuantStrategyType.values().size,
-            bannedCount = bannedCount,
-            validCount = validCount,
+            bestStrategy = best,
             lastUpdate = System.currentTimeMillis()
         )
 
         return newPowers
     }
 
-    fun getBannedStrategies(): List<StrategyPower> {
-        return _state.value.strategies.values.filter { it.isBanned }
+    fun getAllStrategiesRanked(): List<StrategyPower> {
+        return _state.value.strategies.values.sortedByDescending { it.powerScore }
     }
 
-    fun getValidStrategies(): List<StrategyPower> {
-        return _state.value.strategies.values.filter { !it.isBanned && it.results.size >= numTestsRequired }
+    fun getBestStrategy(): StrategyPower? {
+        return _state.value.strategies.values.maxByOrNull { it.powerScore }
     }
 
-    fun isStrategyBanned(strategy: QuantStrategyType): Boolean {
-        return _state.value.strategies[strategy]?.isBanned ?: false
-    }
+    // Legacy compatibility - no banned anymore
+    fun getBannedStrategies(): List<StrategyPower> = emptyList()
+    fun getValidStrategies(): List<StrategyPower> = getAllStrategiesRanked()
+    fun isStrategyBanned(strategy: QuantStrategyType): Boolean = false
 }

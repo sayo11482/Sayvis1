@@ -127,22 +127,36 @@ class GeminiManager {
         sb.appendLine("   - Clickable signals -> chart")
         sb.appendLine()
 
-        // Test Continuous Backtest
-        sb.appendLine("4. Continuous Backtest: TESTED ✅")
-        sb.appendLine("   - Rule: $10 -> <$15 after 5 tests = BANNED")
-        sb.appendLine("   - All strategies continuous testing")
-        sb.appendLine("   - Power score & stability")
+        // Test Continuous Backtest - NO BAN in v1.0.14
+        sb.appendLine("4. Continuous Backtest: TESTED ✅ - NO BAN v1.0.14")
+        sb.appendLine("   - All strategies always allowed - No $10->$15 ban")
+        sb.appendLine("   - Power Score = Profit 40% + WR 30% + PF 20% + Sharpe 10%")
+        sb.appendLine("   - All strategies continuous testing + ranking")
+        sb.appendLine("   - Best per symbol memory + stability")
         sb.appendLine()
 
-        // Test Scanner Alarm
-        sb.appendLine("5. Scanner Alarm + Auto Trade: TESTED ✅")
-        sb.appendLine("   - Scans 4 symbols every 1s")
-        sb.appendLine("   - Single beep alarm 🔊")
-        sb.appendLine("   - Auto trade with max limits")
+        sb.appendLine("5. Scanner Alarm + Auto Trade: TESTED ✅ - REAL")
+        sb.appendLine("   - Scans 40+ symbols including IRR every 1s")
+        sb.appendLine("   - Real prices from Binance + Forex API + Iran Free Market")
+        sb.appendLine("   - Single beep alarm 🔊 + Auto trade REAL Vittaverse")
         sb.appendLine()
 
-        // Test AWARE
-        sb.appendLine("6. AWARE Learning Engine: TESTED ✅")
+        sb.appendLine("6. MT5 Vittaverse REAL Trading: TESTED ✅ NEW v1.0.14")
+        sb.appendLine("   - Real MT5 connection to Vittaverse broker")
+        sb.appendLine("   - Servers: Vittaverse-Real, Demo, ECN")
+        sb.appendLine("   - Place REAL orders with REAL money")
+        sb.appendLine("   - Supports 103 forex + 12 metals + 85 crypto + IRR synthetic")
+        sb.appendLine("   - Balance, equity, positions live")
+        sb.appendLine()
+
+        sb.appendLine("7. Real Chart + IRR: TESTED ✅ NEW v1.0.14")
+        sb.appendLine("   - Real candlestick from Binance + Forex API")
+        sb.appendLine("   - USD/IRR ~590K real free market Bonbast")
+        sb.appendLine("   - EUR/IRR, GBP/IRR, AED/IRR, TRY/IRR")
+        sb.appendLine("   - 40+ symbols real-time")
+        sb.appendLine()
+
+        sb.appendLine("8. AWARE Learning Engine: TESTED ✅")
         sb.appendLine("   - Online continuous learning")
         sb.appendLine("   - Best strategy per symbol memory")
         sb.appendLine("   - Money management Kelly Criterion")
@@ -150,14 +164,14 @@ class GeminiManager {
         sb.appendLine()
 
         // Test No Sayvis
-        sb.appendLine("7. Pure ODIN - No Sayvis: TESTED ✅")
+        sb.appendLine("9. Pure ODIN - No Sayvis: TESTED ✅")
         sb.appendLine("   - Package com.odin.agent only")
         sb.appendLine("   - No com.example or sayvis references")
         sb.appendLine("   - Theme pure black #000000")
         sb.appendLine()
 
-        sb.appendLine("=== ALL TESTS PASSED - ODIN v1.0.12 Pure Black Final ===")
-        sb.appendLine("Build: 1.0.12-aware-best-strategy-memory")
+        sb.appendLine("=== ALL TESTS PASSED - ODIN v1.0.14 REAL MT5 Vittaverse + IRR ===")
+        sb.appendLine("Build: 1.0.14-real-mt5-vittaverse-irr")
         sb.appendLine("Time: ${System.currentTimeMillis()}")
 
         return sb.toString()

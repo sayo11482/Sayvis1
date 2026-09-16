@@ -31,8 +31,7 @@ fun ContinuousBacktestScreen(
     var powers by remember { mutableStateOf<Map<QuantStrategyType, StrategyPower>>(emptyMap()) }
     var isRunning by remember { mutableStateOf(false) }
     var totalTests by remember { mutableStateOf(0) }
-    var bannedCount by remember { mutableStateOf(0) }
-    var validCount by remember { mutableStateOf(0) }
+    var bestStrategy by remember { mutableStateOf<QuantStrategyType?>(null) }
 
     LaunchedEffect(isRunning) {
         if (isRunning) {
@@ -41,9 +40,8 @@ fun ContinuousBacktestScreen(
                 val result = engine.runBacktestCycle()
                 powers = result
                 totalTests = engine.state.value.totalTests
-                bannedCount = engine.state.value.bannedCount
-                validCount = engine.state.value.validCount
-                delay(2000) // Every 2 seconds new cycle
+                bestStrategy = engine.state.value.bestStrategy
+                delay(2000)
             }
         } else {
             engine.stopContinuous()
@@ -51,9 +49,9 @@ fun ContinuousBacktestScreen(
     }
 
     LaunchedEffect(Unit) {
-        // Initial cycle
         powers = engine.runBacktestCycle()
         totalTests = engine.state.value.totalTests
+        bestStrategy = engine.state.value.bestStrategy
     }
 
     LazyColumn(
@@ -71,15 +69,15 @@ fun ContinuousBacktestScreen(
             ) {
                 Column {
                     Text(
-                        text = if (isPersian) "بک‌تست دائمی - قدرت استراتژی" else "Continuous Backtest - Strategy Power",
+                        text = if (isPersian) "بک‌تست دائمی - امتیاز قدرت" else "Continuous Backtest - Power Score",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         color = Color.White
                     )
                     Text(
-                        text = if (isPersian) "10$ → 15$ وگرنه ممنوع - 5 تست" else "$10 → $15 else BANNED - 5 tests",
+                        text = if (isPersian) "تمام استراتژی‌ها مجاز - امتیازدهی بدون ممنوعیت" else "All Strategies Allowed - Scored No Ban",
                         fontSize = 10.sp,
-                        color = OdinGold
+                        color = OdinGreen
                     )
                 }
 
@@ -104,8 +102,8 @@ fun ContinuousBacktestScreen(
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatCardSmall(label = if (isPersian) "کل تست" else "Total Tests", value = "$totalTests", color = OdinCyan, modifier = Modifier.weight(1f))
-                StatCardSmall(label = if (isPersian) "مجاز" else "Valid", value = "$validCount", color = OdinGreen, modifier = Modifier.weight(1f))
-                StatCardSmall(label = if (isPersian) "ممنوع" else "Banned", value = "$bannedCount", color = OdinRed, modifier = Modifier.weight(1f))
+                StatCardSmall(label = if (isPersian) "بهترین" else "Best", value = bestStrategy?.name?.take(8) ?: "-", color = OdinGold, modifier = Modifier.weight(1f))
+                StatCardSmall(label = if (isPersian) "استراتژی‌ها" else "Strategies", value = "${powers.size}", color = OdinGreen, modifier = Modifier.weight(1f))
             }
         }
 
@@ -113,26 +111,26 @@ fun ContinuousBacktestScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
-                border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.3f)),
+                border = BorderStroke(1.dp, OdinGreen.copy(alpha = 0.3f)),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Gavel, contentDescription = null, tint = OdinGold, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = OdinGold, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (isPersian) "قانون طلایی: 10$ → 15$ وگرنه ممنوع" else "Golden Rule: $10 → $15 else BANNED",
+                            text = if (isPersian) "قانون جدید v1.0.14: بدون ممنوعیت - فقط امتیاز قدرت" else "New Rule v1.0.14: No Ban - Only Power Score",
                             fontWeight = FontWeight.Bold,
-                            color = OdinGold,
+                            color = OdinGreen,
                             fontSize = 12.sp
                         )
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = if (isPersian)
-                            "• هر استراتژی 5 بار بک‌تست با 10 دلار\n• اگر میانگین یا کمترین زیر 15 دلار → ممنوع 🚫\n• اگر WR تست‌ها زیر 60% → ممنوع\n• تمام استراتژی‌ها دائم بک‌تست برای تحلیل قدرت\n• پایداری و امتیاز قدرت محاسبه می‌شود"
+                            "• تمام استراتژی‌ها همیشه مجاز ✅\n• امتیاز قدرت = سود 40% + وین‌ریت 30% + پروفیت فکتور 20% + شارپ 10%\n• پایداری = ثبات نتایج\n• بک‌تست دائمی 50 ترید با ریسک 1%\n• رتبه‌بندی بر اساس قدرت - بهترین برای هر نماد"
                         else
-                            "• Each strategy 5 backtests with $10\n• If avg or min < $15 → BANNED 🚫\n• If test WR <60% → BANNED\n• All strategies continuous backtest for power analysis\n• Stability & power score calculated",
+                            "• All strategies always allowed ✅\n• Power Score = Profit 40% + WR 30% + PF 20% + Sharpe 10%\n• Stability = consistency of results\n• Continuous backtest 50 trades 1% risk\n• Ranked by power - best per symbol",
                         fontSize = 10.sp,
                         color = OdinSilver,
                         lineHeight = 13.sp
@@ -159,28 +157,29 @@ private fun StatCardSmall(label: String, value: String, color: Color, modifier: 
     ) {
         Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = label, fontSize = 8.sp, color = OdinSilverMuted)
-            Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Black, color = color)
+            Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Black, color = color, maxLines = 1)
         }
     }
 }
 
 @Composable
 private fun StrategyPowerCard(power: StrategyPower, isPersian: Boolean) {
+    val isTop = power.rank == 1
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = when {
-                power.isBanned -> OdinRed.copy(alpha = 0.08f)
-                power.results.size < 5 -> Color(0xFF0A0A0A)
-                else -> OdinGreen.copy(alpha = 0.08f)
+                isTop -> OdinGold.copy(alpha = 0.08f)
+                power.results.size < 3 -> Color(0xFF0A0A0A)
+                else -> OdinGreen.copy(alpha = 0.05f)
             }
         ),
         border = BorderStroke(
             1.dp,
             when {
-                power.isBanned -> OdinRed.copy(alpha = 0.4f)
-                power.results.size < 5 -> OdinBorder
-                else -> OdinGreen.copy(alpha = 0.4f)
+                isTop -> OdinGold.copy(alpha = 0.5f)
+                power.results.size < 3 -> OdinBorder
+                else -> OdinGreen.copy(alpha = 0.3f)
             }
         ),
         shape = RoundedCornerShape(12.dp)
@@ -198,16 +197,17 @@ private fun StrategyPowerCard(power: StrategyPower, isPersian: Boolean) {
                             .clip(RoundedCornerShape(6.dp))
                             .background(
                                 when {
-                                    power.isBanned -> OdinRed.copy(alpha = 0.2f)
-                                    power.results.size < 5 -> OdinSilverMuted.copy(alpha = 0.2f)
+                                    isTop -> OdinGold.copy(alpha = 0.3f)
+                                    power.results.size < 3 -> OdinSilverMuted.copy(alpha = 0.2f)
                                     else -> OdinGreen.copy(alpha = 0.2f)
                                 }
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (power.isBanned) "🚫" else if (power.results.size < 5) "⏳" else "✅",
-                            fontSize = 14.sp
+                            text = if (isTop) "🏆" else "#${power.rank}",
+                            fontSize = if (isTop) 14.sp else 10.sp,
+                            fontWeight = FontWeight.Black
                         )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
@@ -219,7 +219,7 @@ private fun StrategyPowerCard(power: StrategyPower, isPersian: Boolean) {
                             color = Color.White
                         )
                         Text(
-                            text = "${power.results.size}/5 tests",
+                            text = "${power.results.size} tests • Rank #${power.rank}",
                             fontSize = 8.sp,
                             color = OdinSilverMuted
                         )
@@ -228,26 +228,15 @@ private fun StrategyPowerCard(power: StrategyPower, isPersian: Boolean) {
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = if (power.isBanned) {
-                            if (isPersian) "ممنوع" else "BANNED"
-                        } else if (power.results.size < 5) {
-                            if (isPersian) "در حال تست" else "Testing"
-                        } else {
-                            if (isPersian) "مجاز" else "VALID"
-                        },
-                        fontSize = 10.sp,
+                        text = "Power ${power.powerScore.toInt()}%",
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Black,
-                        color = when {
-                            power.isBanned -> OdinRed
-                            power.results.size < 5 -> OdinSilverMuted
-                            else -> OdinGreen
-                        }
+                        color = if (isTop) OdinGold else OdinGreen
                     )
                     Text(
-                        text = "Power ${power.powerScore.toInt()}%",
-                        fontSize = 9.sp,
-                        color = OdinGold,
-                        fontWeight = FontWeight.Bold
+                        text = "Stability ${power.stability.toInt()}%",
+                        fontSize = 8.sp,
+                        color = OdinCyan
                     )
                 }
             }
@@ -259,66 +248,53 @@ private fun StrategyPowerCard(power: StrategyPower, isPersian: Boolean) {
                     Column {
                         Text(text = "Avg Final", fontSize = 8.sp, color = OdinSilverMuted)
                         Text(
-                            text = "$${String.format("%.2f", power.avgFinal)}",
+                            text = "$${String.format("%.1f", power.avgFinal)}",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (power.avgFinal >= 15.0) OdinGreen else OdinRed
+                            color = if (power.avgFinal >= 100) OdinGreen else OdinSilver
                         )
                     }
                     Column {
-                        Text(text = "Min", fontSize = 8.sp, color = OdinSilverMuted)
-                        Text(text = "$${String.format("%.2f", power.minFinal)}", fontSize = 10.sp, color = OdinSilver)
-                    }
-                    Column {
-                        Text(text = "Max", fontSize = 8.sp, color = OdinSilverMuted)
-                        Text(text = "$${String.format("%.2f", power.maxFinal)}", fontSize = 10.sp, color = OdinSilver)
-                    }
-                    Column {
-                        Text(text = "WR Tests", fontSize = 8.sp, color = OdinSilverMuted)
+                        Text(text = "Avg Profit", fontSize = 8.sp, color = OdinSilverMuted)
                         Text(
-                            text = "${power.winrateTests.toInt()}%",
-                            fontSize = 11.sp,
+                            text = "${String.format("%.1f", power.avgProfit)}%",
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (power.winrateTests >= 60) OdinGreen else OdinRed
+                            color = if (power.avgProfit >= 0) OdinGreen else OdinRed
                         )
                     }
                     Column {
-                        Text(text = "Stability", fontSize = 8.sp, color = OdinSilverMuted)
-                        Text(text = "${power.stability.toInt()}%", fontSize = 10.sp, color = OdinCyan)
+                        Text(text = "WR", fontSize = 8.sp, color = OdinSilverMuted)
+                        Text(text = "${power.avgWinrate.toInt()}%", fontSize = 10.sp, color = OdinGold, fontWeight = FontWeight.Bold)
+                    }
+                    Column {
+                        Text(text = "PF", fontSize = 8.sp, color = OdinSilverMuted)
+                        Text(text = String.format("%.2f", power.avgProfitFactor), fontSize = 10.sp, color = OdinCyan)
+                    }
+                    Column {
+                        Text(text = "Sharpe", fontSize = 8.sp, color = OdinSilverMuted)
+                        Text(text = String.format("%.2f", power.avgSharpe), fontSize = 10.sp, color = OdinSilver)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Visual finals
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    power.results.forEach { res ->
+                    power.results.takeLast(5).forEach { res ->
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(20.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(if (res.passed) OdinGreen.copy(alpha = 0.3f) else OdinRed.copy(alpha = 0.3f)),
+                                .background(if (res.profit >= 0) OdinGreen.copy(alpha = 0.3f) else OdinRed.copy(alpha = 0.3f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "$${res.finalCapital.toInt()}",
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (res.passed) OdinGreen else OdinRed
+                                color = if (res.profit >= 0) OdinGreen else OdinRed
                             )
-                        }
-                    }
-                    repeat(5 - power.results.size) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(20.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xFF1A1A1A)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(text = "-", fontSize = 8.sp, color = OdinSilverDim)
                         }
                     }
                 }
@@ -326,9 +302,9 @@ private fun StrategyPowerCard(power: StrategyPower, isPersian: Boolean) {
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = if (isPersian) "دلیل: ${power.banReason}" else "Reason: ${power.banReason}",
+                    text = if (isPersian) "قدرت: سود ${String.format("%.0f", power.avgProfit)}% + وین‌ریت ${power.avgWinrate.toInt()}% + PF ${String.format("%.1f", power.avgProfitFactor)}" else "Power: Profit ${String.format("%.0f", power.avgProfit)}% + WR ${power.avgWinrate.toInt()}% + PF ${String.format("%.1f", power.avgProfitFactor)}",
                     fontSize = 9.sp,
-                    color = if (power.isBanned) OdinRed else OdinSilverMuted,
+                    color = OdinSilverMuted,
                     lineHeight = 11.sp
                 )
             }

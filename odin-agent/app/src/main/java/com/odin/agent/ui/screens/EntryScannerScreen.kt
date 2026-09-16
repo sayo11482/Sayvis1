@@ -1,6 +1,5 @@
 package com.odin.agent.ui.screens
 
-import android.media.ToneGenerator
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -19,18 +18,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.odin.agent.models.QuantStrategyType
 import com.odin.agent.models.SignalSide
-import com.odin.agent.trading.ContinuousBacktestEngine
-import com.odin.agent.trading.EntryScannerWithAlarm
-import com.odin.agent.trading.EntrySignal
+import com.odin.agent.trading.*
 import com.odin.agent.ui.theme.*
 import kotlinx.coroutines.delay
 
 @Composable
 fun EntryScannerScreen(
     isPersian: Boolean,
-    backtestEngine: ContinuousBacktestEngine = remember { ContinuousBacktestEngine() },
+    realDataManager: RealMarketDataManager = remember { RealMarketDataManager() },
     onSignalClick: ((EntrySignal) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -44,34 +40,31 @@ fun EntryScannerScreen(
     var maxTradesPerDay by remember { mutableStateOf(10) }
     var currentTrades by remember { mutableStateOf(0) }
     var tradesToday by remember { mutableStateOf(0) }
-    var bannedStrategies by remember { mutableStateOf<Set<QuantStrategyType>>(emptySet()) }
+    var realPrices by remember { mutableStateOf<Map<String, RealPrice>>(emptyMap()) }
 
     LaunchedEffect(isScanning) {
         if (isScanning) {
             scanner.startScanning()
             while (isScanning) {
-                // Get banned from backtest engine
-                val banned = backtestEngine.getBannedStrategies().map { it.strategy }.toSet()
-                bannedStrategies = banned
+                // Fetch real prices
+                realPrices = realDataManager.fetchRealPrices()
 
-                val newSignals = scanner.scanForEntries(bannedStrategies = banned, minConfidence = 80.0)
+                val newSignals = scanner.scanForEntries(minConfidence = 80.0, realPrices = realPrices)
                 if (newSignals.isNotEmpty()) {
-                    signals = scanner.getRecentSignals(20)
+                    signals = scanner.getRecentSignals(30)
                     totalAlarms = scanner.state.value.totalAlarms
                     currentTrades = scanner.state.value.autoTradeConfig.currentTrades
                     tradesToday = scanner.state.value.autoTradeConfig.tradesToday
+                } else {
+                    // Update counters even without signals
+                    totalAlarms = scanner.state.value.totalAlarms
+                    signals = scanner.getRecentSignals(30)
                 }
-                delay(1000) // Scan every 1 second
+                delay(1000)
             }
         } else {
             scanner.stopScanning()
         }
-    }
-
-    LaunchedEffect(Unit) {
-        // Initial backtest to get banned
-        backtestEngine.runBacktestCycle()
-        bannedStrategies = backtestEngine.getBannedStrategies().map { it.strategy }.toSet()
     }
 
     LazyColumn(
@@ -89,15 +82,15 @@ fun EntryScannerScreen(
             ) {
                 Column {
                     Text(
-                        text = if (isPersian) "اسکنر ورود + آلارم + ترید اتومات" else "Entry Scanner + Alarm + Auto Trade",
-                        fontSize = 16.sp,
+                        text = if (isPersian) "اسکنر ورود + آلارم + ترید اتومات - واقعی" else "Entry Scanner + Alarm + Auto Trade - REAL",
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Black,
                         color = Color.White
                     )
                     Text(
-                        text = if (isPersian) "جستجوی دائمی نقطه ورود مناسب" else "Continuous search for entry points",
+                        text = if (isPersian) "تمام نمادها شامل ریال ایران - بدون ممنوعیت - ویتاورس" else "All symbols incl IRR - No Ban - Vittaverse REAL",
                         fontSize = 9.sp,
-                        color = OdinSilverMuted
+                        color = OdinGreen
                     )
                 }
 
@@ -150,15 +143,25 @@ fun EntryScannerScreen(
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = if (isPersian) "نمادها" else "Symbols", fontSize = 8.sp, color = OdinSilverMuted)
+                        Text(text = "${SymbolManager.allSymbols.size}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = OdinGreen)
+                    }
+                }
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
+                    border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.3f)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = if (isPersian) "ترید امروز" else "Trades Today", fontSize = 8.sp, color = OdinSilverMuted)
-                        Text(text = "$tradesToday/$maxTradesPerDay", fontSize = 12.sp, fontWeight = FontWeight.Black, color = OdinGreen)
+                        Text(text = "$tradesToday/$maxTradesPerDay", fontSize = 10.sp, fontWeight = FontWeight.Black, color = OdinGreen)
                     }
                 }
             }
         }
 
         item {
-            // Alarm + Auto Trade Controls
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
@@ -193,7 +196,7 @@ fun EntryScannerScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = if (isPersian) "هر موقع نقطه ورود مناسب پیدا کرد تک بوق می‌زند" else "Single beep whenever suitable entry found",
+                        text = if (isPersian) "هر موقع نقطه ورود مناسب پیدا کرد تک بوق می‌زند - تمام نمادها شامل ریال" else "Single beep whenever suitable entry found - all symbols incl IRR",
                         fontSize = 10.sp,
                         color = OdinSilverMuted
                     )
@@ -211,7 +214,7 @@ fun EntryScannerScreen(
                             Icon(Icons.Default.SmartToy, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isPersian) "ترید اتومات" else "Auto Trade",
+                                text = if (isPersian) "ترید اتومات واقعی ویتاورس" else "Real Auto Trade Vittaverse",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -266,9 +269,9 @@ fun EntryScannerScreen(
 
                         Text(
                             text = if (isPersian)
-                                "✅ فقط اگر اعتماد 80%+ و RR 1:2+ و Confluence 5+ باشد ترید می‌کند\n✅ بر اساس تعداد مجاز: $currentTrades/$maxTrades باز، $tradesToday/$maxTradesPerDay روزانه"
+                                "✅ فقط اگر اعتماد 80%+ و RR 1:2+ و Confluence 5+ باشد ترید واقعی می‌کند\n✅ بروکر ویتاورس MT5 - تمام نمادها شامل ریال ایران\n✅ $currentTrades/$maxTrades باز، $tradesToday/$maxTradesPerDay روزانه"
                             else
-                                "✅ Only trades if Conf 80%+ and RR 1:2+ and Confluence 5+\n✅ Based on allowed: $currentTrades/$maxTrades open, $tradesToday/$maxTradesPerDay daily",
+                                "✅ Only trades if Conf 80%+ and RR 1:2+ and Confluence 5+ REAL\n✅ Vittaverse MT5 broker - all symbols incl IRR\n✅ $currentTrades/$maxTrades open, $tradesToday/$maxTradesPerDay daily",
                             fontSize = 9.sp,
                             color = OdinSilver,
                             lineHeight = 11.sp
@@ -285,39 +288,8 @@ fun EntryScannerScreen(
         }
 
         item {
-            // Banned strategies info
-            if (bannedStrategies.isNotEmpty()) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = OdinRed.copy(alpha = 0.08f)),
-                    border = BorderStroke(1.dp, OdinRed.copy(alpha = 0.3f)),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Block, contentDescription = null, tint = OdinRed, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (isPersian) "استراتژی‌های ممنوع (10$→زیر 15$): ${bannedStrategies.size}" else "Banned Strategies ($10→<15$): ${bannedStrategies.size}",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = OdinRed
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = bannedStrategies.joinToString(", ") { it.name },
-                            fontSize = 9.sp,
-                            color = OdinSilverMuted
-                        )
-                    }
-                }
-            }
-        }
-
-        item {
             Text(
-                text = if (isPersian) "سیگنال‌های زنده - آلارم صوتی" else "Live Signals - Audio Alarm",
+                text = if (isPersian) "سیگنال‌های زنده واقعی - ${SymbolManager.allSymbols.size} نماد" else "Live REAL Signals - ${SymbolManager.allSymbols.size} symbols",
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 fontSize = 13.sp
@@ -340,7 +312,7 @@ fun EntryScannerScreen(
                             Icon(Icons.Default.Search, contentDescription = null, tint = OdinSilverMuted, modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = if (isPersian) "در حال جستجوی نقطه ورود..." else "Searching for entry points...",
+                                text = if (isPersian) "در حال جستجوی نقطه ورود در ${SymbolManager.allSymbols.size} نماد..." else "Searching entry in ${SymbolManager.allSymbols.size} symbols...",
                                 fontSize = 11.sp,
                                 color = OdinSilverMuted
                             )
@@ -353,7 +325,7 @@ fun EntryScannerScreen(
                 }
             }
         } else {
-            items(signals.takeLast(10).reversed()) { signal ->
+            items(signals.takeLast(15).reversed()) { signal ->
                 SignalCardWithAlarm(signal = signal, isPersian = isPersian, onClick = { onSignalClick?.invoke(signal) })
             }
         }
@@ -415,6 +387,9 @@ private fun SignalCardWithAlarm(signal: EntrySignal, isPersian: Boolean, onClick
                 Text(text = "Confl ${signal.confluence}", fontSize = 10.sp, color = OdinCyan)
             }
 
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(text = "Bid ${String.format("%.2f", signal.bid)} Ask ${String.format("%.2f", signal.ask)} • ${signal.source}", fontSize = 8.sp, color = OdinSilverMuted)
+
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
@@ -439,7 +414,7 @@ private fun SignalCardWithAlarm(signal: EntrySignal, isPersian: Boolean, onClick
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.VolumeUp, contentDescription = null, tint = OdinGold, modifier = Modifier.size(12.dp))
                     Spacer(modifier = Modifier.width(3.dp))
-                    Text(text = if (isPersian) "بوق!" else "Beep!", fontSize = 9.sp, color = OdinGold, fontWeight = FontWeight.Bold)
+                    Text(text = if (isPersian) "بوق! واقعی" else "Beep! REAL", fontSize = 9.sp, color = OdinGold, fontWeight = FontWeight.Bold)
                 }
             }
         }
