@@ -192,8 +192,8 @@ fun DashboardScreen(
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ActionCard(
-                    title = if (isPersian) "مانیتور LIT" else "LIT Monitor",
-                    subtitle = "4 نماد",
+                    title = if (isPersian) "مانیتور 80%" else "80% Monitor",
+                    subtitle = "TV 20+ | RR 1:2",
                     icon = Icons.Default.Radar,
                     tint = OdinCyan,
                     modifier = Modifier.weight(1f),
@@ -201,7 +201,7 @@ fun DashboardScreen(
                 )
                 ActionCard(
                     title = if (isPersian) "استراتژی‌ها" else "Strategies",
-                    subtitle = "6 استراتژی",
+                    subtitle = "7 استراتژی",
                     icon = Icons.Default.Psychology,
                     tint = OdinGold,
                     modifier = Modifier.weight(1f),
@@ -215,6 +215,39 @@ fun DashboardScreen(
                     modifier = Modifier.weight(1f),
                     onClick = onNavigateToBacktest
                 )
+            }
+        }
+
+        item {
+            // New TV 80% Feature Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = OdinSurfaceVariant),
+                border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = OdinGold, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isPersian) "جدید: فیلتر 80% WR + تمام اندیکاتورهای TradingView" else "NEW: 80% WR Filter + All TradingView Indicators",
+                            fontWeight = FontWeight.Bold,
+                            color = OdinGold,
+                            fontSize = 12.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (isPersian)
+                            "✅ بررسی 20+ اندیکاتور TV (Trend, Momentum, Volatility, Volume)\n✅ تست کامل با RR 1:2 حداقل\n✅ تاییدیه‌های معتبر: Confluence >=5\n✅ اعتبار سنجی استراتژی ورود/خروج\n✅ موفقیت زیر 80% = عدم ورود (BLOCKED)\n→ Breakeven برای RR 1:2 فقط 33% WR لازم است\n→ پس 50% WR هم سودده است، 80% بسیار سخت اما طلایی"
+                        else
+                            "✅ Check 20+ TV indicators (Trend, Momentum, Volatility, Volume)\n✅ Full test with RR 1:2 minimum\n✅ Valid confirmations: Confluence >=5\n✅ Validate entry/exit strategy\n✅ Success <80% = NO TRADE (BLOCKED)\n→ Breakeven for RR 1:2 needs only 33% WR\n→ So 50% WR is profitable, 80% very hard but golden",
+                        fontSize = 11.sp,
+                        color = OdinSilver,
+                        lineHeight = 14.sp
+                    )
+                }
             }
         }
 

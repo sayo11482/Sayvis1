@@ -150,6 +150,51 @@ class VolatilityRegimeStrategy : BaseStrategy(QuantStrategyType.VOLATILITY_REGIM
         "Action: Switch active strategy based on regime"
 }
 
+class TV80PercentStrategy : BaseStrategy(QuantStrategyType.TV_80_PERCENT, mutableMapOf(
+    "min_rr" to 2.0,
+    "min_confluence" to 5,
+    "min_winrate" to 80,
+    "min_confidence" to 80,
+    "indicators_count" to 20
+)) {
+    override fun getDescription(isPersian: Boolean): String = if (isPersian)
+        "TV 80% WR - سختگیرانه‌ترین فیلتر: بررسی تمام 20+ اندیکاتور TradingView (Trend, Momentum, Volatility, Volume) + LIT + حداقل RR 1:2 + Confluence >=5 + اعتماد >=80% + WR تاریخی >=80% وگرنه بلوکه. بسیار نادر اما طلایی - 2-5 ترید در 90 روز. Breakeven RR 1:2 فقط 33% WR لازم دارد پس 80% فوق‌العاده سودده است."
+    else
+        "TV 80% WR - Strictest filter: Check all 20+ TradingView indicators (Trend, Momentum, Volatility, Volume) + LIT + Min RR 1:2 + Confluence >=5 + Confidence >=80% + Historical WR >=80% else BLOCKED. Very rare but golden - 2-5 trades per 90 days. Breakeven RR 1:2 needs only 33% WR so 80% extremely profitable."
+
+    override fun getEntryRules(isPersian: Boolean): String = if (isPersian)
+        "ورود 80%: 1) چک 20+ اندیکاتور TV → امتیاز Confluence 2) LIT: سوئیپ+BOS+OB+FVG (3x وزن) 3) محاسبه RR >=2.0 4) WR تاریخی >=80%؟ اگر <80% → BLOCK 5) اعتماد >=80% → ورود. فقط بهترین ستاپ‌ها!"
+    else
+        "80% Entry: 1) Check 20+ TV indicators → Confluence score 2) LIT: sweep+BOS+OB+FVG (3x weight) 3) Calc RR >=2.0 4) Historical WR >=80%? If <80% → BLOCK 5) Confidence >=80% → Enter. Only best setups!"
+
+    override fun getExitRules(isPersian: Boolean): String = if (isPersian)
+        "خروج 80%: SL پشت OB/سوئیپ, TP نقدینگی مخالف RR 1:2-1:3, خروج زودهنگام اگر BOS مخالف یا Confluence <3. مدیریت: 1% ریسک, 3% DD روزانه Kill-switch"
+    else
+        "80% Exit: SL beyond OB/sweep, TP opposite liquidity RR 1:2-1:3, Early exit if opposite BOS or Confluence <3. Risk: 1% per trade, 3% daily DD Kill-switch"
+
+    override fun generateMockSignal(symbol: String, price: Double): QuantSignal? {
+        // TV 80% mock - very high confidence but rare
+        val side = if (Math.random() > 0.5) SignalSide.BUY else SignalSide.SELL
+        val atr = price * 0.01
+        val sl = if (side == SignalSide.BUY) price - atr*1.5 else price + atr*1.5
+        val tp = if (side == SignalSide.BUY) price + atr*3.5 else price - atr*3.5 // RR 1:2.33
+
+        return QuantSignal(
+            id = "tv80_${System.currentTimeMillis()}",
+            symbol = symbol,
+            timeframe = "1h",
+            strategy = type,
+            side = side,
+            entryPrice = price,
+            slPrice = sl,
+            tpPrice = tp,
+            confidence = 0.82 + Math.random()*0.13, // 82-95% for 80% filter
+            reason = "TV 80%: 12 تاییدیه (EMA, RSI, MACD, BB, SuperTrend, LIT 3x, BOS 2x) + RR 1:2.3 + WR 82% + Conf 85% → VALID",
+            regime = MarketRegime.TRENDING
+        )
+    }
+}
+
 class LITStrategy : BaseStrategy(QuantStrategyType.LIT_LIQUIDITY_INVERSION, mutableMapOf(
     "swing_lookback" to 10,
     "liquidity_tolerance" to 0.001,

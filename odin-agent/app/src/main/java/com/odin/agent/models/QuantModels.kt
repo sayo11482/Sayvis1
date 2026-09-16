@@ -13,6 +13,8 @@ enum class QuantStrategyType(
     val bestRegime: String,
     val riskLevel: String
 ) {
+    // TV 80% WR is the strictest - Priority -1
+    TV_80_PERCENT("tv_80_percent", "TV 80% WR - 20+ Indicators + RR 1:2", "TV 80% - 20+ اندیکاتور + RR 1:2", -1, "all", "VERY_LOW"),
     // LIT is most reliable - Priority 0
     LIT_LIQUIDITY_INVERSION("lit_liquidity_inversion", "LIT - Liquidity Inversion (SMC)", "LIT - اینورژن نقدینگی (SMC)", 0, "all", "LOW"),
     TREND_FOLLOWING("trend_following", "Trend Following (Multi-TF)", "دنباله‌روی روند چندتایم‌فریم", 1, "trending", "MEDIUM"),

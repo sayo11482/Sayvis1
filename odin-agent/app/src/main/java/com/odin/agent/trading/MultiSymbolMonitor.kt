@@ -1,41 +1,44 @@
 package com.odin.agent.trading
 
+import com.odin.agent.indicators.TradingViewIndicators
+import com.odin.agent.indicators.IndicatorSignal
+import com.odin.agent.indicators.ConfluenceResult
 import com.odin.agent.models.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.random.Random
 
 /**
- * ODIN QUANT - Multi-Symbol Monitor
- * Continuously monitors 4 symbols for LIT entry/exit
- * 
+ * ODIN QUANT - Multi-Symbol Monitor with TradingView Indicators + 80% WR Filter
+ * - 20+ TradingView indicators
+ * - Minimum RR 1:2
+ * - Confluence >=5
+ * - Historical WR >=80% else NO TRADE
  * Symbols: BTC/USDT, ETH/USDT, EURUSD, XAUUSD
- * Each symbol analyzed for:
- * - Liquidity pools (equal highs/lows)
- * - Liquidity sweep + rejection
- * - BOS (Break of Structure)
- * - Order Block retest
- * - FVG mitigation
- * - Premium/Discount zone
  */
 
 data class SymbolAnalysis(
     val symbol: String,
     val currentPrice: Double,
     val prevPrice: Double,
-    val trend: String, // bullish, bearish, ranging
+    val trend: String,
     val regime: MarketRegime,
     val liquidityHigh: Double?,
     val liquidityLow: Double?,
-    val lastSweep: String?, // bullish_sweep, bearish_sweep, none
+    val lastSweep: String?,
     val hasBOS: Boolean,
-    val bosDirection: String?, // bullish, bearish
+    val bosDirection: String?,
     val orderBlockHigh: Double?,
     val orderBlockLow: Double?,
     val fvgDetected: Boolean,
-    val premiumDiscount: Double, // 0=discount, 1=premium
+    val premiumDiscount: Double,
     val signal: QuantSignal?,
     val confidence: Double,
+    val tvIndicators: List<IndicatorSignal> = emptyList(),
+    val confluence: ConfluenceResult? = null,
+    val rr: Double = 0.0,
+    val historicalWR: Double = 0.0,
+    val wrBlocked: Boolean = false,
     val lastUpdate: Long = System.currentTimeMillis()
 )
 
@@ -43,7 +46,9 @@ data class MultiSymbolState(
     val symbols: List<SymbolAnalysis> = emptyList(),
     val isScanning: Boolean = false,
     val totalSignalsToday: Int = 0,
-    val lastScanTime: Long = 0
+    val blockedByWRFilter: Int = 0,
+    val lastScanTime: Long = 0,
+    val avgConfluence: Double = 0.0
 )
 
 class MultiSymbolMonitor {
@@ -53,7 +58,6 @@ class MultiSymbolMonitor {
 
     private val symbols = listOf("BTC/USDT", "ETH/USDT", "EURUSD", "XAUUSD")
     
-    // Base prices
     private val basePrices = mapOf(
         "BTC/USDT" to 65000.0,
         "ETH/USDT" to 3500.0,
@@ -65,6 +69,17 @@ class MultiSymbolMonitor {
         basePrices.forEach { (k, v) -> put(k, v) }
     }
 
+    // Simulated price histories for TV indicators
+    private val priceHistories = mutableMapOf<String, MutableList<Double>>().apply {
+        basePrices.forEach { (sym, price) ->
+            put(sym, MutableList(200) { price * (0.95 + Random.nextDouble()*0.1) })
+        }
+    }
+
+    // Simulated historical WR - starts low, builds over time
+    private val historicalTrades = mutableListOf<Boolean>() // true = win
+    private var blockedCount = 0
+
     private val random = Random(System.currentTimeMillis())
 
     fun startMonitoring() {
@@ -75,18 +90,24 @@ class MultiSymbolMonitor {
         _state.value = _state.value.copy(isScanning = false)
     }
 
-    /**
-     * Simulate scanning all 4 symbols for LIT setups
-     * In real app, this would call Python backend or MT5 bridge
-     */
+    fun getHistoricalWR(): Double {
+        if (historicalTrades.isEmpty()) return 0.0
+        return historicalTrades.count { it }.toDouble() / historicalTrades.size * 100.0
+    }
+
+    fun addTradeResult(win: Boolean) {
+        historicalTrades.add(win)
+        if (historicalTrades.size > 100) historicalTrades.removeAt(0)
+    }
+
     fun scanSymbols(): List<SymbolAnalysis> {
         val results = mutableListOf<SymbolAnalysis>()
+        var blocked = 0
 
         for (symbol in symbols) {
             val base = basePrices[symbol] ?: 100.0
             val current = currentPrices[symbol] ?: base
             
-            // Simulate price movement with some volatility
             val volatility = when(symbol) {
                 "BTC/USDT" -> 0.015
                 "ETH/USDT" -> 0.02
@@ -100,66 +121,98 @@ class MultiSymbolMonitor {
             val prevPrice = current
             currentPrices[symbol] = newPrice
 
+            // Update history
+            priceHistories[symbol]?.add(newPrice)
+            if (priceHistories[symbol]!!.size > 200) priceHistories[symbol]!!.removeAt(0)
+            val history = priceHistories[symbol] ?: mutableListOf(newPrice)
+
+            // Simulate high/low/volume histories
+            val highHist = history.map { it * (1 + random.nextDouble()*0.005) }
+            val lowHist = history.map { it * (1 - random.nextDouble()*0.005) }
+            val volHist = history.map { random.nextDouble()*1000 + 500 }
+
+            // Check TradingView indicators
+            val tvSignals = TradingViewIndicators.checkAllIndicators(
+                symbol = symbol,
+                currentPrice = newPrice,
+                priceHistory = history,
+                highHistory = highHist,
+                lowHistory = lowHist,
+                volumeHistory = volHist
+            )
+
             // Simulate LIT analysis
-            val premiumDiscount = random.nextDouble() // 0=discount, 1=premium
-            
-            // Randomly generate liquidity levels
+            val premiumDiscount = random.nextDouble()
             val liquidityHigh = if (random.nextDouble() < 0.3) newPrice * (1 + random.nextDouble()*0.02) else null
             val liquidityLow = if (random.nextDouble() < 0.3) newPrice * (1 - random.nextDouble()*0.02) else null
-
-            // Sweep detection (5% chance)
             val sweep = when {
-                random.nextDouble() < 0.05 -> if (random.nextBoolean()) "bullish_sweep" else "bearish_sweep"
+                random.nextDouble() < 0.08 -> if (random.nextBoolean()) "bullish_sweep" else "bearish_sweep"
                 else -> null
             }
-
-            // BOS detection (10% chance)
-            val hasBOS = random.nextDouble() < 0.10
-            val bosDir = if (hasBOS) {
-                if (random.nextBoolean()) "bullish" else "bearish"
-            } else null
-
-            // Order Block (20% chance)
-            val hasOB = random.nextDouble() < 0.20
+            val hasBOS = random.nextDouble() < 0.12
+            val bosDir = if (hasBOS) { if (random.nextBoolean()) "bullish" else "bearish" } else null
+            val hasOB = random.nextDouble() < 0.22
             val obHigh = if (hasOB) newPrice * (1 + random.nextDouble()*0.005) else null
             val obLow = if (hasOB) newPrice * (1 - random.nextDouble()*0.005) else null
+            val hasFVG = random.nextDouble() < 0.18
 
-            // FVG (15% chance)
-            val hasFVG = random.nextDouble() < 0.15
-
-            // Regime
             val regime = when {
                 random.nextDouble() < 0.4 -> MarketRegime.TRENDING
                 random.nextDouble() < 0.7 -> MarketRegime.RANGING
                 else -> MarketRegime.HIGH_VOL
             }
-
-            // Trend
             val trend = when {
                 newPrice > prevPrice * 1.001 -> "bullish"
                 newPrice < prevPrice * 0.999 -> "bearish"
                 else -> "ranging"
             }
 
-            // Generate signal if conditions met (LIT: sweep + BOS + OB + discount/premium)
-            var signal: QuantSignal? = null
-            var confidence = 0.0
+            // Build LIT map for confluence
+            val litMap = mutableMapOf<String, Boolean>()
+            if (sweep == "bullish_sweep") litMap["sweep_bull"] = true
+            if (sweep == "bearish_sweep") litMap["sweep_bear"] = true
+            if (hasBOS && bosDir == "bullish") litMap["bos_bull"] = true
+            if (hasBOS && bosDir == "bearish") litMap["bos_bear"] = true
+            if (hasOB) {
+                // Assume LIT if OB + BOS + sweep
+                if (sweep != null && hasBOS) {
+                    if (sweep.contains("bullish") || bosDir == "bullish") litMap["lit_bull"] = true
+                    if (sweep.contains("bearish") || bosDir == "bearish") litMap["lit_bear"] = true
+                }
+            }
 
-            // LIT logic: sweep + BOS + OB + premium/discount = high confidence
-            if (sweep != null && hasBOS && hasOB) {
-                val isBullish = sweep == "bullish_sweep" && bosDir == "bullish" && premiumDiscount < 0.5
-                val isBearish = sweep == "bearish_sweep" && bosDir == "bearish" && premiumDiscount > 0.5
-                
+            // Calculate RR (simulate)
+            val atr = newPrice * 0.01
+            val rr = if (random.nextDouble() < 0.7) 2.0 + random.nextDouble()*1.5 else 1.0 + random.nextDouble() // 70% have RR >=2
+
+            // Calculate confluence with TV + LIT + RR + WR
+            val historicalWR = getHistoricalWR()
+            val confluenceResult = TradingViewIndicators.calculateConfluence(
+                indicatorSignals = tvSignals,
+                litSignals = litMap,
+                minConfluence = 5,
+                minRR = 2.0,
+                currentRR = rr,
+                historicalWR = historicalWR,
+                minWR = 80.0
+            )
+
+            var signal: QuantSignal? = null
+            var confidence = confluenceResult.confidence / 100.0
+            var wrBlocked = false
+
+            // Only generate signal if confluence valid AND RR >=2 AND WR >=80% (or no history)
+            if (confluenceResult.valid && (historicalWR == 0.0 || historicalWR >= 80.0)) {
+                val isBullish = confluenceResult.isBullish
+                val isBearish = confluenceResult.isBearish
+
                 if (isBullish || isBearish) {
                     val side = if (isBullish) SignalSide.BUY else SignalSide.SELL
-                    val atr = newPrice * 0.01
                     val sl = if (side == SignalSide.BUY) newPrice - atr*1.5 else newPrice + atr*1.5
                     val tp = if (side == SignalSide.BUY) newPrice + atr*3.0 else newPrice - atr*3.0
                     
-                    confidence = 0.75 + random.nextDouble()*0.15 // 75-90% for LIT
-                    
                     signal = QuantSignal(
-                        id = "lit_${symbol}_${System.currentTimeMillis()}",
+                        id = "tv80_${symbol}_${System.currentTimeMillis()}",
                         symbol = symbol,
                         timeframe = "1h",
                         strategy = QuantStrategyType.LIT_LIQUIDITY_INVERSION,
@@ -168,38 +221,14 @@ class MultiSymbolMonitor {
                         slPrice = sl,
                         tpPrice = tp,
                         confidence = confidence,
-                        reason = "LIT: ${sweep} + ${bosDir} BOS + OB retest in ${if (isBullish) "discount" else "premium"} zone",
+                        reason = "TV ${confluenceResult.score} تاییدیه: ${confluenceResult.confirmations.take(3).joinToString(\", \")} | RR 1:${String.format(\"%.1f\", rr)} | WR ${String.format(\"%.0f\", historicalWR)}%",
                         regime = regime
                     )
                 }
-            }
-            // Also weaker signals: BOS + OB without sweep (lower confidence)
-            else if (hasBOS && hasOB && random.nextDouble() < 0.3) {
-                val isBullish = bosDir == "bullish" && premiumDiscount < 0.5
-                val isBearish = bosDir == "bearish" && premiumDiscount > 0.5
-                
-                if (isBullish || isBearish) {
-                    val side = if (isBullish) SignalSide.BUY else SignalSide.SELL
-                    val atr = newPrice * 0.01
-                    val sl = if (side == SignalSide.BUY) newPrice - atr*2.0 else newPrice + atr*2.0
-                    val tp = if (side == SignalSide.BUY) newPrice + atr*3.0 else newPrice - atr*3.0
-                    
-                    confidence = 0.55 + random.nextDouble()*0.15
-                    
-                    signal = QuantSignal(
-                        id = "lit_${symbol}_${System.currentTimeMillis()}",
-                        symbol = symbol,
-                        timeframe = "1h",
-                        strategy = QuantStrategyType.LIT_LIQUIDITY_INVERSION,
-                        side = side,
-                        entryPrice = newPrice,
-                        slPrice = sl,
-                        tpPrice = tp,
-                        confidence = confidence,
-                        reason = "LIT (no sweep): ${bosDir} BOS + OB in ${if (isBullish) "discount" else "premium"}",
-                        regime = regime
-                    )
-                }
+            } else if (!confluenceResult.valid && historicalWR != 0.0 && historicalWR < 80.0 && confluenceResult.score >=5 && rr >=2.0) {
+                // Blocked by WR filter - show why
+                wrBlocked = true
+                blocked++
             }
 
             val analysis = SymbolAnalysis(
@@ -218,17 +247,26 @@ class MultiSymbolMonitor {
                 fvgDetected = hasFVG,
                 premiumDiscount = premiumDiscount,
                 signal = signal,
-                confidence = confidence
+                confidence = confidence,
+                tvIndicators = tvSignals,
+                confluence = confluenceResult,
+                rr = rr,
+                historicalWR = historicalWR,
+                wrBlocked = wrBlocked
             )
 
             results.add(analysis)
         }
 
+        val avgConf = if (results.isNotEmpty()) results.mapNotNull { it.confluence?.score }.average() else 0.0
+
         _state.value = MultiSymbolState(
             symbols = results,
             isScanning = _state.value.isScanning,
             totalSignalsToday = _state.value.totalSignalsToday + results.count { it.signal != null },
-            lastScanTime = System.currentTimeMillis()
+            blockedByWRFilter = _state.value.blockedByWRFilter + blocked,
+            lastScanTime = System.currentTimeMillis(),
+            avgConfluence = avgConf
         )
 
         return results

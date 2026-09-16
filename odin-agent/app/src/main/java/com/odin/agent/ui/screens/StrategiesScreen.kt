@@ -28,6 +28,7 @@ fun StrategiesScreen(
     onToggleStrategy: (QuantStrategyType, Boolean) -> Unit
 ) {
     val allStrategies = listOf(
+        TV80PercentStrategy(), // Strictest 80% WR - Priority -1
         LITStrategy(), // Most reliable - Priority 0
         TrendFollowingStrategy(),
         MeanReversionStrategy(),
@@ -51,9 +52,9 @@ fun StrategiesScreen(
                 color = Color.White
             )
             Text(
-                text = if (isPersian) "6 استراتژی اولویت‌دار - LIT مطمئن‌ترین - ماژولار" else "6 Prioritized Strategies - LIT Most Reliable - Modular",
+                text = if (isPersian) "7 استراتژی - TV 80% سختگیرانه‌ترین + LIT مطمئن‌ترین" else "7 Strategies - TV 80% Strictest + LIT Most Reliable",
                 fontSize = 11.sp,
-                color = OdinSilverMuted
+                color = OdinGold
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -85,6 +86,8 @@ fun StrategiesScreen(
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(
                                         when(strategy.type.priority) {
+                                            -1 -> OdinGold.copy(alpha = 0.3f)
+                                            0 -> OdinCyan.copy(alpha = 0.3f)
                                             1 -> OdinCyan.copy(alpha = 0.2f)
                                             2 -> OdinGold.copy(alpha = 0.2f)
                                             3 -> OdinGreen.copy(alpha = 0.2f)
@@ -94,9 +97,12 @@ fun StrategiesScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "${strategy.type.priority}",
+                                    text = if (strategy.type.priority==-1) "80%" else "${strategy.type.priority}",
                                     fontWeight = FontWeight.Black,
+                                    fontSize = if (strategy.type.priority==-1) 10.sp else 14.sp,
                                     color = when(strategy.type.priority) {
+                                        -1 -> OdinGold
+                                        0 -> OdinCyan
                                         1 -> OdinCyan
                                         2 -> OdinGold
                                         3 -> OdinGreen

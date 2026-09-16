@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
 
 enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageVector) {
     DASHBOARD("Dashboard", "داشبورد", Icons.Default.Dashboard),
-    LIT_MONITOR("LIT Monitor", "مانیتور LIT", Icons.Default.Radar),
+    LIT_MONITOR("80% WR Monitor", "مانیتور 80%", Icons.Default.Radar),
     STRATEGIES("Strategies", "استراتژی‌ها", Icons.Default.Psychology),
     BACKTEST("Backtest", "بک‌تست", Icons.Default.Analytics),
     SETTINGS("Settings", "تنظیمات", Icons.Default.Settings)
@@ -46,6 +46,7 @@ fun OdinApp() {
 
     var enabledStrategies by remember {
         mutableStateOf(listOf(
+            QuantStrategyType.TV_80_PERCENT, // Strictest 80% WR + RR 1:2 + 20+ TV indicators
             QuantStrategyType.LIT_LIQUIDITY_INVERSION, // Most reliable
             QuantStrategyType.TREND_FOLLOWING,
             QuantStrategyType.MEAN_REVERSION,
