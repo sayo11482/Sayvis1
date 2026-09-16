@@ -31,7 +31,8 @@ jobs:
       # The debug signing config points at <root>/debug.keystore, which is
       # deliberately gitignored. Regenerate a standard Android debug keystore
       # when it is absent so assembleDebug can sign the installer.
-      - name: Provide debug keystore
+      # Also ensure google-services.json exists for Firebase Auth build
+      - name: Provide debug keystore and google-services
         run: |
           if [ ! -f debug.keystore ]; then
             keytool -genkeypair -v \
@@ -41,6 +42,56 @@ jobs:
               -keypass android \
               -keyalg RSA -keysize 2048 -validity 10000 \
               -dname "CN=Android Debug, O=Android, C=US"
+          fi
+          if [ ! -f app/google-services.json ]; then
+            echo "Creating dummy google-services.json for SAYVIS"
+            cat > app/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "123456789000",
+              "project_id": "sayvis-dummy",
+              "storage_bucket": "sayvis-dummy.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:123456789000:android:abcdef1234567890",
+                  "android_client_info": {
+                    "package_name": "com.example"
+                  }
+                },
+                "oauth_client": [
+                  {
+                    "client_id": "123456789000-dummy.apps.googleusercontent.com",
+                    "client_type": 3
+                  }
+                ],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyDummyKeyForSayvisBuild1234567890"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": [
+                      {
+                        "client_id": "123456789000-dummy.apps.googleusercontent.com",
+                        "client_type": 3
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          JSON
+          fi
+          if [ ! -f odin-agent/app/google-services.json ]; then
+            mkdir -p odin-agent/app
+            cp app/google-services.json odin-agent/app/google-services.json 2>/dev/null || echo "No SAYVIS json to copy"
+            # Fix package name for ODIN
+            sed -i 's/com.example/com.odin.agent/g' odin-agent/app/google-services.json || true
           fi
 
       # The repository ships gradle-wrapper.properties but not the wrapper jar,
