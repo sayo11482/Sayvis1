@@ -33,6 +33,8 @@ fun EntryScannerScreen(
     backtestEngine: ContinuousBacktestEngine = remember { ContinuousBacktestEngine() },
     onSignalClick: ((EntrySignal) -> Unit)? = null
 ) {
+    val context = LocalContext.current
+    val scanner = remember { EntryScannerWithAlarm(context) }
     var isScanning by remember { mutableStateOf(false) }
     var signals by remember { mutableStateOf<List<EntrySignal>>(emptyList()) }
     var totalAlarms by remember { mutableStateOf(0) }
