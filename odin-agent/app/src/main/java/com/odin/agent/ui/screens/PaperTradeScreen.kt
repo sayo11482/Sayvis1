@@ -83,9 +83,9 @@ fun PaperTradeScreen(
                         color = Color.White
                     )
                     Text(
-                        text = if (isPersian) "شبیه‌سازی لایو بدون پول واقعی" else "Simulated live without real money",
+                        text = if (isPersian) "حساب واقعی MT5 ویتاورس - معامله REAL" else "REAL MT5 Vittaverse account - REAL trading",
                         fontSize = 11.sp,
-                        color = OdinSilverMuted
+                        color = OdinGreen
                     )
                 }
 

@@ -17,8 +17,8 @@ android {
     applicationId = "com.odin.agent"
     minSdk = 26
     targetSdk = 36
-    versionCode = 14
-    versionName = "1.0.14-real-mt5-vittaverse-irr"
+    versionCode = 15
+    versionName = "1.0.15-real-only"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

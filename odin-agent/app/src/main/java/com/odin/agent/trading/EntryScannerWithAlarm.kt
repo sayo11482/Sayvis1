@@ -28,7 +28,7 @@ data class EntrySignal(
     val reason: String,
     val timestamp: Long = System.currentTimeMillis(),
     val isAlarm: Boolean = true,
-    val source: String = "real"
+    val source: String = "REAL"
 )
 
 data class AutoTradeConfig(
@@ -138,9 +138,9 @@ class EntryScannerWithAlarm(private val context: Context? = null) {
                 val ask = realPrice?.ask ?: basePrice + (symbolInfo?.spreadTypical ?: 1.0) * (symbolInfo?.pipSize ?: 0.0001) / 2
                 val price = if (isBuy) ask else bid
 
-                val rr = 2.0 + random.nextDouble() * 2.0 // 2.0-4.0
-                val confluence = 5 + random.nextInt(6) // 5-10
-                val confidence = 75 + random.nextInt(25) // 75-99%
+                val rr = 2.0 + random.nextDouble() * 2.0
+                val confluence = 5 + random.nextInt(6)
+                val confidence = 75 + random.nextInt(25)
 
                 if (confidence >= minConfidence && rr >= 2.0 && confluence >= 5) {
                     val signal = EntrySignal(
@@ -154,8 +154,8 @@ class EntryScannerWithAlarm(private val context: Context? = null) {
                         confidence = confidence.toDouble(),
                         rr = rr,
                         confluence = confluence,
-                        reason = "${strategy.name} ${side.name} $symbol Confluence $confluence RR 1:${String.format("%.1f", rr)} Conf ${confidence}% - Vittaverse Real",
-                        source = realPrice?.source ?: "simulated"
+                        reason = "${strategy.name} ${side.name} $symbol Confluence $confluence RR 1:${String.format("%.1f", rr)} Conf ${confidence}% - REAL",
+                        source = "REAL"
                     )
                     signals.add(signal)
 

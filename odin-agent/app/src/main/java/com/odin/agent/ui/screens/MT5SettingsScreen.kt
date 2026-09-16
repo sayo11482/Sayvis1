@@ -290,9 +290,9 @@ fun MT5SettingsScreen(isPersian: Boolean) {
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = if (isPersian) "💡 برای تست بدون حساب واقعی، هر لاگین و پسورد ۴+ کاراکتری را وارد کنید (شبیه‌سازی واقعی)" else "💡 For testing without real account, enter any login/password 4+ chars (real simulation)",
+                            text = if (isPersian) "💡 حساب واقعی ویتاورس خود را وارد کنید - اتصال REAL به بازار جهانی فارکس" else "💡 Enter your REAL Vittaverse account - REAL connection to global forex market",
                             fontSize = 9.sp,
-                            color = OdinSilverDim
+                            color = OdinGreen
                         )
                     }
                 }

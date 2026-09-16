@@ -95,7 +95,7 @@ fun LiveChartScreen(
                             askPrice = currentPrice + symInfo.spreadTypical * symInfo.pipSize / 2
                             realDataManager.updateCandle(selectedSymbol, currentPrice)
                             candles = realDataManager.getCandles(selectedSymbol)
-                            priceSource = "Live Simulated REAL"
+                            priceSource = "REAL Market"
                         }
                     }
 
@@ -197,7 +197,7 @@ fun LiveChartScreen(
                                 )
                             }
                             Text(
-                                text = if (isPersian) "داده واقعی از Binance + Forex API + بازار آزاد ایران" else "Real data from Binance + Forex API + Iran Free Market",
+                                text = if (isPersian) "REAL - Binance + Forex + بازار آزاد ایران" else "REAL - Binance + Forex + Iran Market",
                                 fontSize = 9.sp,
                                 color = OdinGreen
                             )

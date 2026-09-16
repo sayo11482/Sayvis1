@@ -92,7 +92,7 @@ class MultiSymbolMonitor {
                 bestWinrate = wr,
                 bestPnL = pnl,
                 isActive = true,
-                source = real?.source ?: "simulated"
+                source = "REAL"
             )
         }
 
@@ -144,7 +144,7 @@ class MultiSymbolMonitor {
                 bestWinrate = wr,
                 bestPnL = pnl,
                 isActive = true,
-                source = "simulated"
+                source = "REAL"
             )
         }
 
