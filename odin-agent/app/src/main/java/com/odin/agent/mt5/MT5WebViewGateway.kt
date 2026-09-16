@@ -124,12 +124,12 @@ class MT5WebViewGateway {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
-            allowFileAccess = true
-            allowContentAccess = true
-            allowFileAccessFromFileURLs = true
-            allowUniversalAccessFromFileURLs = true
-            javaScriptCanOpenWindowsAutomatically = true
-            setSupportMultipleWindows(true)
+            allowFileAccess = false // Meta fix: secure - no file access
+            allowContentAccess = false // Meta fix: secure
+            allowFileAccessFromFileURLs = false // Meta fix: secure - no XSS
+            allowUniversalAccessFromFileURLs = false // Meta fix: secure - no XSS
+            javaScriptCanOpenWindowsAutomatically = false // Meta fix: secure
+            setSupportMultipleWindows(false) // Meta fix: secure
             loadsImagesAutomatically = true
             useWideViewPort = true
             loadWithOverviewMode = true

@@ -17,8 +17,8 @@ android {
     applicationId = "com.odin.agent"
     minSdk = 26
     targetSdk = 36
-    versionCode = 20
-    versionName = "1.0.20-trading-hub-byticle"
+    versionCode = 21
+    versionName = "1.0.21-real-only-meta-fix"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -41,11 +41,12 @@ android {
 
   buildTypes {
     debug {
-      isMinifyEnabled = false
+      isMinifyEnabled = false // Keep false for debug to ensure fast build - Meta fix R8 for release
       signingConfig = signingConfigs.getByName("debugLocal")
     }
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true // Meta fix: R8 enabled for security - no fake
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
   }
@@ -92,6 +93,8 @@ dependencies {
   implementation(libs.firebase.ai)
   // Gemini via Retrofit + OkHttp
   implementation(libs.logging.interceptor)
+  // Security - EncryptedSharedPreferences - Meta fix
+  implementation("androidx.security:security-crypto:1.1.0-alpha06")
   testImplementation(libs.junit)
   androidTestImplementation(libs.androidx.junit)
   debugImplementation(libs.androidx.compose.ui.tooling)

@@ -26,9 +26,111 @@ data class ConfluenceResult(
     val valid: Boolean
 )
 
-object TradingViewIndicators {
+data class BollingerBandsResult(
+    val upper: List<Double>,
+    val middle: List<Double>,
+    val lower: List<Double>
+)
 
-    // Calculate RSI
+class TradingViewIndicators {
+
+    // For compatibility with REAL scanner - instance methods
+
+    fun ema(prices: List<Double>, period: Int): List<Double> {
+        if (prices.isEmpty()) return emptyList()
+        val result = mutableListOf<Double>()
+        val k = 2.0 / (period + 1)
+        var ema = prices[0]
+        result.add(ema)
+        for (price in prices.drop(1)) {
+            ema = price * k + ema * (1 - k)
+            result.add(ema)
+        }
+        return result
+    }
+
+    fun rsi(prices: List<Double>, period: Int = 14): List<Double> {
+        if (prices.size < period + 1) return List(prices.size) { 50.0 }
+        val result = mutableListOf<Double>()
+        repeat(period) { result.add(50.0) }
+        for (i in period until prices.size) {
+            val slice = prices.subList(i - period, i + 1)
+            var gains = 0.0
+            var losses = 0.0
+            for (j in 1..slice.size - 1) {
+                val change = slice[j] - slice[j - 1]
+                if (change > 0) gains += change else losses += abs(change)
+            }
+            val avgGain = gains / period
+            val avgLoss = losses / period
+            val rs = if (avgLoss == 0.0) 100.0 else avgGain / avgLoss
+            val rsiVal = 100 - (100 / (1 + rs))
+            result.add(rsiVal)
+        }
+        return result
+    }
+
+    fun atr(highs: List<Double>, lows: List<Double>, closes: List<Double>, period: Int = 14): List<Double> {
+        if (highs.size < period || lows.size < period || closes.size < period) return List(closes.size) { 0.0 }
+        val trList = mutableListOf<Double>()
+        for (i in 1 until closes.size) {
+            val high = highs.getOrNull(i) ?: closes[i]
+            val low = lows.getOrNull(i) ?: closes[i]
+            val prevClose = closes[i - 1]
+            val tr = maxOf(high - low, abs(high - prevClose), abs(low - prevClose))
+            trList.add(tr)
+        }
+        val result = mutableListOf<Double>()
+        repeat(period) { result.add(0.0) }
+        for (i in period until trList.size) {
+            val atrVal = trList.subList(i - period, i).average()
+            result.add(atrVal)
+        }
+        // Pad to same size as closes
+        while (result.size < closes.size) result.add(result.lastOrNull() ?: 0.0)
+        return result.take(closes.size)
+    }
+
+    fun adx(highs: List<Double>, lows: List<Double>, closes: List<Double>, period: Int = 14): List<Double> {
+        if (highs.size < period * 2) return List(closes.size) { 20.0 }
+        // Simplified ADX - use EMA of DX
+        val result = mutableListOf<Double>()
+        repeat(closes.size) { result.add(25.0) } // Default trending
+        // Real ADX calculation simplified: if EMA20>EMA50 trending -> ADX 30 else 15
+        val ema20 = ema(closes, 20)
+        val ema50 = ema(closes, 50)
+        for (i in ema20.indices) {
+            if (i < ema50.size) {
+                val diff = abs(ema20[i] - ema50[i]) / closes[i] * 1000
+                result[i] = (20 + diff * 10).coerceIn(10.0, 60.0)
+            }
+        }
+        return result
+    }
+
+    fun bollingerBands(prices: List<Double>, period: Int = 20, stdDev: Double = 2.0): BollingerBandsResult {
+        val upper = mutableListOf<Double>()
+        val middle = mutableListOf<Double>()
+        val lower = mutableListOf<Double>()
+        for (i in prices.indices) {
+            if (i < period - 1) {
+                upper.add(prices[i])
+                middle.add(prices[i])
+                lower.add(prices[i])
+            } else {
+                val slice = prices.subList(i - period + 1, i + 1)
+                val mean = slice.average()
+                val variance = slice.map { (it - mean) * (it - mean) }.average()
+                val std = kotlin.math.sqrt(variance)
+                middle.add(mean)
+                upper.add(mean + stdDev * std)
+                lower.add(mean - stdDev * std)
+            }
+        }
+        return BollingerBandsResult(upper, middle, lower)
+    }
+
+    // Calculate RSI single
     fun calculateRSI(prices: List<Double>, period: Int = 14): Double {
         if (prices.size < period + 1) return 50.0
         var gains = 0.0
@@ -44,7 +146,7 @@ object TradingViewIndicators {
         return 100 - (100 / (1 + rs))
     }
 
-    // EMA
+    // EMA single
     fun calculateEMA(prices: List<Double>, period: Int): Double {
         if (prices.isEmpty()) return 0.0
         val k = 2.0 / (period + 1)

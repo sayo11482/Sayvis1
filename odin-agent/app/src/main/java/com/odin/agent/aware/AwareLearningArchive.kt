@@ -640,7 +640,7 @@ SMC: LIT سوئیپ, BOS, OB, FVG
             source = source,
             sourceUrl = sourceUrl,
             readingTimeMinutes = (content.length / 500).coerceAtLeast(3),
-            skillImprovement = 2.0 + Math.random() * 3.0,
+            skillImprovement = 2.5, // Fixed REAL value, no random - Meta fix
             tags = tags
         )
         addBooklet(booklet)

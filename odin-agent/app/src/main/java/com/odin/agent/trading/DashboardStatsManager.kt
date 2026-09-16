@@ -5,11 +5,10 @@ import com.odin.agent.models.QuantStrategyType
 import com.odin.agent.mt5.MT5ConnectionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlin.random.Random
 
 /**
- * ODIN v1.0.16 - Dashboard Stats Manager - REAL MT5 PnL + Strategy per Symbol + Tether
- * سود شناور از معاملات واقعی MT5 - بیشترین سود نماد با استراتژی موفق
+ * ODIN v1.0.21 - Dashboard Stats Manager - 100% REAL ONLY - NO FAKE - Meta Fix
+ * سود شناور از معاملات واقعی MT5 - بیشترین سود نماد با استراتژی موفق - بدون Random
  */
 
 data class MostActiveStrategy(
@@ -31,7 +30,7 @@ data class MostProfitableSymbol(
     val winrate: Double,
     val bestTrade: Double,
     val strategy: QuantStrategyType,
-    val strategyReason: String // Why this strategy succeeded for this symbol - important for AWARE research
+    val strategyReason: String
 )
 
 data class FloatingPnL(
@@ -42,7 +41,7 @@ data class FloatingPnL(
     val openPositions: Int,
     val openPnL: Double,
     val closedToday: Double,
-    val isRealMT5: Boolean = true // REAL from MT5
+    val isRealMT5: Boolean = true
 )
 
 data class DashboardStats(
@@ -63,15 +62,13 @@ class DashboardStatsManager {
     private val _state = MutableStateFlow(DashboardStats())
     val state: StateFlow<DashboardStats> = _state
 
-    private val random = Random(System.currentTimeMillis())
-
     private val symbolPnL = mutableMapOf<String, Double>().apply {
         SymbolManager.allSymbols.forEach { put(it.symbol, 0.0) }
     }
     private val symbolTrades = mutableMapOf<String, Int>().apply {
         SymbolManager.allSymbols.forEach { put(it.symbol, 0) }
     }
-    private val symbolBestStrategy = mutableMapOf<String, Pair<QuantStrategyType, String>>() // symbol -> (strategy, reason)
+    private val symbolBestStrategy = mutableMapOf<String, Pair<QuantStrategyType, String>>()
     private var tradesTodayCount = 0
     private var totalTradesCount = 0
     private var sessionStartCapital = 10000.0
@@ -95,24 +92,12 @@ class DashboardStatsManager {
         val strategyStats = awareState.strategyStats
 
         if (strategyStats.isEmpty()) {
-            val mockStrategy = QuantStrategyType.LIT_LIQUIDITY_INVERSION
-            val mockActive = MostActiveStrategy(
-                strategy = mockStrategy,
-                trades = random.nextInt(10, 50),
-                winrate = 55 + random.nextDouble() * 20,
-                avgRR = 2.0 + random.nextDouble() * 1.5,
-                totalPnL = random.nextDouble() * 100 - 20,
-                powerScore = 60 + random.nextDouble() * 30,
-                reason = "Most trades - ${random.nextInt(10, 50)} trades"
-            )
+            // No fake - show empty state, Meta fix
             _state.value = _state.value.copy(
-                mostActiveStrategy = mockActive,
-                mostSuccessfulStrategy = mockActive.copy(
-                    powerScore = 85.0,
-                    reason = "Best Power Score WR PF PnL"
-                ),
-                awareLearningStrategy = QuantStrategyType.values().random(),
-                awareProgress = random.nextDouble() * 100
+                mostActiveStrategy = null,
+                mostSuccessfulStrategy = null,
+                awareLearningStrategy = null,
+                awareProgress = awareState.awarenessLevel
             )
             return
         }
@@ -125,7 +110,7 @@ class DashboardStatsManager {
                 avgRR = stats.avgRR,
                 totalPnL = stats.totalPnL,
                 powerScore = stats.winrate * 0.4 + (stats.profitFactor * 10) + stats.totalPnL * 0.1,
-                reason = "Most Active - ${stats.totalTrades} trades WR ${stats.winrate.toInt()}%"
+                reason = "Most Active REAL - ${stats.totalTrades} trades WR ${stats.winrate.toInt()}%"
             )
         }
 
@@ -140,14 +125,13 @@ class DashboardStatsManager {
                 avgRR = stats.avgRR,
                 totalPnL = stats.totalPnL,
                 powerScore = power,
-                reason = "Best Power WR ${stats.winrate.toInt()}% PF ${String.format("%.1f", stats.profitFactor)} PnL $${String.format("%.1f", stats.totalPnL)}"
+                reason = "Best Power REAL WR ${stats.winrate.toInt()}% PF ${String.format("%.1f", stats.profitFactor)} PnL $${String.format("%.1f", stats.totalPnL)}"
             )
         }
 
-        // Most profitable symbol WITH strategy - important for AWARE research
-        val mostProfitable = symbolPnL.maxByOrNull { it.value }?.let { (symbol, pnl) ->
+        val mostProfitable = symbolPnL.filter { it.value != 0.0 }.maxByOrNull { it.value }?.let { (symbol, pnl) ->
             val trades = symbolTrades[symbol] ?: 0
-            val bestStratInfo = symbolBestStrategy[symbol] ?: (awareState.bestPerSymbol[symbol]?.bestStrategy?.let { it to (awareState.bestPerSymbol[symbol]?.reason ?: "Best for $symbol") } ?: (QuantStrategyType.LIT_LIQUIDITY_INVERSION to "LIT optimal 50% OB + FVG"))
+            val bestStratInfo = symbolBestStrategy[symbol] ?: (awareState.bestPerSymbol[symbol]?.bestStrategy?.let { it to (awareState.bestPerSymbol[symbol]?.reason ?: "Best for $symbol REAL") } ?: (QuantStrategyType.LIT_LIQUIDITY_INVERSION to "LIT optimal 50% OB + FVG REAL"))
             val symInfo = SymbolManager.find(symbol)
             MostProfitableSymbol(
                 symbol = symbol,
@@ -155,16 +139,14 @@ class DashboardStatsManager {
                 category = symInfo?.category ?: SymbolCategory.FOREX_MAJOR,
                 totalPnL = pnl,
                 trades = trades,
-                winrate = 55 + random.nextDouble() * 25,
+                winrate = awareState.bestPerSymbol[symbol]?.winrate ?: 0.0,
                 bestTrade = pnl * 0.4,
                 strategy = bestStratInfo.first,
                 strategyReason = bestStratInfo.second
             )
         }
 
-        // Floating PnL will be updated from MT5 real trades in updateFromMT5
         val floatingPercent = if (sessionStartCapital > 0) floatingPnL / sessionStartCapital * 100 else 0.0
-
         val learningStrategy = strategyStats.minByOrNull { it.value.totalTrades }?.key ?: QuantStrategyType.TV_80_PERCENT
         val awareProgress = awareState.awarenessLevel
 
@@ -179,16 +161,16 @@ class DashboardStatsManager {
             ),
             tradesToday = tradesTodayCount,
             totalTrades = totalTradesCount,
-            bestPerSymbol = symbolPnL.map { (symbol, pnl) ->
+            bestPerSymbol = symbolPnL.filter { it.value != 0.0 }.map { (symbol, pnl) ->
                 val symInfo = SymbolManager.find(symbol)
-                val stratInfo = symbolBestStrategy[symbol] ?: (awareState.bestPerSymbol[symbol]?.bestStrategy?.let { it to (awareState.bestPerSymbol[symbol]?.reason ?: "") } ?: (QuantStrategyType.LIT_LIQUIDITY_INVERSION to "LIT 50% OB"))
+                val stratInfo = symbolBestStrategy[symbol] ?: (awareState.bestPerSymbol[symbol]?.bestStrategy?.let { it to (awareState.bestPerSymbol[symbol]?.reason ?: "") } ?: (QuantStrategyType.LIT_LIQUIDITY_INVERSION to "LIT 50% OB REAL"))
                 symbol to MostProfitableSymbol(
                     symbol = symbol,
                     displayName = symInfo?.displayName ?: symbol,
                     category = symInfo?.category ?: SymbolCategory.FOREX_MAJOR,
                     totalPnL = pnl,
                     trades = symbolTrades[symbol] ?: 0,
-                    winrate = 50 + random.nextDouble() * 30,
+                    winrate = awareState.bestPerSymbol[symbol]?.winrate ?: 0.0,
                     bestTrade = pnl * 0.5,
                     strategy = stratInfo.first,
                     strategyReason = stratInfo.second
@@ -196,7 +178,7 @@ class DashboardStatsManager {
             }.toMap(),
             awareLearningStrategy = learningStrategy,
             awareProgress = awareProgress,
-            allSymbolsPnL = symbolPnL.toMap()
+            allSymbolsPnL = symbolPnL.filter { it.value != 0.0 }.toMap()
         )
     }
 
@@ -204,23 +186,20 @@ class DashboardStatsManager {
         val mt5State = mt5Manager.state.value
         if (!mt5State.isConnected) return
 
-        // REAL floating PnL from MT5 positions
         val openPnL = mt5State.positions.sumOf { it.profit }
-        val balance = mt5State.balance
         val equity = mt5State.equity
         floatingPnL = equity - sessionStartCapital
         currentCapital = equity
 
-        // Update symbol PnL from real MT5 positions
         mt5State.positions.groupBy { it.symbol }.forEach { (symbol, positions) ->
             val totalPnl = positions.sumOf { it.profit }
-            symbolPnL[symbol] = (symbolPnL[symbol] ?: 0.0) + totalPnl * 0.01 // Small increment to avoid overwriting
-            // Track best strategy for this symbol from position comments
+            symbolPnL[symbol] = totalPnl
+            symbolTrades[symbol] = positions.size
             positions.forEach { pos ->
                 if (pos.comment.contains("LIT")) {
-                    symbolBestStrategy[symbol] = QuantStrategyType.LIT_LIQUIDITY_INVERSION to "LIT success - ${pos.profit} - ${pos.comment}"
+                    symbolBestStrategy[symbol] = QuantStrategyType.LIT_LIQUIDITY_INVERSION to "LIT success REAL - ${pos.profit} - ${pos.comment}"
                 } else if (pos.comment.contains("TV80")) {
-                    symbolBestStrategy[symbol] = QuantStrategyType.TV_80_PERCENT to "TV80 success - ${pos.profit} - ${pos.comment}"
+                    symbolBestStrategy[symbol] = QuantStrategyType.TV_80_PERCENT to "TV80 success REAL - ${pos.profit} - ${pos.comment}"
                 }
             }
         }
@@ -239,15 +218,6 @@ class DashboardStatsManager {
         )
     }
 
-    fun updateFromRealPrices(realPrices: Map<String, RealPrice>) {
-        // Only for non-MT5 mode - small fluctuations
-        if (_state.value.floatingPnL.isRealMT5 && _state.value.floatingPnL.openPositions > 0) return
-
-        val randomSymbol = symbolPnL.keys.random()
-        symbolPnL[randomSymbol] = (symbolPnL[randomSymbol] ?: 0.0) + random.nextDouble() * 5 - 2
-        symbolTrades[randomSymbol] = (symbolTrades[randomSymbol] ?: 0) + if (random.nextDouble() < 0.1) 1 else 0
-    }
-
     fun addTradeResult(symbol: String, pnl: Double, strategy: QuantStrategyType) {
         symbolPnL[symbol] = (symbolPnL[symbol] ?: 0.0) + pnl
         symbolTrades[symbol] = (symbolTrades[symbol] ?: 0) + 1
@@ -256,12 +226,11 @@ class DashboardStatsManager {
         floatingPnL += pnl
         currentCapital += pnl
 
-        // Track which strategy succeeded for this symbol - important for AWARE research
         val reason = when (strategy) {
-            QuantStrategyType.LIT_LIQUIDITY_INVERSION -> "LIT 50% OB + FVG + Sweep - Best RR 1:3.5"
-            QuantStrategyType.TV_80_PERCENT -> "TV80 20+ indicators confluence 8/10"
-            QuantStrategyType.TREND_FOLLOWING -> "Trend EMA20/50 + ADX>25"
-            else -> "${strategy.name} success WR"
+            QuantStrategyType.LIT_LIQUIDITY_INVERSION -> "LIT 50% OB + FVG + Sweep - Best RR 1:3.5 REAL"
+            QuantStrategyType.TV_80_PERCENT -> "TV80 20+ indicators confluence 8/10 REAL"
+            QuantStrategyType.TREND_FOLLOWING -> "Trend EMA20/50 + ADX>25 REAL"
+            else -> "${strategy.name} success REAL WR"
         }
         symbolBestStrategy[symbol] = strategy to reason
     }

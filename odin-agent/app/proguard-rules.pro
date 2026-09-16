@@ -1,21 +1,36 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# ODIN v1.0.21 - ProGuard rules - Meta-level security - REAL ONLY
+-keepattributes SourceFile,LineNumberTable
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes Exceptions
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep ODIN models - needed for trading
+-keep class com.odin.agent.models.** { *; }
+-keep class com.odin.agent.trading.** { *; }
+-keep class com.odin.agent.aware.** { *; }
+-keep class com.odin.agent.mt5.** { *; }
+-keep class com.odin.agent.nobitex.** { *; }
+-keep class com.odin.agent.risk.** { *; }
+-keep class com.odin.agent.indicators.** { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep Compose
+-keep class androidx.compose.** { *; }
+-keep class com.odin.agent.ui.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Keep Moshi / Room
+-keep class org.json.** { *; }
+-keepclassmembers,allowshrinking,allowobfuscation class * {
+  @com.squareup.moshi.Json *;
+}
+
+# WebView JS interface
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# OkHttp
+-keep class okhttp3.** { *; }
+-keep class okio.** { *; }
+
+# Firebase
+-keep class com.google.firebase.** { *; }

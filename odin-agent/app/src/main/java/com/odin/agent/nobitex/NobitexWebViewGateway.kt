@@ -116,12 +116,12 @@ class NobitexWebViewGateway {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
-            allowFileAccess = true
-            allowContentAccess = true
-            allowFileAccessFromFileURLs = true
-            allowUniversalAccessFromFileURLs = true
-            javaScriptCanOpenWindowsAutomatically = true
-            setSupportMultipleWindows(true)
+            allowFileAccess = false // Meta fix: secure
+            allowContentAccess = false // Meta fix: secure
+            allowFileAccessFromFileURLs = false // Meta fix: secure
+            allowUniversalAccessFromFileURLs = false // Meta fix: secure
+            javaScriptCanOpenWindowsAutomatically = false // Meta fix: secure
+            setSupportMultipleWindows(false) // Meta fix: secure
             loadsImagesAutomatically = true
             useWideViewPort = true
             loadWithOverviewMode = true
