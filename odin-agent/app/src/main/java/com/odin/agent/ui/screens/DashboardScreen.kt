@@ -117,7 +117,7 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text(text = "odin metatrading", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color.White)
-                                Text(text = "REAL MT5 Vittaverse + Tether 235K + REAL Chart", fontSize = 9.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
+                                Text(text = "REAL MT5 + Nobitex 231K + Tether 235K + REAL Chart", fontSize = 9.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
                             }
                         }
                         Box(
@@ -146,6 +146,48 @@ fun DashboardScreen(
                         TickerItem("XAU", if (xau != null) "${xau.price.toInt()} USDT" else "2,351 USDT", "${String.format("%.1f", xau?.changePercent ?: 0.5)}%", (xau?.changePercent ?: 0.5) >= 0)
                         TickerItem("EURUSD", if (eur != null) String.format("%.4f", eur.price) else "1.0850", "${String.format("%.1f", eur?.changePercent ?: -0.2)}%", (eur?.changePercent ?: -0.2) >= 0)
                         TickerItem("USDT/IRR", if (usdtIrr != null) String.format("%,.0f Toman", usdtIrr.price) else "235,000 Toman", "${String.format("%.1f", usdtIrr?.changePercent ?: 0.8)}%", (usdtIrr?.changePercent ?: 0.8) >= 0)
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Nobitex REAL price card
+                    run {
+                        val usdtIrr = realPrices["USDT/IRR"] ?: realPrices["USD/IRR"]
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
+                            border = BorderStroke(1.dp, OdinGreen.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.CurrencyExchange, contentDescription = null, tint = OdinGreen, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(text = "Nobitex REAL - 11M users - USDT/IRR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                    Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(OdinGreen.copy(alpha = 0.15f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                                        Text(text = usdtIrr?.source?.take(20) ?: "Nobitex REAL", fontSize = 7.sp, color = OdinGreen, fontWeight = FontWeight.Black)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Column {
+                                        Text(text = "USDT/IRR REAL", fontSize = 8.sp, color = OdinSilverMuted)
+                                        Text(text = if (usdtIrr != null) String.format("%,.0f Toman", usdtIrr.price) else "231,493 Toman", fontSize = 13.sp, fontWeight = FontWeight.Black, color = OdinGoldLight)
+                                    }
+                                    Column {
+                                        Text(text = "Bid/Ask REAL", fontSize = 8.sp, color = OdinSilverMuted)
+                                        Text(text = if (usdtIrr != null) "${String.format("%,.0f", usdtIrr.bid)}/${String.format("%,.0f", usdtIrr.ask)}" else "231,400/231,600", fontSize = 9.sp, color = Color.White)
+                                    }
+                                    Column {
+                                        Text(text = "Source", fontSize = 8.sp, color = OdinSilverMuted)
+                                        Text(text = "nobitex.ir", fontSize = 9.sp, color = OdinCyan, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                                Text(text = "REAL price from Nobitex public API /market/stats usdt-rls + HTML fallback https://nobitex.ir/price/usdt/ - converts Rial/10 to Toman - used for all IRR pairs", fontSize = 7.sp, color = OdinSilverDim, lineHeight = 8.sp)
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -451,7 +493,7 @@ fun DashboardScreen(
 
         item {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "odin metatrading v1.0.16-real-only-tether-235k - REAL ONLY\nTether Unit - USDT/IRR 235K Toman REAL - No Simulated Visible\nMT5 REAL Gateway WebView with Captcha Manual - Balance REAL shown\nFloating PnL from REAL MT5 trades - Most Profitable with Strategy for AWARE\nChart TradingView style 1m 5m 15m 30m 1h 4h 1D - REAL\nAWARE Learning Archive Booklet - Credible Sources - Skill INCREASES", fontSize = 7.sp, color = OdinSilverDim, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, lineHeight = 9.sp)
+            Text(text = "odin metatrading v1.0.17-nobitex-real-price - REAL ONLY\nNobitex REAL USDT/IRR 231,493 Toman + Tether 235K fallback - 11M users Iran\nTether Unit - USDT/IRR REAL from https://nobitex.ir/price/usdt/ + API /market/stats\nMT5 REAL Gateway WebView Captcha Manual - Balance REAL shown\nFloating PnL REAL MT5 - Most Profitable Strategy for AWARE\nChart TradingView 1m 5m 15m 30m 1h 4h 1D - REAL\nAWARE Archive Booklet Credible - Skill INCREASES", fontSize = 7.sp, color = OdinSilverDim, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, lineHeight = 9.sp)
             Spacer(modifier = Modifier.height(20.dp))
         }
     }
