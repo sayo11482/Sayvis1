@@ -68,7 +68,7 @@ fun DashboardScreen(
             dashboardStats = statsManager.state.value
             try {
                 realPrices = realDataManager.fetchRealPrices()
-                statsManager.updateFromRealPrices(realPrices)
+                // REAL prices fetched - stats from MT5 REAL already, no fake update needed
             } catch (e: Exception) {}
             mt5State = mt5Manager.state.value
             // REAL ONLY - no mock experience - learns from real MT5 trades and real backtest only

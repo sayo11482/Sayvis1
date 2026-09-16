@@ -40,7 +40,7 @@ fun MultiSymbolScreen(
                     monitor.updateWithRealPrices(realPrices)
                     analyses = monitor.state.value.symbols
                 } catch (e: Exception) {
-                    monitor.updatePrices()
+                    // REAL ONLY - no fake updatePrices - keep existing real data
                     analyses = monitor.state.value.symbols
                 }
                 delay(2000)
@@ -55,7 +55,7 @@ fun MultiSymbolScreen(
             realPrices = realDataManager.fetchRealPrices()
             monitor.updateWithRealPrices(realPrices)
         } catch (e: Exception) {
-            monitor.updatePrices()
+            // REAL ONLY - no fake - empty if no real
         }
         analyses = monitor.state.value.symbols
     }
