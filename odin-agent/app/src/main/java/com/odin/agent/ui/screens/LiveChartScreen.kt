@@ -331,11 +331,6 @@ fun LiveChartScreen(
                             for (i in 0..4) {
                                 val y = size.height * i / 4
                                 drawLine(color = Color(0xFF1A1A1A), start = Offset(0f, y), end = Offset(size.width, y), strokeWidth = 1f)
-                                // Price labels
-                                val price = maxPrice - (priceRange * i / 4)
-                                drawContext.canvas.nativeCanvas.apply {
-                                    drawText(String.format("%.2f", price), size.width - 60f, y - 2f, android.graphics.Paint().apply { color = android.graphics.Color.GRAY; textSize = 18f })
-                                }
                             }
 
                             displayCandles.forEachIndexed { index, candle ->
