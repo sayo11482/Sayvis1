@@ -69,12 +69,27 @@ class PositionSizer:
             size = risk_amount / risk_per_unit
         
         # For crypto/forex, size is in units, for stocks it's shares
-        # Ensure size is reasonable
+        # Ensure size is reasonable - CRITICAL SECURITY FIX for small accounts
         max_size = capital * 0.2 / entry_price  # Max 20% capital per position
         size = min(size, max_size)
         
-        # Minimum size
-        size = max(size, 0.001)
+        # For tiny capital like $10, ensure position value never exceeds 20%
+        # Additional check: if SL distance is too small, use ATR-based fallback
+        risk_per_unit = abs(entry_price - sl_price)
+        if risk_per_unit > 0 and risk_per_unit < entry_price * 0.0005:  # SL < 0.05% is too small
+            # Use 1% ATR as minimum risk distance to prevent overflow
+            if atr and atr > 0:
+                risk_per_unit = max(risk_per_unit, atr * 0.5)
+            else:
+                risk_per_unit = max(risk_per_unit, entry_price * 0.005)  # 0.5% min
+            size = (capital * self.risk_per_trade) / risk_per_unit
+            size = min(size, max_size)
+        
+        # Minimum size - but also check value
+        size = max(size, 0.00001)  # Smaller min for crypto
+        # Final cap: position value must be <= 20% capital
+        if size * entry_price > capital * 0.2:
+            size = (capital * 0.2) / entry_price
         
         return {
             "size": size,
