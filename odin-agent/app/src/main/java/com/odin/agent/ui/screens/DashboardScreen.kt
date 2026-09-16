@@ -54,12 +54,20 @@ fun DashboardScreen(
     var connectionState by remember { mutableStateOf(connectionTester.state.value) }
     var realPrices by remember { mutableStateOf<Map<String, RealPrice>>(emptyMap()) }
     var mt5State by remember { mutableStateOf(mt5Manager.state.value) }
+    var speedResult by remember { mutableStateOf(connectionTester.state.value.speedResult) }
+    var isSpeedTesting by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         sessionManager.updateSessions()
         sessionState = sessionManager.state.value
         awareEngine.startLearning() // REAL learning from real trades only - no mock
         statsManager.startNewSession()
+        // تست اولیه سرعت اینترنت واقعی
+        try {
+            val speed = connectionTester.testInternetSpeed()
+            speedResult = speed
+            connectionState = connectionTester.state.value
+        } catch (e: Exception) {}
         while (true) {
             sessionManager.updateSessions()
             sessionState = sessionManager.state.value
@@ -71,6 +79,8 @@ fun DashboardScreen(
                 // REAL prices fetched - stats from MT5 REAL already, no fake update needed
             } catch (e: Exception) {}
             mt5State = mt5Manager.state.value
+            speedResult = connectionTester.state.value.speedResult
+            connectionState = connectionTester.state.value
             // REAL ONLY - no mock experience - learns from real MT5 trades and real backtest only
             delay(1000)
         }
@@ -455,42 +465,98 @@ fun DashboardScreen(
         }
 
         item {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)), border = BorderStroke(1.dp, if (connectionState.allPassed) OdinGreen.copy(alpha = 0.3f) else OdinBorder), shape = RoundedCornerShape(12.dp)) {
+            // سرعت اینترنت واقعی - داشبورد
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)), border = BorderStroke(1.dp, if (speedResult?.isConnected == true) OdinCyan.copy(alpha = 0.4f) else OdinBorder), shape = RoundedCornerShape(12.dp)) {
                 Column(modifier = Modifier.padding(10.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Wifi, contentDescription = null, tint = if (connectionState.allPassed) OdinGreen else OdinCyan, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Speed, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(text = if (isPersian) "تست اتصال واقعی - اینترنت MT5 ویتاورس" else "Connection Tests REAL - Internet MT5 Vittaverse", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Column {
+                                Text(text = if (isPersian) "سرعت اینترنت واقعی" else "Internet Speed REAL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(text = if (isPersian) "تست لحظه‌ای - دانلود واقعی" else "Live test - REAL download", fontSize = 7.sp, color = OdinSilverMuted)
+                            }
                         }
-                        Text(text = "${connectionState.passedTests}/${connectionState.totalTests}", fontSize = 10.sp, fontWeight = FontWeight.Black, color = if (connectionState.allPassed) OdinGreen else OdinGold)
+                        Text(
+                            text = if (speedResult != null) {
+                                if (speedResult!!.downloadMbps >= 1) String.format("%.2f Mbps", speedResult!!.downloadMbps)
+                                else if (speedResult!!.downloadKbps > 0) String.format("%.0f Kbps", speedResult!!.downloadKbps)
+                                else if (isPersian) speedResult!!.networkTypeFa else speedResult!!.networkType
+                            } else if (isPersian) "تست نشده" else "Not tested",
+                            fontSize = 10.sp, fontWeight = FontWeight.Black, color = if (speedResult?.isFast == true) OdinGreen else OdinGold
+                        )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = { scope.launch { val tester = ConnectionTester(context); tester.testAllConnections(); connectionState = tester.state.value } }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = OdinCyan.copy(alpha = 0.15f)), border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.3f)), shape = RoundedCornerShape(8.dp)) {
-                        if (connectionState.isTesting) {
-                            CircularProgressIndicator(modifier = Modifier.size(14.dp), color = OdinCyan, strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(text = if (isPersian) "در حال تست واقعی..." else "Testing REAL...", fontSize = 10.sp, color = OdinCyan)
-                        } else {
-                            Icon(Icons.Default.WifiTethering, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(text = if (isPersian) "تست اینترنت واقعی MT5 ویتاورس" else "Test REAL Internet MT5 Vittaverse", fontSize = 9.sp, color = OdinCyan, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    if (speedResult != null) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = if (isPersian) "دانلود واقعی" else "Download REAL", fontSize = 7.sp, color = OdinSilverMuted)
+                                Text(
+                                    text = if (speedResult!!.downloadMbps >= 1) String.format("%.2f Mbps", speedResult!!.downloadMbps) else String.format("%.0f Kbps", speedResult!!.downloadKbps),
+                                    fontSize = 11.sp, fontWeight = FontWeight.Black, color = OdinCyan
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = if (isPersian) "پینگ واقعی" else "Ping REAL", fontSize = 7.sp, color = OdinSilverMuted)
+                                Text(text = "${speedResult!!.pingMs}ms", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinGold)
+                            }
+                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = if (isPersian) "شبکه" else "Network", fontSize = 7.sp, color = OdinSilverMuted)
+                                Text(text = if (isPersian) speedResult!!.networkTypeFa else speedResult!!.networkType, fontSize = 9.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(text = if (isPersian) speedResult!!.statusFa else speedResult!!.statusEn, fontSize = 8.sp, color = OdinSilver, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    isSpeedTesting = true
+                                    val result = connectionTester.testInternetSpeed()
+                                    speedResult = result
+                                    connectionState = connectionTester.state.value
+                                    isSpeedTesting = false
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = OdinCyan.copy(alpha = 0.15f)),
+                            border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            if (isSpeedTesting) {
+                                CircularProgressIndicator(modifier = Modifier.size(12.dp), color = OdinCyan, strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = if (isPersian) "تست سرعت..." else "Testing...", fontSize = 8.sp, color = OdinCyan)
+                            } else {
+                                Icon(Icons.Default.Speed, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(12.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = if (isPersian) "تست سرعت واقعی" else "Test Speed REAL", fontSize = 8.sp, color = OdinCyan, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Button(
+                            onClick = { scope.launch { connectionTester.testAllConnections(); connectionState = connectionTester.state.value } },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
+                            border = BorderStroke(1.dp, OdinBorder),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            if (connectionState.isTesting) {
+                                CircularProgressIndicator(modifier = Modifier.size(12.dp), color = OdinSilver, strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.WifiTethering, contentDescription = null, tint = OdinSilver, modifier = Modifier.size(12.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = "${connectionState.passedTests}/${connectionState.totalTests} ${if (isPersian) "اتصال" else "conn"}", fontSize = 8.sp, color = OdinSilver)
+                            }
                         }
                     }
                     if (connectionState.tests.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        connectionState.tests.forEach { test ->
-                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(modifier = Modifier.size(6.dp).clip(RoundedCornerShape(3.dp)).background(when (test.status) { "success" -> OdinGreen; "failed" -> OdinRed; else -> OdinSilverMuted }))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(text = test.name, fontSize = 9.sp, color = Color.White)
-                                }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(text = "${test.latencyMs}ms ${if (isPersian) "واقعی" else "REAL"}", fontSize = 8.sp, color = OdinSilverMuted, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(text = when (test.status) { "success" -> if (isPersian) "اوکی واقعی" else "OK REAL"; "failed" -> if (isPersian) "خطا" else "FAIL"; else -> "..." }, fontSize = 8.sp, fontWeight = FontWeight.Black, color = when (test.status) { "success" -> OdinGreen; "failed" -> OdinRed; else -> OdinSilverMuted })
-                                }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        connectionState.tests.take(5).forEach { test ->
+                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(text = if (isPersian) test.nameFa else test.name, fontSize = 8.sp, color = OdinSilverMuted)
+                                Text(text = "${test.latencyMs}ms ${if (test.status == "success") if (isPersian) "فعال" else "ON" else if (isPersian) "قطع" else "OFF"}", fontSize = 7.sp, color = if (test.status == "success") OdinGreen else OdinRed)
                             }
                         }
                     }

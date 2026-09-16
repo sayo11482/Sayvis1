@@ -67,9 +67,11 @@ fun AwareScreen(
 
     var connectionState by remember { mutableStateOf(connectionTester.state.value) }
     var isTestingInternet by remember { mutableStateOf(false) }
+    var isTestingSpeed by remember { mutableStateOf(false) }
     var autoTest by remember { mutableStateOf(true) }
     var geminiState by remember { mutableStateOf(geminiManager.state.value) }
     var securityChecks by remember { mutableStateOf<List<SecurityCheck>>(emptyList()) }
+    var speedResult by remember { mutableStateOf(connectionTester.state.value.speedResult) }
 
     // محاسبه وضعیت کلی خودآگاهی
     val internetActive = connectionState.passedTests >= 5 || connectionState.tests.isEmpty()
@@ -141,13 +143,20 @@ fun AwareScreen(
 
     LaunchedEffect(Unit) {
         securityChecks = performSecurityChecks()
-        // تست اولیه اینترنت
+        // تست اولیه اینترنت + سرعت واقعی
         try {
             isTestingInternet = true
             connectionTester.testAllConnections(null, geminiManager)
             connectionState = connectionTester.state.value
             geminiState = geminiManager.state.value
-        } catch (e: Exception) {}
+            // تست سرعت واقعی اینترنت
+            isTestingSpeed = true
+            val speed = connectionTester.testInternetSpeed()
+            speedResult = speed
+            isTestingSpeed = false
+        } catch (e: Exception) {
+            isTestingSpeed = false
+        }
         isTestingInternet = false
 
         // یادگیری اولیه از داده واقعی
@@ -166,6 +175,7 @@ fun AwareScreen(
                     connectionState = connectionTester.state.value
                     securityChecks = performSecurityChecks()
                     geminiState = geminiManager.state.value
+                    speedResult = connectionTester.state.value.speedResult
                 } catch (e: Exception) {}
             }
             awareness = engine.state.value.awarenessLevel
@@ -490,6 +500,159 @@ fun AwareScreen(
                             text = if (isPersian) "برای تست اینترنت دکمه بالا را بزنید - تست واقعی HTTP بدون نیاز به گوگل" else "Tap test button for REAL HTTP tests - No Google needed",
                             fontSize = 8.sp, color = OdinSilverDim
                         )
+                    }
+                }
+            }
+        }
+
+        // سرعت اینترنت واقعی - جدید v1.0.23
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
+                border = BorderStroke(1.dp, if (speedResult?.isConnected == true) OdinCyan.copy(alpha = 0.4f) else OdinRed.copy(alpha = 0.3f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Speed, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Column {
+                                Text(
+                                    text = if (isPersian) "سرعت اینترنت واقعی - تست لحظه‌ای" else "Internet Speed REAL - Live Test",
+                                    fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White
+                                )
+                                Text(
+                                    text = if (isPersian) "دانلود واقعی 1MB از Cloudflare - بدون فیک" else "REAL 1MB download from Cloudflare - No Fake",
+                                    fontSize = 8.sp, color = OdinSilverMuted
+                                )
+                            }
+                        }
+                        Box(
+                            modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (speedResult?.isFast == true) OdinGreen.copy(alpha = 0.15f)
+                                    else if (speedResult?.isConnected == true) OdinGold.copy(alpha = 0.15f)
+                                    else OdinRed.copy(alpha = 0.15f)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = if (isTestingSpeed) if (isPersian) "● در حال تست..." else "● TESTING..."
+                                else if (speedResult?.isConnected == true) if (isPersian) "● متصل واقعی" else "● CONNECTED REAL"
+                                else if (isPersian) "● قطع" else "● OFF",
+                                fontSize = 7.sp, fontWeight = FontWeight.Black,
+                                color = if (speedResult?.isFast == true) OdinGreen else if (speedResult?.isConnected == true) OdinGold else OdinRed
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (speedResult != null) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF050505)),
+                                border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.2f)),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = if (isPersian) "دانلود" else "Download", fontSize = 7.sp, color = OdinSilverMuted)
+                                    Text(
+                                        text = if (speedResult!!.downloadMbps >= 1) String.format("%.2f Mbps", speedResult!!.downloadMbps)
+                                        else String.format("%.0f Kbps", speedResult!!.downloadKbps),
+                                        fontSize = 13.sp, fontWeight = FontWeight.Black, color = OdinCyan
+                                    )
+                                    Text(text = if (isPersian) "واقعی" else "REAL", fontSize = 6.sp, color = OdinGreen)
+                                }
+                            }
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF050505)),
+                                border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.2f)),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = if (isPersian) "پینگ" else "Ping", fontSize = 7.sp, color = OdinSilverMuted)
+                                    Text(text = "${speedResult!!.pingMs}ms", fontSize = 13.sp, fontWeight = FontWeight.Black, color = OdinGold)
+                                    Text(text = if (isPersian) "تاخیر واقعی" else "Latency REAL", fontSize = 6.sp, color = OdinSilverDim)
+                                }
+                            }
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF050505)),
+                                border = BorderStroke(1.dp, OdinGreen.copy(alpha = 0.2f)),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = if (isPersian) "نوع شبکه" else "Network", fontSize = 7.sp, color = OdinSilverMuted)
+                                    Text(text = if (isPersian) speedResult!!.networkTypeFa else speedResult!!.networkType, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+                                    Text(text = "${speedResult!!.bytesDownloaded / 1024} KB", fontSize = 6.sp, color = OdinSilverDim)
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF050505)),
+                            border = BorderStroke(1.dp, OdinBorder),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(6.dp)) {
+                                Text(
+                                    text = if (isPersian) speedResult!!.statusFa else speedResult!!.statusEn,
+                                    fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (isPersian)
+                                        "زمان تست: ${speedResult!!.durationMs}ms | بایت: ${speedResult!!.bytesDownloaded} | ${if (speedResult!!.isFast) "سرعت مناسب برای ترید واقعی" else "سرعت کم - ممکن است چارت با تاخیر لود شود"} - واقعی"
+                                    else
+                                        "Test time: ${speedResult!!.durationMs}ms | Bytes: ${speedResult!!.bytesDownloaded} | ${if (speedResult!!.isFast) "Good for REAL trading" else "Slow - chart may load delayed"} - REAL",
+                                    fontSize = 7.sp, color = OdinSilverDim, lineHeight = 8.sp
+                                )
+                                if (speedResult!!.error != null) {
+                                    Text(text = "Error: ${speedResult!!.error}", fontSize = 6.sp, color = OdinRed)
+                                }
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = if (isPersian) "برای تست سرعت اینترنت دکمه زیر را بزنید - دانلود واقعی 1MB از Cloudflare" else "Tap button to test REAL internet speed - 1MB from Cloudflare",
+                            fontSize = 8.sp, color = OdinSilverDim
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                isTestingSpeed = true
+                                val result = connectionTester.testInternetSpeed()
+                                speedResult = result
+                                connectionState = connectionTester.state.value
+                                isTestingSpeed = false
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = OdinCyan.copy(alpha = 0.15f)),
+                        border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.3f)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        if (isTestingSpeed) {
+                            CircularProgressIndicator(modifier = Modifier.size(14.dp), color = OdinCyan, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = if (isPersian) "در حال تست سرعت واقعی..." else "Testing REAL Speed...", fontSize = 9.sp, color = OdinCyan)
+                        } else {
+                            Icon(Icons.Default.Speed, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = if (isPersian) "تست سرعت اینترنت واقعی - 1MB" else "Test REAL Internet Speed - 1MB", fontSize = 9.sp, color = OdinCyan, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
