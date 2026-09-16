@@ -17,8 +17,8 @@ android {
     applicationId = "com.odin.agent"
     minSdk = 26
     targetSdk = 36
-    versionCode = 17
-    versionName = "1.0.17-nobitex-real-price"
+    versionCode = 18
+    versionName = "1.0.18-nobitex-full"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

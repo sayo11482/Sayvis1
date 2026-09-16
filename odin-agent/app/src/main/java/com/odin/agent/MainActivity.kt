@@ -38,6 +38,7 @@ enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageV
     SCANNER_ALARM("Real Scanner", "اسکنر واقعی", Icons.Default.NotificationImportant),
     AWARE("AWARE", "آگاه", Icons.Default.Psychology),
     MT5_REAL("MT5 Real", "MT5 واقعی", Icons.Default.AccountBalance),
+    NOBITEX_REAL("Nobitex", "نوبیتکس", Icons.Default.CurrencyExchange),
     LIT_MONITOR("80% Monitor", "مانیتور 80%", Icons.Default.Radar),
     STRATEGIES("Strategies", "استراتژی‌ها", Icons.Default.AutoAwesome),
     GMAIL_NEWS("Gmail News", "اخبار جیمیل", Icons.Default.Email),
@@ -81,12 +82,13 @@ fun OdinApp() {
                 containerColor = Color(0xFF050505),
                 contentColor = OdinSilver
             ) {
-                // Show 5 main tabs: Dashboard, Real Chart, No Ban Backtest, Real Scanner, MT5 Real
+                // Show 6 main tabs: Dashboard, Real Chart, Scanner, MT5 Real, Nobitex, AWARE
                 val mainTabs = listOf(
                     OdinScreen.DASHBOARD,
                     OdinScreen.LIVE_CHART,
                     OdinScreen.SCANNER_ALARM,
                     OdinScreen.MT5_REAL,
+                    OdinScreen.NOBITEX_REAL,
                     OdinScreen.AWARE
                 )
                 mainTabs.forEach { screen ->
@@ -163,6 +165,7 @@ fun OdinApp() {
                     }
                 )
                 OdinScreen.MT5_REAL -> MT5SettingsScreen(isPersian = isPersian)
+                OdinScreen.NOBITEX_REAL -> NobitexScreen(isPersian = isPersian)
                 OdinScreen.AWARE -> AwareScreen(isPersian = isPersian)
                 OdinScreen.LIT_MONITOR -> MultiSymbolScreen(isPersian = isPersian)
                 OdinScreen.STRATEGIES -> StrategiesScreen(
