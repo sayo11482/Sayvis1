@@ -116,16 +116,12 @@ fun OdinApp() {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        Text(text = "ODIN", color = OdinGoldLight, fontWeight = FontWeight.Black)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = if (isPersian) "اودین ایجنت - واقعی ویتاورس" else "AGENT - REAL Vittaverse", color = OdinSilver, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "• REAL MT5 • IRR • No Ban", color = OdinGreen, fontSize = androidx.compose.ui.unit.TextUnit.Unspecified, fontWeight = FontWeight.Bold)
+                        Text(text = "odin metatrading", color = OdinGoldLight, fontWeight = FontWeight.Black, fontSize = 14.sp)
                     }
                 },
                 actions = {
                     IconButton(onClick = { isPersian = !isPersian }) {
-                        Text(text = if (isPersian) "FA | EN" else "EN | FA", color = OdinGold, fontWeight = FontWeight.Bold)
+                        Text(text = if (isPersian) "FA | EN" else "EN | FA", color = OdinGold, fontWeight = FontWeight.Bold, fontSize = 10.sp)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

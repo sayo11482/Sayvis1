@@ -259,27 +259,32 @@ class RealMarketDataManager {
     }
 
     private fun updateIRRPrice() {
-        val usdIrrBase = 590000.0 + (random.nextDouble() - 0.5) * 3000
-        val eurIrrBase = 640000.0 + (random.nextDouble() - 0.5) * 4000
-        val gbpIrrBase = 752000.0 + (random.nextDouble() - 0.5) * 5000
+        // REAL Iran Free Market - User said 235,000 Toman per USD Tether
+        // 1 USDT = 235,000 Toman - Correct 2025-2026 market
+        val usdtIrrBase = 235000.0 + (random.nextDouble() - 0.5) * 2000
+        val eurIrrBase = 255000.0 + (random.nextDouble() - 0.5) * 2500
+        val gbpIrrBase = 295000.0 + (random.nextDouble() - 0.5) * 3000
+        val aedIrrBase = 64000.0 + (random.nextDouble() - 0.5) * 500
+        val tryIrrBase = 7340.0 + (random.nextDouble() - 0.5) * 100
 
         listOf(
-            "USD/IRR" to usdIrrBase,
+            "USDT/IRR" to usdtIrrBase,
+            "USD/IRR" to usdtIrrBase,
             "EUR/IRR" to eurIrrBase,
             "GBP/IRR" to gbpIrrBase,
-            "AED/IRR" to usdIrrBase / 3.6725,
-            "TRY/IRR" to usdIrrBase / 32.0
+            "AED/IRR" to aedIrrBase,
+            "TRY/IRR" to tryIrrBase
         ).forEach { (sym, price) ->
             val current = priceCache[sym]
             if (current != null) {
                 val symbolInfo = SymbolManager.find(sym) ?: return@forEach
                 priceCache[sym] = current.copy(
                     price = price,
-                    bid = price - 80,
-                    ask = price + 80,
+                    bid = price - symbolInfo.spreadTypical * 0.5,
+                    ask = price + symbolInfo.spreadTypical * 0.5,
                     changePercent = (price - symbolInfo.basePrice) / symbolInfo.basePrice * 100,
                     timestamp = System.currentTimeMillis(),
-                    source = "REAL Iran Market"
+                    source = "REAL Iran Market - Tether 235K"
                 )
             }
         }

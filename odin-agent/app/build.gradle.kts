@@ -17,8 +17,8 @@ android {
     applicationId = "com.odin.agent"
     minSdk = 26
     targetSdk = 36
-    versionCode = 15
-    versionName = "1.0.15-real-only"
+    versionCode = 16
+    versionName = "1.0.16-real-mt5-webview-tether-235k"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
