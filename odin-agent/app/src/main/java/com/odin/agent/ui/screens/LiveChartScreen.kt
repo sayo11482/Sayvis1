@@ -50,7 +50,11 @@ data class EntryPoint(
 )
 
 @Composable
-fun LiveChartScreen(isPersian: Boolean) {
+fun LiveChartScreen(
+    isPersian: Boolean,
+    initialSignal: com.odin.agent.trading.EntrySignal? = null,
+    initialPrice: Double? = null
+) {
     var candles by remember { mutableStateOf(generateInitialCandles()) }
     var entryPoints by remember { mutableStateOf<List<EntryPoint>>(emptyList()) }
     var currentPrice by remember { mutableStateOf(65000.0) }

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.odin.agent.auth.AuthUser
 import com.odin.agent.auth.GoogleAuthManager
 import com.odin.agent.auth.AuthResult
+import com.odin.agent.ai.GeminiManager
 import com.odin.agent.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -30,9 +31,12 @@ fun SettingsScreen(isPersian: Boolean) {
     var telegramEnabled by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val authManager = remember { GoogleAuthManager(context) }
+    val geminiManager = remember { GeminiManager() }
     var currentUser by remember { mutableStateOf<AuthUser?>(authManager.getCurrentUser()) }
     var isAuthLoading by remember { mutableStateOf(false) }
     var authError by remember { mutableStateOf<String?>(null) }
+    var geminiResult by remember { mutableStateOf<String?>(null) }
+    var isGeminiTesting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LazyColumn(
@@ -232,6 +236,75 @@ fun SettingsScreen(isPersian: Boolean) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
+                border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.3f)),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = if (isPersian) "تست Gemini API + قابلیت‌ها" else "Gemini API + Capabilities Test", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (isPersian) "تست کامل گوگل لاگین + جمینای + چارت + بک‌تست + آلارم + AWARE" else "Full test: Google login + Gemini + chart + backtest + alarm + AWARE",
+                        fontSize = 10.sp,
+                        color = OdinSilverMuted
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = {
+                            if (isGeminiTesting) return@Button
+                            isGeminiTesting = true
+                            geminiResult = null
+                            scope.launch {
+                                val result = geminiManager.testAllCapabilities()
+                                geminiResult = result
+                                isGeminiTesting = false
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = OdinCyan.copy(alpha = 0.2f)),
+                        border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(10.dp),
+                        enabled = !isGeminiTesting
+                    ) {
+                        if (isGeminiTesting) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = OdinCyan, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = if (isPersian) "در حال تست..." else "Testing...", color = OdinCyan, fontSize = 12.sp)
+                        } else {
+                            Icon(Icons.Default.Bolt, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = if (isPersian) "تست کامل تمام قابلیت‌ها" else "Full Capability Test", color = OdinCyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                    geminiResult?.let { res ->
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color.Black),
+                            border = BorderStroke(1.dp, OdinGreen.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = res,
+                                fontSize = 8.sp,
+                                color = OdinSilver,
+                                modifier = Modifier.padding(8.dp),
+                                lineHeight = 10.sp,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
                 border = BorderStroke(1.dp, OdinBorder),
                 shape = RoundedCornerShape(14.dp)
             ) {
@@ -239,14 +312,14 @@ fun SettingsScreen(isPersian: Boolean) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.ShowChart, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = if (isPersian) "چارت زنده - نقاط ورود" else "Live Chart - Entry Points", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                        Text(text = if (isPersian) "چارت زنده - نقاط ورود کلیک" else "Live Chart - Clickable Entry", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = if (isPersian)
-                            "✅ چارت کندلی زنده با کندل‌های واقعی\n✅ نقاط ورود BUY/SELL با SL/TP\n✅ LIT: سوئیپ + BOS + OB + FVG\n✅ TV 80%: 20+ اندیکاتور + RR 1:2\n✅ آپدیت هر 100ms + نمایش میکروثانیه\n✅ تم مشکی خالص حرفه‌ای"
+                            "✅ چارت کندلی زنده + نقاط ورود BUY/SELL + SL/TP\n✅ کلیک روی سیگنال → باز شدن چارت با نقطه ورود\n✅ سود لحظه‌ای مشخص + RR + Confluence\n✅ LIT بهینه RR 1:2.5 تا 1:5 + تم مشکی"
                         else
-                            "✅ Live candlestick chart with real candles\n✅ BUY/SELL entry points with SL/TP\n✅ LIT: Sweep + BOS + OB + FVG\n✅ TV 80%: 20+ indicators + RR 1:2\n✅ 100ms updates + microsecond display\n✅ Pure black professional theme",
+                            "✅ Live candles + BUY/SELL entry + SL/TP\n✅ Click signal → open chart with entry\n✅ Live PnL + RR + Confluence shown\n✅ LIT optimal RR 1:2.5 to 1:5 + black theme",
                         fontSize = 11.sp,
                         color = OdinSilver,
                         lineHeight = 14.sp

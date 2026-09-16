@@ -30,10 +30,9 @@ import kotlinx.coroutines.delay
 @Composable
 fun EntryScannerScreen(
     isPersian: Boolean,
-    backtestEngine: ContinuousBacktestEngine = remember { ContinuousBacktestEngine() }
+    backtestEngine: ContinuousBacktestEngine = remember { ContinuousBacktestEngine() },
+    onSignalClick: ((EntrySignal) -> Unit)? = null
 ) {
-    val context = LocalContext.current
-    val scanner = remember { EntryScannerWithAlarm(context) }
     var isScanning by remember { mutableStateOf(false) }
     var signals by remember { mutableStateOf<List<EntrySignal>>(emptyList()) }
     var totalAlarms by remember { mutableStateOf(0) }
@@ -353,7 +352,7 @@ fun EntryScannerScreen(
             }
         } else {
             items(signals.takeLast(10).reversed()) { signal ->
-                SignalCardWithAlarm(signal = signal, isPersian = isPersian)
+                SignalCardWithAlarm(signal = signal, isPersian = isPersian, onClick = { onSignalClick?.invoke(signal) })
             }
         }
 
@@ -362,7 +361,7 @@ fun EntryScannerScreen(
 }
 
 @Composable
-private fun SignalCardWithAlarm(signal: EntrySignal, isPersian: Boolean) {
+private fun SignalCardWithAlarm(signal: EntrySignal, isPersian: Boolean, onClick: (() -> Unit)? = null) {
     val isBuy = signal.side == SignalSide.BUY
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -370,7 +369,8 @@ private fun SignalCardWithAlarm(signal: EntrySignal, isPersian: Boolean) {
             containerColor = if (isBuy) OdinGreen.copy(alpha = 0.08f) else OdinRed.copy(alpha = 0.08f)
         ),
         border = BorderStroke(1.dp, if (isBuy) OdinGreen.copy(alpha = 0.4f) else OdinRed.copy(alpha = 0.4f)),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
+        onClick = { onClick?.invoke() }
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(

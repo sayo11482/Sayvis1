@@ -35,8 +35,9 @@ enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageV
     LIVE_CHART("Live Chart", "چارت زنده", Icons.Default.ShowChart),
     BACKTEST_CONT("Backtest Cont", "بک‌تست دائمی", Icons.Default.AllInclusive),
     SCANNER_ALARM("Scanner Alarm", "اسکنر آلارم", Icons.Default.NotificationImportant),
+    AWARE("AWARE", "آگاه", Icons.Default.Psychology),
     LIT_MONITOR("80% Monitor", "مانیتور 80%", Icons.Default.Radar),
-    STRATEGIES("Strategies", "استراتژی‌ها", Icons.Default.Psychology),
+    STRATEGIES("Strategies", "استراتژی‌ها", Icons.Default.AutoAwesome),
     GMAIL_NEWS("Gmail News", "اخبار جیمیل", Icons.Default.Email),
     SETTINGS("Settings", "تنظیمات", Icons.Default.Settings)
 }
@@ -69,6 +70,8 @@ fun OdinApp() {
         }
     }
 
+    var selectedEntrySignal by remember { mutableStateOf<com.odin.agent.trading.EntrySignal?>(null) }
+
     Scaffold(
         containerColor = OdinDeepSpace,
         bottomBar = {
@@ -76,13 +79,13 @@ fun OdinApp() {
                 containerColor = Color(0xFF050505),
                 contentColor = OdinSilver
             ) {
-                // Show 5 main tabs: Dashboard, Live Chart, Backtest Cont, Scanner Alarm, Settings
+                // Show 5 main tabs: Dashboard, Live Chart, Backtest Cont, Scanner Alarm, AWARE
                 val mainTabs = listOf(
                     OdinScreen.DASHBOARD,
                     OdinScreen.LIVE_CHART,
                     OdinScreen.BACKTEST_CONT,
                     OdinScreen.SCANNER_ALARM,
-                    OdinScreen.SETTINGS
+                    OdinScreen.AWARE
                 )
                 mainTabs.forEach { screen ->
                     NavigationBarItem(
@@ -141,12 +144,29 @@ fun OdinApp() {
                     isPersian = isPersian,
                     onNavigateToStrategies = { currentScreen = OdinScreen.STRATEGIES },
                     onNavigateToBacktest = { currentScreen = OdinScreen.BACKTEST_CONT },
-                    onNavigateToPaperTrade = { currentScreen = OdinScreen.LIT_MONITOR },
+                    onNavigateToPaperTrade = { currentScreen = OdinScreen.LIVE_CHART },
                     onNavigateToGmailNews = { currentScreen = OdinScreen.GMAIL_NEWS }
                 )
-                OdinScreen.LIVE_CHART -> LiveChartScreen(isPersian = isPersian)
+                OdinScreen.LIVE_CHART -> {
+                    if (selectedEntrySignal != null) {
+                        LiveChartScreen(
+                            isPersian = isPersian,
+                            initialSignal = selectedEntrySignal,
+                            initialPrice = selectedEntrySignal?.price
+                        )
+                    } else {
+                        LiveChartScreen(isPersian = isPersian)
+                    }
+                }
                 OdinScreen.BACKTEST_CONT -> ContinuousBacktestScreen(isPersian = isPersian)
-                OdinScreen.SCANNER_ALARM -> EntryScannerScreen(isPersian = isPersian)
+                OdinScreen.SCANNER_ALARM -> EntryScannerScreen(
+                    isPersian = isPersian,
+                    onSignalClick = { signal ->
+                        selectedEntrySignal = signal
+                        currentScreen = OdinScreen.LIVE_CHART
+                    }
+                )
+                OdinScreen.AWARE -> AwareScreen(isPersian = isPersian)
                 OdinScreen.LIT_MONITOR -> MultiSymbolScreen(isPersian = isPersian)
                 OdinScreen.STRATEGIES -> StrategiesScreen(
                     isPersian = isPersian,

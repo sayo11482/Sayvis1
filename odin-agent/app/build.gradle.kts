@@ -17,8 +17,8 @@ android {
     applicationId = "com.odin.agent"
     minSdk = 26
     targetSdk = 36
-    versionCode = 11
-    versionName = "1.0.11-ban15-cont-alarm-auto"
+    versionCode = 12
+    versionName = "1.0.12-aware-best-strategy-memory"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -81,13 +81,17 @@ dependencies {
   implementation(libs.retrofit)
   implementation(libs.converter.moshi)
   implementation(libs.moshi.kotlin)
-  // Firebase Auth + Google Sign-In - For secure login
+  // Firebase Auth + Google Sign-In - For secure login - Tested
   implementation(libs.firebase.auth)
   implementation(libs.androidx.credentials)
   implementation(libs.androidx.credentials.play.services)
   implementation(libs.googleid)
   implementation(libs.firebase.appcheck.recaptcha)
   implementation(libs.firebase.appcheck.debug)
+  // Firebase AI - Gemini API - Tested
+  implementation(libs.firebase.ai)
+  // Gemini via Retrofit + OkHttp
+  implementation(libs.logging.interceptor)
   testImplementation(libs.junit)
   androidTestImplementation(libs.androidx.junit)
   debugImplementation(libs.androidx.compose.ui.tooling)
