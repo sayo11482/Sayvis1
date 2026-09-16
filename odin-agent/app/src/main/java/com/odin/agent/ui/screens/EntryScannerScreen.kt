@@ -30,9 +30,10 @@ import kotlinx.coroutines.delay
 @Composable
 fun EntryScannerScreen(
     isPersian: Boolean,
-    backtestEngine: ContinuousBacktestEngine = remember { ContinuousBacktestEngine() },
-    scanner: EntryScannerWithAlarm = remember { EntryScannerWithAlarm(LocalContext.current) }
+    backtestEngine: ContinuousBacktestEngine = remember { ContinuousBacktestEngine() }
 ) {
+    val context = LocalContext.current
+    val scanner = remember { EntryScannerWithAlarm(context) }
     var isScanning by remember { mutableStateOf(false) }
     var signals by remember { mutableStateOf<List<EntrySignal>>(emptyList()) }
     var totalAlarms by remember { mutableStateOf(0) }
