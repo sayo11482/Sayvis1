@@ -19,11 +19,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.odin.agent.mt5.MT5WebViewGateway
 import com.odin.agent.nobitex.NobitexApiManager
 import com.odin.agent.nobitex.NobitexWebViewGateway
-import com.odin.agent.mt5.MT5WebViewGateway
 import com.odin.agent.trading.NobitexMarketProvider
-import com.odin.agent.trading.RealMarketDataManager
 import com.odin.agent.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -36,7 +35,6 @@ fun TradingHubScreen(isPersian: Boolean) {
     val nobitexWebGateway = remember { NobitexWebViewGateway() }
     val nobitexApiManager = remember { NobitexApiManager() }
     val marketProvider = remember { NobitexMarketProvider() }
-    val realDataManager = remember { RealMarketDataManager() }
 
     var mt5State by remember { mutableStateOf(mt5Gateway.state.value) }
     var nobitexWebState by remember { mutableStateOf(nobitexWebGateway.state.value) }
@@ -45,6 +43,7 @@ fun TradingHubScreen(isPersian: Boolean) {
     var currentUrl by remember { mutableStateOf(mt5Gateway.getDefaultUrl()) }
     var extractedIRT by remember { mutableStateOf(0.0) }
     var extractedUSDT by remember { mutableStateOf(0.0) }
+    var extractedMT5Balance by remember { mutableStateOf(0.0) }
     var apiToken by remember { mutableStateOf("") }
     var showToken by remember { mutableStateOf(false) }
     var isConnecting by remember { mutableStateOf(false) }
@@ -102,7 +101,6 @@ fun TradingHubScreen(isPersian: Boolean) {
         }
 
         if (selectedPlatform == 0) {
-            // MT5 TAB
             item {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)), border = BorderStroke(1.dp, if (mt5State.isConnected) OdinGreen.copy(alpha = 0.4f) else OdinGold.copy(alpha = 0.3f)), shape = RoundedCornerShape(12.dp)) {
                     Column(modifier = Modifier.padding(10.dp)) {
@@ -126,23 +124,21 @@ fun TradingHubScreen(isPersian: Boolean) {
                             Button(onClick = { if (webViewRef?.canGoBack() == true) webViewRef?.goBack() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)), shape = RoundedCornerShape(8.dp)) {
                                 Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp)); Spacer(modifier = Modifier.width(4.dp)); Text(text = if (isPersian) "بازگشت" else "Back", fontSize = 9.sp, color = Color.White)
                             }
-                            Button(onClick = {
-                                webViewRef?.let { wv -> mt5Gateway.extractBalanceFromPage(wv) { _, _ -> }; mt5Gateway.extractPositionsFromPage(wv) { _ -> } }
-                            }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = OdinGreen.copy(alpha = 0.15f)), border = BorderStroke(1.dp, OdinGreen.copy(alpha = 0.3f)), shape = RoundedCornerShape(8.dp)) {
+                            Button(onClick = { webViewRef?.let { wv -> mt5Gateway.extractBalanceFromPage(wv) { bal -> extractedMT5Balance = bal } } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = OdinGreen.copy(alpha = 0.15f)), border = BorderStroke(1.dp, OdinGreen.copy(alpha = 0.3f)), shape = RoundedCornerShape(8.dp)) {
                                 Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = OdinGreen, modifier = Modifier.size(14.dp)); Spacer(modifier = Modifier.width(4.dp)); Text(text = if (isPersian) "موجودی" else "Balance", fontSize = 9.sp, color = OdinGreen)
                             }
                         }
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(text = "URL: ${mt5State.url.take(60)}", fontSize = 7.sp, color = OdinSilverDim, maxLines = 1)
                         if (mt5State.lastError != null) Text(text = "Error: ${mt5State.lastError}", fontSize = 8.sp, color = OdinRed)
-                        if (mt5State.balance > 0) {
+                        if (mt5State.balance > 0 || extractedMT5Balance > 0) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = OdinGreen.copy(alpha = 0.08f)), border = BorderStroke(1.dp, OdinGreen.copy(alpha = 0.4f)), shape = RoundedCornerShape(8.dp)) {
                                 Column(modifier = Modifier.padding(8.dp)) {
                                     Text(text = if (isPersian) "موجودی واقعی بعد اتصال - حتما نمایش - معاملات اودین در MT5" else "Balance REAL after connect - Must show - ODIN trades on MT5", fontSize = 9.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Column { Text(text = if (isPersian) "بالانس واقعی" else "Balance REAL", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "${String.format("%.2f", mt5State.balance)} USDT", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.White) }
-                                        Column { Text(text = if (isPersian) "اکوئیتی واقعی" else "Equity REAL", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "${String.format("%.2f", mt5State.equity)} USDT", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OdinGold) }
+                                        Column { Text(text = if (isPersian) "بالانس واقعی" else "Balance REAL", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "${String.format("%.2f", if (extractedMT5Balance > 0) extractedMT5Balance else mt5State.balance)} USDT", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.White) }
+                                        Column { Text(text = if (isPersian) "واحد" else "Unit", fontSize = 8.sp, color = OdinSilverMuted); Text(text = "Tether", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OdinGold) }
                                         Column { Text(text = if (isPersian) "منبع" else "Source", fontSize = 8.sp, color = OdinSilverMuted); Text(text = if (isPersian) "MT5 واقعی" else "MT5 REAL", fontSize = 9.sp, color = OdinCyan) }
                                     }
                                 }
@@ -163,10 +159,9 @@ fun TradingHubScreen(isPersian: Boolean) {
                         }
                     }, modifier = Modifier.fillMaxSize())
                 }
-                Text(text = if (isPersian) "WebView واقعی MT5 - ورود کپچا دستی پشتیبانی می‌شود - بعد لاگین موجودی و پوزیشن واقعی استخراج می‌شود - معاملات اودین در بستر MT5" else "REAL MT5 WebView - Manual captcha supported - After login balance & positions extracted - ODIN trades on MT5", fontSize = 8.sp, color = OdinSilverMuted, lineHeight = 10.sp)
+                Text(text = if (isPersian) "WebView واقعی MT5 - ورود کپچا دستی پشتیبانی می‌شود - بعد لاگین موجودی واقعی استخراج می‌شود - معاملات اودین در بستر MT5" else "REAL MT5 WebView - Manual captcha supported - After login balance extracted - ODIN trades on MT5", fontSize = 8.sp, color = OdinSilverMuted, lineHeight = 10.sp)
             }
         } else {
-            // NOBITEX TAB
             item {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)), border = BorderStroke(1.dp, if (nobitexWebState.isConnected || extractedIRT > 0) OdinGreen.copy(alpha = 0.4f) else OdinGold.copy(alpha = 0.3f)), shape = RoundedCornerShape(12.dp)) {
                     Column(modifier = Modifier.padding(10.dp)) {
@@ -210,7 +205,6 @@ fun TradingHubScreen(isPersian: Boolean) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Divider(color = OdinBorder, thickness = 0.5.dp)
                         Spacer(modifier = Modifier.height(8.dp))
-                        // API Token section
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Key, contentDescription = null, tint = OdinGoldLight, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
