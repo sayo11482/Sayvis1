@@ -73,7 +73,7 @@ fun OdinApp() {
                 OdinScreen.values().forEach { screen ->
                     NavigationBarItem(
                         icon = { Icon(screen.icon, contentDescription = null) },
-                        label = { Text(text = if (isPersian) screen.titleFa else screen.titleEn, fontSize = androidx.compose.ui.unit.TextUnit.Unspecified) },
+                        label = { Text(text = if (isPersian) screen.titleFa else screen.titleEn) },
                         selected = currentScreen == screen,
                         onClick = { currentScreen = screen },
                         colors = NavigationBarItemDefaults.colors(

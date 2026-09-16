@@ -216,7 +216,7 @@ fun PaperTradeScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(text = pos.symbol, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(text = pos.strategy.type.id, fontSize = 9.sp, color = OdinSilverMuted)
+                                Text(text = pos.strategy.id, fontSize = 9.sp, color = OdinSilverMuted)
                             }
                             Text(
                                 text = "${if (pos.pnl>=0) "+" else ""}$${pos.pnl.toInt()}",
