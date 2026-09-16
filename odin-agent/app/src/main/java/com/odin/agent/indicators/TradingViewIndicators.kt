@@ -209,7 +209,9 @@ object TradingViewIndicators {
             trSum / 14
         } else currentPrice * 0.01
 
-        val hl2 = (highHistory.lastOrNull() ?: currentPrice + lowHistory.lastOrNull() ?: currentPrice) / 2
+        val lastHigh = highHistory.lastOrNull() ?: currentPrice
+        val lastLow = lowHistory.lastOrNull() ?: currentPrice
+        val hl2 = (lastHigh + lastLow) / 2.0
         val supertrendUpper = hl2 + 3.0 * atr
         val supertrendLower = hl2 - 3.0 * atr
 

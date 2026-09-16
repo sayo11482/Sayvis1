@@ -69,15 +69,13 @@ class MultiSymbolMonitor {
         basePrices.forEach { (k, v) -> put(k, v) }
     }
 
-    // Simulated price histories for TV indicators
     private val priceHistories = mutableMapOf<String, MutableList<Double>>().apply {
         basePrices.forEach { (sym, price) ->
             put(sym, MutableList(200) { price * (0.95 + Random.nextDouble()*0.1) })
         }
     }
 
-    // Simulated historical WR - starts low, builds over time
-    private val historicalTrades = mutableListOf<Boolean>() // true = win
+    private val historicalTrades = mutableListOf<Boolean>()
     private var blockedCount = 0
 
     private val random = Random(System.currentTimeMillis())
@@ -121,17 +119,14 @@ class MultiSymbolMonitor {
             val prevPrice = current
             currentPrices[symbol] = newPrice
 
-            // Update history
             priceHistories[symbol]?.add(newPrice)
             if (priceHistories[symbol]!!.size > 200) priceHistories[symbol]!!.removeAt(0)
             val history = priceHistories[symbol] ?: mutableListOf(newPrice)
 
-            // Simulate high/low/volume histories
             val highHist = history.map { it * (1 + random.nextDouble()*0.005) }
             val lowHist = history.map { it * (1 - random.nextDouble()*0.005) }
             val volHist = history.map { random.nextDouble()*1000 + 500 }
 
-            // Check TradingView indicators
             val tvSignals = TradingViewIndicators.checkAllIndicators(
                 symbol = symbol,
                 currentPrice = newPrice,
@@ -141,7 +136,6 @@ class MultiSymbolMonitor {
                 volumeHistory = volHist
             )
 
-            // Simulate LIT analysis
             val premiumDiscount = random.nextDouble()
             val liquidityHigh = if (random.nextDouble() < 0.3) newPrice * (1 + random.nextDouble()*0.02) else null
             val liquidityLow = if (random.nextDouble() < 0.3) newPrice * (1 - random.nextDouble()*0.02) else null
@@ -167,25 +161,21 @@ class MultiSymbolMonitor {
                 else -> "ranging"
             }
 
-            // Build LIT map for confluence
             val litMap = mutableMapOf<String, Boolean>()
             if (sweep == "bullish_sweep") litMap["sweep_bull"] = true
             if (sweep == "bearish_sweep") litMap["sweep_bear"] = true
             if (hasBOS && bosDir == "bullish") litMap["bos_bull"] = true
             if (hasBOS && bosDir == "bearish") litMap["bos_bear"] = true
             if (hasOB) {
-                // Assume LIT if OB + BOS + sweep
                 if (sweep != null && hasBOS) {
                     if (sweep.contains("bullish") || bosDir == "bullish") litMap["lit_bull"] = true
                     if (sweep.contains("bearish") || bosDir == "bearish") litMap["lit_bear"] = true
                 }
             }
 
-            // Calculate RR (simulate)
             val atr = newPrice * 0.01
-            val rr = if (random.nextDouble() < 0.7) 2.0 + random.nextDouble()*1.5 else 1.0 + random.nextDouble() // 70% have RR >=2
+            val rr = if (random.nextDouble() < 0.7) 2.0 + random.nextDouble()*1.5 else 1.0 + random.nextDouble()
 
-            // Calculate confluence with TV + LIT + RR + WR
             val historicalWR = getHistoricalWR()
             val confluenceResult = TradingViewIndicators.calculateConfluence(
                 indicatorSignals = tvSignals,
@@ -201,7 +191,6 @@ class MultiSymbolMonitor {
             var confidence = confluenceResult.confidence / 100.0
             var wrBlocked = false
 
-            // Only generate signal if confluence valid AND RR >=2 AND WR >=80% (or no history)
             if (confluenceResult.valid && (historicalWR == 0.0 || historicalWR >= 80.0)) {
                 val isBullish = confluenceResult.isBullish
                 val isBearish = confluenceResult.isBearish
@@ -210,23 +199,25 @@ class MultiSymbolMonitor {
                     val side = if (isBullish) SignalSide.BUY else SignalSide.SELL
                     val sl = if (side == SignalSide.BUY) newPrice - atr*1.5 else newPrice + atr*1.5
                     val tp = if (side == SignalSide.BUY) newPrice + atr*3.0 else newPrice - atr*3.0
-                    
+                    val topConfirmations = confluenceResult.confirmations.take(3).joinToString(", ")
+                    val rrStr = String.format("%.1f", rr)
+                    val wrStr = String.format("%.0f", historicalWR)
+                    val reasonText = "TV ${confluenceResult.score} conf: $topConfirmations | RR 1:$rrStr | WR $wrStr%"
                     signal = QuantSignal(
                         id = "tv80_${symbol}_${System.currentTimeMillis()}",
                         symbol = symbol,
                         timeframe = "1h",
-                        strategy = QuantStrategyType.LIT_LIQUIDITY_INVERSION,
+                        strategy = QuantStrategyType.TV_80_PERCENT,
                         side = side,
                         entryPrice = newPrice,
                         slPrice = sl,
                         tpPrice = tp,
                         confidence = confidence,
-                        reason = "TV ${confluenceResult.score} تاییدیه: ${confluenceResult.confirmations.take(3).joinToString(\", \")} | RR 1:${String.format(\"%.1f\", rr)} | WR ${String.format(\"%.0f\", historicalWR)}%",
+                        reason = reasonText,
                         regime = regime
                     )
                 }
             } else if (!confluenceResult.valid && historicalWR != 0.0 && historicalWR < 80.0 && confluenceResult.score >=5 && rr >=2.0) {
-                // Blocked by WR filter - show why
                 wrBlocked = true
                 blocked++
             }
