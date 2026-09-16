@@ -166,8 +166,8 @@ class DashboardStatsManager {
         val floatingPercent = if (sessionStartCapital > 0) floatingPnL / sessionStartCapital * 100 else 0.0
 
         // AWARE learning - which strategy is currently being learned (least trades)
-        val learningStrategy = strategyStats.minByOrNull { it.value.totalTrades }?.key ?: awareState.currentLearningStrategy ?: QuantStrategyType.TV_80_PERCENT
-        val awareProgress = awareState.awarenessLevel.toDouble()
+        val learningStrategy = strategyStats.minByOrNull { it.value.totalTrades }?.key ?: QuantStrategyType.TV_80_PERCENT
+        val awareProgress = awareState.awarenessLevel
 
         _state.value = DashboardStats(
             mostActiveStrategy = mostActive,
