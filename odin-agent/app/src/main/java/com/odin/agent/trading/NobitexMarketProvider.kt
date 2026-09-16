@@ -70,7 +70,7 @@ class NobitexMarketProvider {
                         // Nobitex returns Rial, convert to Toman /10
                         val priceToman = latestRial / 10.0
                         if (priceToman > 10000) { // valid
-                            return@withContext NobitexPrice(
+                            return NobitexPrice(
                                 symbol = "USDT/IRR",
                                 priceToman = priceToman,
                                 priceRial = latestRial,
@@ -112,7 +112,7 @@ class NobitexMarketProvider {
                         val numStr = match.groupValues[1].replace(",", "")
                         val price = numStr.toDoubleOrNull()
                         if (price != null && price > 10000 && price < 1000000) {
-                            return@withContext NobitexPrice(
+                            return NobitexPrice(
                                 symbol = "USDT/IRR",
                                 priceToman = price,
                                 priceRial = price * 10,
@@ -147,7 +147,7 @@ class NobitexMarketProvider {
                 if (match != null) {
                     val price = match.groupValues[1].replace(",", "").toDoubleOrNull()
                     if (price != null && price > 10000) {
-                        return@withContext NobitexPrice(
+                        return NobitexPrice(
                             symbol = "USDT/IRR",
                             priceToman = price,
                             priceRial = price * 10,
