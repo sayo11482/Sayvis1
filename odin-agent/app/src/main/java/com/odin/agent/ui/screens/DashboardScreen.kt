@@ -58,8 +58,7 @@ fun DashboardScreen(
     LaunchedEffect(Unit) {
         sessionManager.updateSessions()
         sessionState = sessionManager.state.value
-        awareEngine.startLearning()
-        repeat(10) { awareEngine.generateMockExperience() }
+        awareEngine.startLearning() // REAL learning from real trades only - no mock
         statsManager.startNewSession()
         while (true) {
             sessionManager.updateSessions()
@@ -72,7 +71,7 @@ fun DashboardScreen(
                 statsManager.updateFromRealPrices(realPrices)
             } catch (e: Exception) {}
             mt5State = mt5Manager.state.value
-            if ((0..10).random() < 3) awareEngine.generateMockExperience()
+            // REAL ONLY - no mock experience - learns from real MT5 trades and real backtest only
             delay(1000)
         }
     }

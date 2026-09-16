@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.odin.agent.ui.theme.*
 import kotlinx.coroutines.delay
-import kotlin.random.Random
 
 data class GmailNews(
     val id: String,

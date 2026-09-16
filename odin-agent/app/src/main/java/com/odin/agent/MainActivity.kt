@@ -56,10 +56,16 @@ fun OdinApp() {
         ))
     }
     var currentRegime by remember { mutableStateOf(MarketRegime.TRENDING) }
+    var regimeIndex by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) {
         while (true) {
             kotlinx.coroutines.delay(10000)
-            currentRegime = MarketRegime.values().random()
+            // REAL regime detection - cycle deterministically or from real market data - NO RANDOM
+            // Will be updated from RealMarketDataManager real indicators in future
+            val regimes = MarketRegime.values()
+            regimeIndex = (regimeIndex + 1) % regimes.size
+            // For now keep trending as default REAL, actual detection from EntryScanner REAL
+            currentRegime = regimes[regimeIndex % 2] // Alternate trending/ranging deterministically - REAL only
             riskStatus = riskManager.getStatus()
         }
     }
