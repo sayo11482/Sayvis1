@@ -192,10 +192,18 @@ fun DashboardScreen(
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ActionCard(
-                    title = if (isPersian) "استراتژی‌ها" else "Strategies",
-                    subtitle = "5 استراتژی",
-                    icon = Icons.Default.Psychology,
+                    title = if (isPersian) "مانیتور LIT" else "LIT Monitor",
+                    subtitle = "4 نماد",
+                    icon = Icons.Default.Radar,
                     tint = OdinCyan,
+                    modifier = Modifier.weight(1f),
+                    onClick = onNavigateToPaperTrade
+                )
+                ActionCard(
+                    title = if (isPersian) "استراتژی‌ها" else "Strategies",
+                    subtitle = "6 استراتژی",
+                    icon = Icons.Default.Psychology,
+                    tint = OdinGold,
                     modifier = Modifier.weight(1f),
                     onClick = onNavigateToStrategies
                 )
@@ -203,18 +211,48 @@ fun DashboardScreen(
                     title = if (isPersian) "بک‌تست" else "Backtest",
                     subtitle = "Sharpe, DD",
                     icon = Icons.Default.Analytics,
-                    tint = OdinGold,
+                    tint = OdinGreen,
                     modifier = Modifier.weight(1f),
                     onClick = onNavigateToBacktest
                 )
-                ActionCard(
-                    title = if (isPersian) "پیپر ترید" else "Paper Trade",
-                    subtitle = "Live sim",
-                    icon = Icons.Default.PlayArrow,
-                    tint = OdinGreen,
-                    modifier = Modifier.weight(1f),
-                    onClick = onNavigateToPaperTrade
-                )
+            }
+        }
+
+        item {
+            // $10 Real Test Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = OdinSurfaceVariant),
+                border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.AttachMoney, contentDescription = null, tint = OdinGold, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isPersian) "تست 10 دلار واقعی - LIT" else "$10 Real Test - LIT",
+                            fontWeight = FontWeight.Bold,
+                            color = OdinGold,
+                            fontSize = 13.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (isPersian)
+                            "سرمایه: 10 دلار (MT5)\nوین ریت LIT: 50-65% (واقعی) با RR 1:2\n4 نماد: BTC, ETH, EURUSD, XAUUSD\nمدیریت: 1% هر ترید, 3% DD روزانه, 15% کل\nآیا سود می‌دهد؟ LIT مطمئن‌ترین است اما تضمینی نیست!\nبقا > سود رویایی\nپیشنهاد: حداقل 100 دلار + 6 ماه پیپر"
+                        else
+                            "Capital: $10 (MT5)\nLIT Winrate: 50-65% (real) with RR 1:2\n4 Symbols: BTC, ETH, EURUSD, XAUUSD\nRisk: 1% per trade, 3% daily DD, 15% total\nProfitable? LIT most reliable but no guarantee!\nSurvival > Dream Profit\nSuggest: Min $100 + 6 months paper",
+                        fontSize = 11.sp,
+                        color = OdinSilver,
+                        lineHeight = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(text = if (isPersian) "ورود/خروج منطقی" else "Logical Entry/Exit", fontSize = 10.sp, color = OdinCyan)
+                        Text(text = "✓ Order Block + FVG + BOS", fontSize = 10.sp, color = OdinGreen)
+                    }
+                }
             }
         }
 

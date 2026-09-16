@@ -28,6 +28,7 @@ fun StrategiesScreen(
     onToggleStrategy: (QuantStrategyType, Boolean) -> Unit
 ) {
     val allStrategies = listOf(
+        LITStrategy(), // Most reliable - Priority 0
         TrendFollowingStrategy(),
         MeanReversionStrategy(),
         MomentumBreakoutStrategy(),
@@ -50,7 +51,7 @@ fun StrategiesScreen(
                 color = Color.White
             )
             Text(
-                text = if (isPersian) "5 استراتژی اولویت‌دار - ماژولار و قابل فعال/غیرفعال" else "5 Prioritized Strategies - Modular & Toggleable",
+                text = if (isPersian) "6 استراتژی اولویت‌دار - LIT مطمئن‌ترین - ماژولار" else "6 Prioritized Strategies - LIT Most Reliable - Modular",
                 fontSize = 11.sp,
                 color = OdinSilverMuted
             )

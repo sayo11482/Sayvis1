@@ -96,7 +96,8 @@ enum class SayvisScreen(val titleEn: String, val titleFa: String) {
     SIMULATION("Decision Simulator", "شبیه‌سازی تصمیم"),
     SECURITY("Security & Devices", "امنیت و دستگاه‌ها"),
     GATEWAY("Trading Gateway", "درگاه معاملاتی"),
-    SCRIPTS("Scripts & Automation", "اسکریپت و خودکارسازی");
+    SCRIPTS("Scripts & Automation", "اسکریپت و خودکارسازی"),
+    AUTH("Authentication", "احراز هویت");
 
     fun title(isPersian: Boolean): String = if (isPersian) titleFa else titleEn
 

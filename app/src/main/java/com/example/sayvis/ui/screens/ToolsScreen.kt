@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AutoGraph
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Flag
@@ -100,6 +101,7 @@ fun ToolsScreen(
         ToolEntry(SayvisScreen.TRADING, Icons.Default.AutoGraph, SayvisCyan, "tool_trading")
     )
     val systemTools = listOf(
+        ToolEntry(SayvisScreen.AUTH, Icons.Default.AccountCircle, SayvisCyan, "tool_auth"),
         ToolEntry(SayvisScreen.SCRIPTS, Icons.Default.Code, SayvisGold, "tool_scripts"),
         ToolEntry(SayvisScreen.SECURITY, Icons.Default.Security, SayvisRedAlert, "tool_security")
     )
@@ -241,6 +243,7 @@ private fun toolTitle(screen: SayvisScreen, s: com.example.sayvis.i18n.SayvisStr
     SayvisScreen.TRADING -> s.toolTrading
     SayvisScreen.SCRIPTS -> s.toolScripts
     SayvisScreen.SECURITY -> s.toolSecurity
+    SayvisScreen.AUTH -> if (s.isPersian) "احراز هویت گوگل" else "Google Auth"
     else -> screen.titleFa
 }
 
@@ -253,6 +256,7 @@ private fun toolHint(screen: SayvisScreen, s: com.example.sayvis.i18n.SayvisStri
     SayvisScreen.TRADING -> s.toolTradingHint
     SayvisScreen.SCRIPTS -> s.toolScriptsHint
     SayvisScreen.SECURITY -> s.toolSecurityHint
+    SayvisScreen.AUTH -> if (s.isPersian) "ورود امن با گوگل برای ترید واقعی" else "Secure Google login for live trading"
     else -> ""
 }
 

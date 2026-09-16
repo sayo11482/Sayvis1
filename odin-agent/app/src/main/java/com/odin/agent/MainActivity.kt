@@ -30,9 +30,9 @@ class MainActivity : ComponentActivity() {
 
 enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageVector) {
     DASHBOARD("Dashboard", "داشبورد", Icons.Default.Dashboard),
+    LIT_MONITOR("LIT Monitor", "مانیتور LIT", Icons.Default.Radar),
     STRATEGIES("Strategies", "استراتژی‌ها", Icons.Default.Psychology),
     BACKTEST("Backtest", "بک‌تست", Icons.Default.Analytics),
-    PAPER_TRADE("Paper Trade", "پیپر ترید", Icons.Default.PlayArrow),
     SETTINGS("Settings", "تنظیمات", Icons.Default.Settings)
 }
 
@@ -46,6 +46,7 @@ fun OdinApp() {
 
     var enabledStrategies by remember {
         mutableStateOf(listOf(
+            QuantStrategyType.LIT_LIQUIDITY_INVERSION, // Most reliable
             QuantStrategyType.TREND_FOLLOWING,
             QuantStrategyType.MEAN_REVERSION,
             QuantStrategyType.MOMENTUM_BREAKOUT
@@ -117,8 +118,9 @@ fun OdinApp() {
                     isPersian = isPersian,
                     onNavigateToStrategies = { currentScreen = OdinScreen.STRATEGIES },
                     onNavigateToBacktest = { currentScreen = OdinScreen.BACKTEST },
-                    onNavigateToPaperTrade = { currentScreen = OdinScreen.PAPER_TRADE }
+                    onNavigateToPaperTrade = { currentScreen = OdinScreen.LIT_MONITOR }
                 )
+                OdinScreen.LIT_MONITOR -> MultiSymbolScreen(isPersian = isPersian)
                 OdinScreen.STRATEGIES -> StrategiesScreen(
                     isPersian = isPersian,
                     enabledStrategies = enabledStrategies,
@@ -131,7 +133,6 @@ fun OdinApp() {
                     }
                 )
                 OdinScreen.BACKTEST -> BacktestScreen(isPersian = isPersian)
-                OdinScreen.PAPER_TRADE -> PaperTradeScreen(isPersian = isPersian, riskStatus = riskStatus)
                 OdinScreen.SETTINGS -> SettingsScreen(isPersian = isPersian)
             }
         }

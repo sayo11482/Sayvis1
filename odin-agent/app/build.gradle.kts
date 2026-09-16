@@ -2,6 +2,7 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
+  alias(libs.plugins.google.services)
 }
 
 android {
@@ -56,6 +57,7 @@ android {
 
 dependencies {
   implementation(platform(libs.androidx.compose.bom))
+  implementation(platform(libs.firebase.bom))
   implementation(libs.androidx.activity.compose)
   implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
@@ -75,6 +77,13 @@ dependencies {
   implementation(libs.retrofit)
   implementation(libs.converter.moshi)
   implementation(libs.moshi.kotlin)
+  // Firebase Auth + Google Sign-In - For secure login
+  implementation(libs.firebase.auth)
+  implementation(libs.androidx.credentials)
+  implementation(libs.androidx.credentials.play.services)
+  implementation(libs.googleid)
+  implementation(libs.firebase.appcheck.recaptcha)
+  implementation(libs.firebase.appcheck.debug)
   testImplementation(libs.junit)
   androidTestImplementation(libs.androidx.junit)
   debugImplementation(libs.androidx.compose.ui.tooling)

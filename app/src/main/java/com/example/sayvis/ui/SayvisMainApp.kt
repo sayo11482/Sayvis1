@@ -56,6 +56,7 @@ import com.example.sayvis.model.MissionStatus
 import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.ui.components.LocalTranslation
 import com.example.sayvis.ui.screens.AwareScreen
+import com.example.sayvis.ui.screens.AuthScreen
 import com.example.sayvis.ui.screens.ChatScreen
 import com.example.sayvis.ui.screens.HomeScreen
 import com.example.sayvis.ui.screens.MissionsScreen
@@ -461,6 +462,17 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         onDelete = { viewModel.deleteScript(it) },
                         onToggleEnabled = { id, enabled -> viewModel.toggleScript(id, enabled) },
                         onAskAssistant = { viewModel.askAssistantToScript(it) }
+                    )
+
+                    SayvisScreen.AUTH -> AuthScreen(
+                        isPersian = isPersian,
+                        onAuthSuccess = { user ->
+                            // After Google login, go to home
+                            viewModel.navigateTo(SayvisScreen.HOME)
+                        },
+                        onContinueAsGuest = {
+                            viewModel.navigateTo(SayvisScreen.HOME)
+                        }
                     )
                 }
             }

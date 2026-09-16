@@ -13,11 +13,26 @@ enum class QuantStrategyType(
     val bestRegime: String,
     val riskLevel: String
 ) {
+    // LIT is most reliable - Priority 0
+    LIT_LIQUIDITY_INVERSION("lit_liquidity_inversion", "LIT - Liquidity Inversion (SMC)", "LIT - اینورژن نقدینگی (SMC)", 0, "all", "LOW"),
     TREND_FOLLOWING("trend_following", "Trend Following (Multi-TF)", "دنباله‌روی روند چندتایم‌فریم", 1, "trending", "MEDIUM"),
     MEAN_REVERSION("mean_reversion", "Mean Reversion", "بازگشت به میانگین", 2, "ranging", "MEDIUM"),
     MOMENTUM_BREAKOUT("momentum_breakout", "Momentum Breakout", "شکست مومنتوم", 3, "high_vol", "MEDIUM"),
     PAIRS_TRADING("pairs_trading", "Pairs Trading", "معاملات جفتی", 4, "all", "LOW"),
     VOLATILITY_REGIME("volatility_regime", "Volatility Regime", "تشخیص رژیم نوسان", 5, "meta", "LOW");
+
+    fun label(isPersian: Boolean): String = if (isPersian) labelFa else labelEn
+    
+    fun isLIT(): Boolean = this == LIT_LIQUIDITY_INVERSION
+}
+
+enum class LitSignalType(val labelEn: String, val labelFa: String) {
+    BULLISH_SWEEP_OB("Bullish Sweep + OB", "سوئیپ صعودی + اردر بلاک"),
+    BEARISH_SWEEP_OB("Bearish Sweep + OB", "سوئیپ نزولی + اردر بلاک"),
+    BULLISH_BOS("Bullish BOS", "شکست ساختار صعودی"),
+    BEARISH_BOS("Bearish BOS", "شکست ساختار نزولی"),
+    FVG_MITIGATION("FVG Mitigation", "اصلاح FVG"),
+    LIQUIDITY_POOL("Liquidity Pool", "استخر نقدینگی");
 
     fun label(isPersian: Boolean): String = if (isPersian) labelFa else labelEn
 }

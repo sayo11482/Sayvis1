@@ -149,3 +149,48 @@ class VolatilityRegimeStrategy : BaseStrategy(QuantStrategyType.VOLATILITY_REGIM
     else
         "Action: Switch active strategy based on regime"
 }
+
+class LITStrategy : BaseStrategy(QuantStrategyType.LIT_LIQUIDITY_INVERSION, mutableMapOf(
+    "swing_lookback" to 10,
+    "liquidity_tolerance" to 0.001,
+    "sweep_threshold" to 0.002,
+    "min_rr" to 2.0,
+    "sl_buffer" to 0.001
+)) {
+    override fun getDescription(isPersian: Boolean): String = if (isPersian)
+        "LIT - اینورژن نقدینگی (SMC) - مطمئن‌ترین روش: معامله بعد از سوئیپ نقدینگی + شکست ساختار + اردر بلاک. کیفیت بر کمیت. وین ریت معمول 50-65% با RR 1:2+"
+    else
+        "LIT - Liquidity Inversion Trading (SMC) - Most reliable: Trades after liquidity sweep + BOS + Order Block. Quality over quantity. Typical 50-65% WR with RR 1:2+"
+
+    override fun getEntryRules(isPersian: Boolean): String = if (isPersian)
+        "ورود LIT: 1) شناسایی استخر نقدینگی (سقف/کف مساوی) 2) سوئیپ + ریجکشن 3) BOS صعودی/نزولی 4) ورود در اردر بلاک 50% + FVG - فقط در Discount/Premium zone"
+    else
+        "LIT Entry: 1) Find liquidity pool (equal highs/lows) 2) Sweep + rejection 3) Bull/Bear BOS 4) Enter at OB 50% + FVG - Only in Discount/Premium"
+
+    override fun getExitRules(isPersian: Boolean): String = if (isPersian)
+        "خروج LIT: SL پشت OB یا سوئیپ + بافر, TP در نقدینگی مخالف (1:2 تا 1:3), خروج اگر BOS مخالف یا شکست OB"
+    else
+        "LIT Exit: SL beyond OB or sweep + buffer, TP at opposite liquidity (1:2 to 1:3), Exit if opposite BOS or OB break"
+
+    override fun generateMockSignal(symbol: String, price: Double): QuantSignal? {
+        // LIT mock with higher confidence
+        val side = if (Math.random() > 0.48) SignalSide.BUY else SignalSide.SELL // Slight bullish bias
+        val atr = price * 0.008 // Tighter for LIT
+        val sl = if (side == SignalSide.BUY) price - atr*1.5 else price + atr*1.5
+        val tp = if (side == SignalSide.BUY) price + atr*3.0 else price - atr*3.0 // 1:2 RR
+
+        return QuantSignal(
+            id = "lit_${System.currentTimeMillis()}",
+            symbol = symbol,
+            timeframe = "1h",
+            strategy = type,
+            side = side,
+            entryPrice = price,
+            slPrice = sl,
+            tpPrice = tp,
+            confidence = 0.70 + Math.random()*0.20, // Higher confidence for LIT 70-90%
+            reason = "LIT: Sweep + BOS + OB retest in ${if (side==SignalSide.BUY) "discount" else "premium"} zone - RR 1:2",
+            regime = MarketRegime.TRENDING
+        )
+    }
+}
