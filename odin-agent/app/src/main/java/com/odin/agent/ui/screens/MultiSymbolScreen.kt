@@ -107,7 +107,6 @@ fun MultiSymbolScreen(
             }
         }
 
-        // Stats row
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatCard(
@@ -117,13 +116,13 @@ fun MultiSymbolScreen(
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
-                    label = if (isPersian) "بلوکه WR<80%" else "Blocked WR<80%",
+                    label = if (isPersian) "بلوکه WR" else "Blocked WR",
                     value = "$blockedByWR",
                     color = OdinRed,
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
-                    label = if (isPersian) "میانگین تاییدیه" else "Avg Confluence",
+                    label = if (isPersian) "میانگین تایید" else "Avg Conf",
                     value = String.format("%.1f", avgConfluence),
                     color = OdinCyan,
                     modifier = Modifier.weight(1f)
@@ -131,7 +130,6 @@ fun MultiSymbolScreen(
             }
         }
 
-        // 80% WR Explanation Card
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -153,38 +151,12 @@ fun MultiSymbolScreen(
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = if (isPersian)
-                            "✅ حداقل RR 1:2 (ریسک 1 به ریوارد 2)\n✅ حداقل 5 تاییدیه از 20+ اندیکاتور TV\n✅ اعتماد Confluence >=80%\n✅ تاریخچه WR >=80% (وگرنه بلوکه)\n→ WR 80% + RR 1:2 = بسیار نادر اما طلایی\n→ 2-5 ترید در 90 روز با کیفیت بالا\n→ فرمول: Breakeven WR برای RR 1:2 = 33%"
+                            "RR 1:2 حداقل + 5 تاییدیه TV + اعتماد 80% + WR 80% وگرنه بلوکه"
                         else
-                            "✅ Min RR 1:2 (Risk 1 Reward 2)\n✅ Min 5 confirmations from 20+ TV indicators\n✅ Confluence Confidence >=80%\n✅ Historical WR >=80% else BLOCKED\n→ WR 80% + RR 1:2 = Very rare but golden\n→ 2-5 trades per 90 days high quality\n→ Formula: Breakeven WR for RR 1:2 = 33%",
+                            "Min RR 1:2 + 5 TV confirmations + 80% Conf + 80% WR else BLOCKED",
                         fontSize = 10.sp,
                         color = OdinSilver,
                         lineHeight = 13.sp
-                    )
-                }
-            }
-        }
-
-        // TradingView Indicators Coverage Card
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = OdinSurfaceVariant.copy(alpha = 0.5f)),
-                border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.3f)),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(
-                        text = if (isPersian) "📊 20+ اندیکاتور TradingView پوشش داده شده" else "📊 20+ TradingView Indicators Covered",
-                        fontWeight = FontWeight.Bold,
-                        color = OdinCyan,
-                        fontSize = 11.sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Trend: SMA, EMA, WMA, HMA, VWMA, Ichimoku, PSAR, SuperTrend\nMomentum: RSI, Stochastic, MACD, CCI, Williams %R, AO, Stoch RSI\nVolatility: Bollinger, ATR, Keltner, Donchian\nVolume: OBV, VWAP, MFI\nLIT: Liquidity Sweep, BOS, Order Block, FVG (3x weight)",
-                        fontSize = 9.sp,
-                        color = OdinSilverMuted,
-                        lineHeight = 11.sp
                     )
                 }
             }
@@ -196,34 +168,7 @@ fun MultiSymbolScreen(
             })
         }
 
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = OdinSurfaceVariant),
-                border = BorderStroke(1.dp, OdinBorder),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(
-                        text = if (isPersian) "📊 تحلیل 10 دلار + 80% WR" else "📊 $10 Analysis + 80% WR",
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        fontSize = 12.sp
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = if (isPersian)
-                            "• 10$ خیلی کم برای فارکس (حداقل 100$)\n• کریپتو با لات کوچک ممکن\n• WR 80% + RR 1:2 = تئوری عالی، عمل نادر\n• LIT با 7+ تاییدیه → 75-80% WR واقعی\n• Breakeven: RR 1:2 فقط 33% WR لازم دارد\n• پس حتی 50% WR با RR 1:2 سودده است!\n• پیشنهاد: به جای WR تاریخی 80%، از Confluence 80% استفاده کن"
-                        else
-                            "• $10 too small for Forex (min $100)\n• Crypto with small lots possible\n• WR 80% + RR 1:2 = Great theory, rare practice\n• LIT with 7+ confirmations → 75-80% real WR\n• Breakeven: RR 1:2 needs only 33% WR\n• So even 50% WR with RR 1:2 is profitable!\n• Suggestion: Use Confluence 80% not Historical WR 80%",
-                        fontSize = 10.sp,
-                        color = OdinSilverMuted,
-                        lineHeight = 13.sp
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-        }
+        item { Spacer(modifier = Modifier.height(20.dp)) }
     }
 }
 
@@ -270,7 +215,6 @@ private fun SymbolCardWithTV(analysis: SymbolAnalysis, isPersian: Boolean, showT
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -325,8 +269,9 @@ private fun SymbolCardWithTV(analysis: SymbolAnalysis, isPersian: Boolean, showT
                     )
                     val change = analysis.currentPrice - analysis.prevPrice
                     val changePercent = if (analysis.prevPrice != 0.0) change / analysis.prevPrice * 100 else 0.0
+                    val sign = if (change >= 0) "+" else ""
                     Text(
-                        text = "${if (change >= 0) "+" else ""}${String.format("%.2f", changePercent)}%",
+                        text = sign + String.format("%.2f", changePercent) + "%",
                         fontSize = 10.sp,
                         color = if (change >= 0) OdinGreen else OdinRed
                     )
@@ -335,22 +280,21 @@ private fun SymbolCardWithTV(analysis: SymbolAnalysis, isPersian: Boolean, showT
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // TV Confluence + RR + WR Row
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 ConfluenceMetric(
-                    label = "Confluence",
+                    label = "Confl",
                     value = "${confluence?.score ?: 0}",
                     hasValue = (confluence?.score ?: 0) >=5,
                     isAlert = (confluence?.score ?: 0) >=7
                 )
                 ConfluenceMetric(
                     label = "RR",
-                    value = "1:${String.format("%.1f", analysis.rr)}",
+                    value = "1:" + String.format("%.1f", analysis.rr),
                     hasValue = analysis.rr >=2.0,
                     isAlert = analysis.rr >=2.5
                 )
                 ConfluenceMetric(
-                    label = "WR Hist",
+                    label = "WR",
                     value = if (analysis.historicalWR>0) "${analysis.historicalWR.toInt()}%" else "New",
                     hasValue = analysis.historicalWR >=80.0 || analysis.historicalWR==0.0,
                     isAlert = analysis.historicalWR >=80.0
@@ -365,35 +309,33 @@ private fun SymbolCardWithTV(analysis: SymbolAnalysis, isPersian: Boolean, showT
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // LIT Grid
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 LITMetricSmall(
-                    label = if (isPersian) "نقدینگی" else "Liquidity",
-                    value = if (analysis.liquidityHigh != null || analysis.liquidityLow != null) "✓ Pool" else "—",
+                    label = if (isPersian) "نقدینگی" else "Liquid",
+                    value = if (analysis.liquidityHigh != null || analysis.liquidityLow != null) "Pool" else "-",
                     hasValue = analysis.liquidityHigh != null || analysis.liquidityLow != null
                 )
                 LITMetricSmall(
                     label = if (isPersian) "سوئیپ" else "Sweep",
-                    value = analysis.lastSweep?.replace("_", " ") ?: "—",
+                    value = analysis.lastSweep?.replace("_", " ") ?: "-",
                     hasValue = analysis.lastSweep != null,
                     isAlert = analysis.lastSweep != null
                 )
                 LITMetricSmall(
                     label = "BOS",
-                    value = if (analysis.hasBOS) analysis.bosDirection ?: "✓" else "—",
+                    value = if (analysis.hasBOS) analysis.bosDirection ?: "Yes" else "-",
                     hasValue = analysis.hasBOS,
                     isAlert = analysis.hasBOS
                 )
                 LITMetricSmall(
                     label = "OB",
-                    value = if (analysis.orderBlockHigh != null) "✓ OB" else "—",
+                    value = if (analysis.orderBlockHigh != null) "OB" else "-",
                     hasValue = analysis.orderBlockHigh != null
                 )
             }
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Toggle TV Details
             TextButton(onClick = { onToggleTV(analysis.symbol) }, modifier = Modifier.fillMaxWidth()) {
                 Icon(
                     imageVector = if (showTVDetails == analysis.symbol) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -404,9 +346,9 @@ private fun SymbolCardWithTV(analysis: SymbolAnalysis, isPersian: Boolean, showT
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = if (showTVDetails == analysis.symbol) {
-                        if (isPersian) "مخفی اندیکاتورها" else "Hide Indicators"
+                        if (isPersian) "مخفی" else "Hide"
                     } else {
-                        if (isPersian) "نمایش ${analysis.tvIndicators.size} اندیکاتور TV" else "Show ${analysis.tvIndicators.size} TV Indicators"
+                        if (isPersian) "نمایش ${analysis.tvIndicators.size} اندیکاتور" else "Show ${analysis.tvIndicators.size} Indicators"
                     },
                     fontSize = 10.sp,
                     color = OdinCyan
@@ -442,8 +384,9 @@ private fun SymbolCardWithTV(analysis: SymbolAnalysis, isPersian: Boolean, showT
                             Spacer(modifier = Modifier.height(2.dp))
                         }
                         Spacer(modifier = Modifier.height(6.dp))
+                        val confText = confluence?.confirmations?.take(5)?.joinToString(", ") ?: "-"
                         Text(
-                            text = if (isPersian) "تاییدیه‌ها: ${confluence?.confirmations?.joinToString(\", \") ?: \"—\"}" else "Confirmations: ${confluence?.confirmations?.joinToString(\", \") ?: \"—\"}",
+                            text = if (isPersian) "تاییدیه: $confText" else "Conf: $confText",
                             fontSize = 9.sp,
                             color = OdinGold,
                             lineHeight = 11.sp
@@ -452,7 +395,6 @@ private fun SymbolCardWithTV(analysis: SymbolAnalysis, isPersian: Boolean, showT
                 }
             }
 
-            // WR Blocked Warning
             if (analysis.wrBlocked) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Card(
@@ -464,11 +406,14 @@ private fun SymbolCardWithTV(analysis: SymbolAnalysis, isPersian: Boolean, showT
                     Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Block, contentDescription = null, tint = OdinRed, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(6.dp))
+                        val wrInt = analysis.historicalWR.toInt()
+                        val score = confluence?.score ?: 0
+                        val rrStr = String.format("%.1f", analysis.rr)
                         Text(
                             text = if (isPersian)
-                                "بلوکه شد: WR ${analysis.historicalWR.toInt()}% < 80% - با اینکه Confluence ${confluence?.score} و RR 1:${String.format(\"%.1f\", analysis.rr)} دارد"
+                                "بلوکه: WR $wrInt% <80% با Confl $score و RR 1:$rrStr"
                             else
-                                "BLOCKED: WR ${analysis.historicalWR.toInt()}% < 80% - Despite Confluence ${confluence?.score} and RR 1:${String.format(\"%.1f\", analysis.rr)}",
+                                "BLOCKED: WR $wrInt% <80% with Confl $score RR 1:$rrStr",
                             fontSize = 10.sp,
                             color = OdinRed,
                             fontWeight = FontWeight.Bold
@@ -477,7 +422,6 @@ private fun SymbolCardWithTV(analysis: SymbolAnalysis, isPersian: Boolean, showT
                 }
             }
 
-            // Signal Card if exists
             analysis.signal?.let { signal ->
                 Spacer(modifier = Modifier.height(10.dp))
                 Card(
@@ -504,9 +448,9 @@ private fun SymbolCardWithTV(analysis: SymbolAnalysis, isPersian: Boolean, showT
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = if (isBullish) {
-                                        if (isPersian) "سیگنال 80% خرید" else "80% BUY Signal"
+                                        if (isPersian) "خرید 80%" else "80% BUY"
                                     } else {
-                                        if (isPersian) "سیگنال 80% فروش" else "80% SELL Signal"
+                                        if (isPersian) "فروش 80%" else "80% SELL"
                                     },
                                     fontWeight = FontWeight.Bold,
                                     color = if (isBullish) OdinGreen else OdinRed,
@@ -520,7 +464,7 @@ private fun SymbolCardWithTV(analysis: SymbolAnalysis, isPersian: Boolean, showT
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
-                                    text = "${(signal.confidence*100).toInt()}% ${if (isPersian) "اعتماد" else "Conf"}",
+                                    text = "${(signal.confidence*100).toInt()}% Conf",
                                     fontSize = 10.sp,
                                     color = OdinGold,
                                     fontWeight = FontWeight.Bold
@@ -550,7 +494,7 @@ private fun SymbolCardWithTV(analysis: SymbolAnalysis, isPersian: Boolean, showT
                                 } else {
                                     (signal.entryPrice - signal.tpPrice) / (signal.slPrice - signal.entryPrice)
                                 }
-                                Text(text = "1:${String.format("%.1f", rr)}", fontSize = 11.sp, color = OdinGold, fontWeight = FontWeight.Bold)
+                                Text(text = "1:" + String.format("%.1f", rr), fontSize = 11.sp, color = OdinGold, fontWeight = FontWeight.Bold)
                             }
                         }
 

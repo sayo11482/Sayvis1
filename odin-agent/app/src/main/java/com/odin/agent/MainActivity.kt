@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.odin.agent.models.*
 import com.odin.agent.risk.RiskManager
@@ -30,9 +31,10 @@ class MainActivity : ComponentActivity() {
 
 enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageVector) {
     DASHBOARD("Dashboard", "داشبورد", Icons.Default.Dashboard),
-    LIT_MONITOR("80% WR Monitor", "مانیتور 80%", Icons.Default.Radar),
+    LIT_MONITOR("80% Monitor", "مانیتور 80%", Icons.Default.Radar),
     STRATEGIES("Strategies", "استراتژی‌ها", Icons.Default.Psychology),
     BACKTEST("Backtest", "بک‌تست", Icons.Default.Analytics),
+    GMAIL_NEWS("Gmail News", "اخبار جیمیل", Icons.Default.Email),
     SETTINGS("Settings", "تنظیمات", Icons.Default.Settings)
 }
 
@@ -46,8 +48,8 @@ fun OdinApp() {
 
     var enabledStrategies by remember {
         mutableStateOf(listOf(
-            QuantStrategyType.TV_80_PERCENT, // Strictest 80% WR + RR 1:2 + 20+ TV indicators
-            QuantStrategyType.LIT_LIQUIDITY_INVERSION, // Most reliable
+            QuantStrategyType.TV_80_PERCENT,
+            QuantStrategyType.LIT_LIQUIDITY_INVERSION,
             QuantStrategyType.TREND_FOLLOWING,
             QuantStrategyType.MEAN_REVERSION,
             QuantStrategyType.MOMENTUM_BREAKOUT
@@ -56,7 +58,6 @@ fun OdinApp() {
 
     var currentRegime by remember { mutableStateOf(MarketRegime.TRENDING) }
 
-    // Simulate regime changes
     LaunchedEffect(Unit) {
         while (true) {
             kotlinx.coroutines.delay(10000)
@@ -75,13 +76,19 @@ fun OdinApp() {
                 OdinScreen.values().forEach { screen ->
                     NavigationBarItem(
                         icon = { Icon(screen.icon, contentDescription = null) },
-                        label = { Text(text = if (isPersian) screen.titleFa else screen.titleEn) },
+                        label = { 
+                            Text(
+                                text = if (isPersian) screen.titleFa else screen.titleEn,
+                                fontSize = androidx.compose.ui.unit.TextUnit.Unspecified,
+                                maxLines = 1
+                            ) 
+                        },
                         selected = currentScreen == screen,
                         onClick = { currentScreen = screen },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = OdinCyan,
-                            selectedTextColor = OdinCyan,
-                            indicatorColor = OdinCyan.copy(alpha = 0.2f),
+                            selectedIconColor = OdinGoldLight,
+                            selectedTextColor = OdinGoldLight,
+                            indicatorColor = OdinGold.copy(alpha = 0.2f),
                             unselectedIconColor = OdinSilverMuted,
                             unselectedTextColor = OdinSilverMuted
                         )
@@ -93,15 +100,17 @@ fun OdinApp() {
             @OptIn(ExperimentalMaterial3Api::class)
             TopAppBar(
                 title = {
-                    Row {
-                        Text(text = "ODIN", color = OdinCyan, fontWeight = androidx.compose.ui.text.font.FontWeight.Black)
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Text(text = "🐕", fontSize = androidx.compose.ui.unit.TextUnit.Unspecified)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "ODIN", color = OdinGoldLight, fontWeight = FontWeight.Black)
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = if (isPersian) "اودین ایجنت" else "AGENT", color = OdinGold, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Text(text = if (isPersian) "اودین ایجنت" else "AGENT", color = OdinSilver, fontWeight = FontWeight.Bold)
                     }
                 },
                 actions = {
                     IconButton(onClick = { isPersian = !isPersian }) {
-                        Text(text = if (isPersian) "FA" else "EN", color = OdinGold)
+                        Text(text = if (isPersian) "FA | EN" else "EN | FA", color = OdinGold, fontWeight = FontWeight.Bold)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -119,7 +128,8 @@ fun OdinApp() {
                     isPersian = isPersian,
                     onNavigateToStrategies = { currentScreen = OdinScreen.STRATEGIES },
                     onNavigateToBacktest = { currentScreen = OdinScreen.BACKTEST },
-                    onNavigateToPaperTrade = { currentScreen = OdinScreen.LIT_MONITOR }
+                    onNavigateToPaperTrade = { currentScreen = OdinScreen.LIT_MONITOR },
+                    onNavigateToGmailNews = { currentScreen = OdinScreen.GMAIL_NEWS }
                 )
                 OdinScreen.LIT_MONITOR -> MultiSymbolScreen(isPersian = isPersian)
                 OdinScreen.STRATEGIES -> StrategiesScreen(
@@ -134,6 +144,7 @@ fun OdinApp() {
                     }
                 )
                 OdinScreen.BACKTEST -> BacktestScreen(isPersian = isPersian)
+                OdinScreen.GMAIL_NEWS -> GmailNewsScreen(isPersian = isPersian)
                 OdinScreen.SETTINGS -> SettingsScreen(isPersian = isPersian)
             }
         }

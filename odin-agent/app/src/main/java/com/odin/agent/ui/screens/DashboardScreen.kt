@@ -12,12 +12,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.odin.agent.models.QuantRiskStatus
 import com.odin.agent.models.MarketRegime
+import com.odin.agent.models.QuantRiskStatus
 import com.odin.agent.ui.theme.*
 
 @Composable
@@ -27,64 +30,344 @@ fun DashboardScreen(
     isPersian: Boolean,
     onNavigateToStrategies: () -> Unit,
     onNavigateToBacktest: () -> Unit,
-    onNavigateToPaperTrade: () -> Unit
+    onNavigateToPaperTrade: () -> Unit,
+    onNavigateToGmailNews: (() -> Unit)? = null
 ) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(OdinDeepSpace)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(OdinDeepSpace, Color(0xFF0F172A), OdinDeepSpace)
+                )
+            )
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Header - Based on image: "قدرت واقعی در ترید مالی با ODIN"
         item {
-            // Header
-            Column(
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                shape = RoundedCornerShape(20.dp)
             ) {
-                Text(
-                    text = if (isPersian) "اودین ایجنت" else "ODIN AGENT",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Black,
-                    color = OdinCyan,
-                    letterSpacing = 2.sp
-                )
-                Text(
-                    text = if (isPersian) "عامل ترید کوانت حرفه‌ای" else "Professional Quant Trading Agent",
-                    fontSize = 13.sp,
-                    color = OdinGold,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = if (isPersian) "بقا > سود رویایی | 1% ریسک هر معامله" else "Survival > Dream Profit | 1% Risk Per Trade",
-                    fontSize = 11.sp,
-                    color = OdinSilverMuted
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    OdinGold.copy(alpha = 0.15f),
+                                    OdinDeepSpace,
+                                    OdinCyan.copy(alpha = 0.1f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .padding(18.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "ODIN",
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Black,
+                                color = OdinGoldLight,
+                                letterSpacing = 3.sp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isPersian) "قدرت واقعی در ترید مالی با" else "Real Power in Trading with",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = if (isPersian) "استراتژی‌های پیشرفته و تست شده برای سودسازی مستمر" else "Advanced Tested Strategies for Consistent Profit",
+                            fontSize = 12.sp,
+                            color = OdinSilverMuted,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(OdinGold.copy(alpha = 0.2f))
+                                .padding(horizontal = 14.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (isPersian) "🐕 پیتبول ODIN - زنجیر طلا - نماد قدرت" else "🐕 ODIN Pitbull - Gold Chain - Power Symbol",
+                                fontSize = 10.sp,
+                                color = OdinGoldLight,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
             }
         }
 
+        // Performance Chart Card - Like image PERFORMANCE section
         item {
-            // Risk Status Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = OdinSurfaceVariant),
-                border = BorderStroke(1.dp, if (riskStatus.killSwitchActive) OdinRed else OdinBorder),
+                colors = CardDefaults.cardColors(containerColor = OdinSurface),
+                border = BorderStroke(1.dp, OdinBorderGold),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Shield, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.Default.ShowChart, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isPersian) "وضعیت ریسک" else "Risk Status",
+                                text = "PERFORMANCE",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = OdinSilver,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(OdinGreen.copy(alpha = 0.2f))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(text = "Ichimoku + R. Channels", fontSize = 8.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Mock chart area
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(90.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(OdinDeepSpace)
+                            .padding(10.dp)
+                    ) {
+                        Column {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(text = "BTC/USDT 1D", fontSize = 9.sp, color = OdinSilverMuted)
+                                Text(text = "+2.39%", fontSize = 9.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // Simplified candle representation
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                                repeat(15) { i ->
+                                    val height = (20 + (i * 3) % 40).dp
+                                    val isGreen = i % 3 != 0
+                                    Box(
+                                        modifier = Modifier
+                                            .width(4.dp)
+                                            .height(height)
+                                            .clip(RoundedCornerShape(2.dp))
+                                            .background(if (isGreen) OdinGreen else OdinRed)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    Brush.horizontalGradient(listOf(OdinGold.copy(alpha = 0.3f), OdinGoldDark.copy(alpha = 0.2f)))
+                                )
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.AutoMode, contentDescription = null, tint = OdinGoldLight, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = "AUTO-TRADE", fontSize = 10.sp, fontWeight = FontWeight.Black, color = OdinGoldLight)
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(OdinSurfaceVariant)
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Psychology, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = "STRATEGY", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = OdinSilver)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Portfolio Value + Pitbull Center - Like image
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                border = BorderStroke(1.5.dp, OdinGold.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    OdinGold.copy(alpha = 0.25f),
+                                    OdinGoldDark.copy(alpha = 0.15f),
+                                    OdinSurface
+                                )
+                            ),
+                            shape = RoundedCornerShape(18.dp)
+                        )
+                        .padding(16.dp)
+                ) {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "PORTFOLIO",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = OdinSilverMuted,
+                                    letterSpacing = 1.sp
+                                )
+                                Text(
+                                    text = "VALUE",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = OdinSilverMuted
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "$${riskStatus.currentCapital.toInt()}",
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = OdinGoldLight
+                                )
+                                Text(
+                                    text = "${if (riskStatus.totalPnl >= 0) "+" else ""}${riskStatus.totalPnlPercent.toInt()}% ${if (isPersian) "سود" else "Profit"}",
+                                    fontSize = 11.sp,
+                                    color = if (riskStatus.totalPnl >= 0) OdinGreen else OdinRed,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            // Pitbull representation with ODIN chain
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(RoundedCornerShape(40.dp))
+                                    .background(
+                                        Brush.radialGradient(
+                                            colors = listOf(OdinSurfaceVariant, OdinDeepSpace)
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = "🐕", fontSize = 36.sp)
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(OdinGold)
+                                            .padding(horizontal = 6.dp, vertical = 1.dp)
+                                    ) {
+                                        Text(text = "ODIN", fontSize = 8.sp, fontWeight = FontWeight.Black, color = Color.Black)
+                                    }
+                                }
+                            }
+
+                            Column(horizontalAlignment = Alignment.End) {
+                                VerifiedBadge(text = if (isPersian) "داده تایید شده" else "DATA VERIFIED")
+                                Spacer(modifier = Modifier.height(20.dp))
+                                VerifiedBadge(text = if (isPersian) "داده تایید شده" else "DATA VERIFIED")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            VerifiedBadge(text = if (isPersian) "داده تایید شده" else "DATA VERIFIED")
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = if (isPersian) "به زودی" else "COMING SOON",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = OdinGoldLight
+                                )
+                                Text(
+                                    text = "COMING SOON",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = OdinSilverMuted,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(OdinGreen.copy(alpha = 0.2f))
+                                    .padding(4.dp)
+                            ) {
+                                Icon(Icons.Default.Verified, contentDescription = null, tint = OdinGreen, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Risk Status
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = OdinSurface),
+                border = BorderStroke(1.dp, if (riskStatus.killSwitchActive) OdinRed else OdinBorder),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Shield, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isPersian) "وضعیت ریسک - بقا > سود رویایی" else "Risk Status - Survival > Dream Profit",
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = Color.White,
+                                fontSize = 12.sp
                             )
                         }
                         Box(
@@ -99,97 +382,33 @@ fun DashboardScreen(
                                 } else {
                                     if (isPersian) "خطر" else "BLOCKED"
                                 },
-                                fontSize = 11.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (riskStatus.isSafeToTrade()) OdinGreen else OdinRed
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         RiskItem(label = if (isPersian) "سرمایه" else "Capital", value = "$${riskStatus.currentCapital.toInt()}", color = Color.White)
                         RiskItem(label = if (isPersian) "سود کل" else "Total PnL", value = "${riskStatus.totalPnlPercent.toInt()}%", color = if (riskStatus.totalPnl >= 0) OdinGreen else OdinRed)
                         RiskItem(label = if (isPersian) "DD کل" else "Total DD", value = "${riskStatus.totalDrawdown.toInt()}%", color = OdinAmber)
                     }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        RiskItem(label = if (isPersian) "سود روزانه" else "Daily PnL", value = "$${riskStatus.dailyPnl.toInt()}", color = if (riskStatus.dailyPnl >=0) OdinGreen else OdinRed)
-                        RiskItem(label = if (isPersian) "DD روزانه" else "Daily DD", value = "${riskStatus.dailyDdPercent().toInt()}%", color = if (riskStatus.dailyDrawdown < 2) OdinGreen else OdinRed)
-                        RiskItem(label = if (isPersian) "پوزیشن باز" else "Open Pos", value = "${riskStatus.openPositions}", color = OdinSilver)
-                    }
-
-                    if (riskStatus.killSwitchActive) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = if (isPersian) "🔴 Kill-switch فعال! DD روزانه 3% رد شد - معاملات جدید مسدود" else "🔴 Kill-switch active! Daily DD 3% exceeded - New trades blocked",
-                            fontSize = 11.sp,
-                            color = OdinRed,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
             }
         }
 
+        // Quick Actions - 3 main
         item {
-            // Market Regime
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = OdinSurfaceVariant),
-                border = BorderStroke(1.dp, OdinBorder),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(text = if (isPersian) "رژیم بازار" else "Market Regime", fontSize = 12.sp, color = OdinSilverMuted)
-                        Text(text = currentRegime.label(isPersian), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = when(currentRegime) {
-                            MarketRegime.TRENDING -> OdinGreen
-                            MarketRegime.RANGING -> OdinGold
-                            MarketRegime.HIGH_VOL -> OdinRed
-                            else -> OdinSilver
-                        })
-                        Text(
-                            text = when(currentRegime) {
-                                MarketRegime.TRENDING -> if (isPersian) "استراتژی پیشنهادی: دنباله‌روی روند" else "Recommended: Trend Following"
-                                MarketRegime.RANGING -> if (isPersian) "پیشنهادی: بازگشت به میانگین" else "Recommended: Mean Reversion"
-                                MarketRegime.HIGH_VOL -> if (isPersian) "پیشنهادی: شکست مومنتوم" else "Recommended: Momentum Breakout"
-                                else -> ""
-                            },
-                            fontSize = 11.sp,
-                            color = OdinSilverMuted
-                        )
-                    }
-                    Icon(
-                        imageVector = when(currentRegime) {
-                            MarketRegime.TRENDING -> Icons.Default.TrendingUp
-                            MarketRegime.RANGING -> Icons.Default.HorizontalRule
-                            MarketRegime.HIGH_VOL -> Icons.Default.Bolt
-                            else -> Icons.Default.Help
-                        },
-                        contentDescription = null,
-                        tint = OdinCyan,
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-            }
-        }
-
-        item {
-            // Quick Actions
-            Text(text = if (isPersian) "اقدامات سریع" else "Quick Actions", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 16.sp)
-
+            Text(
+                text = if (isPersian) "اقدامات سریع - دوزبانه کامل" else "Quick Actions - Fully Bilingual",
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                fontSize = 14.sp
+            )
             Spacer(modifier = Modifier.height(8.dp))
-
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ActionCard(
                     title = if (isPersian) "مانیتور 80%" else "80% Monitor",
@@ -218,110 +437,190 @@ fun DashboardScreen(
             }
         }
 
+        // New TV 80% Feature
         item {
-            // New TV 80% Feature Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = OdinSurfaceVariant),
+                colors = CardDefaults.cardColors(containerColor = OdinSurface),
                 border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(14.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = OdinGold, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = OdinGold, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = if (isPersian) "جدید: فیلتر 80% WR + تمام اندیکاتورهای TradingView" else "NEW: 80% WR Filter + All TradingView Indicators",
                             fontWeight = FontWeight.Bold,
                             color = OdinGold,
+                            fontSize = 11.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = if (isPersian)
+                            "✅ 20+ اندیکاتور TV + LIT + RR 1:2 + Confluence 5 + WR 80% وگرنه BLOCKED\n✅ Breakeven RR 1:2 فقط 33% WR لازم - پس 80% طلایی"
+                        else
+                            "✅ 20+ TV indicators + LIT + RR 1:2 + Confluence 5 + WR 80% else BLOCKED\n✅ Breakeven RR 1:2 needs only 33% WR - so 80% is golden",
+                        fontSize = 10.sp,
+                        color = OdinSilver,
+                        lineHeight = 13.sp
+                    )
+                }
+            }
+        }
+
+        // Gmail + News Access Card - NEW
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = OdinSurface),
+                border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.3f)),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Email, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isPersian) "دسترسی جیمیل + اخبار + اینترنت" else "Gmail + News + Internet Access",
+                            fontWeight = FontWeight.Bold,
+                            color = OdinCyan,
                             fontSize = 12.sp
                         )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = if (isPersian)
-                            "✅ بررسی 20+ اندیکاتور TV (Trend, Momentum, Volatility, Volume)\n✅ تست کامل با RR 1:2 حداقل\n✅ تاییدیه‌های معتبر: Confluence >=5\n✅ اعتبار سنجی استراتژی ورود/خروج\n✅ موفقیت زیر 80% = عدم ورود (BLOCKED)\n→ Breakeven برای RR 1:2 فقط 33% WR لازم است\n→ پس 50% WR هم سودده است، 80% بسیار سخت اما طلایی"
+                            "✅ لاگین گوگل امن (Firebase Auth)\n✅ دسترسی جیمیل برای بررسی اخبار بازار\n✅ اینترنت برای دیتای زنده + تحلیل\n✅ اعلان‌های هوشمند ترید"
                         else
-                            "✅ Check 20+ TV indicators (Trend, Momentum, Volatility, Volume)\n✅ Full test with RR 1:2 minimum\n✅ Valid confirmations: Confluence >=5\n✅ Validate entry/exit strategy\n✅ Success <80% = NO TRADE (BLOCKED)\n→ Breakeven for RR 1:2 needs only 33% WR\n→ So 50% WR is profitable, 80% very hard but golden",
-                        fontSize = 11.sp,
+                            "✅ Secure Google Login (Firebase Auth)\n✅ Gmail access for market news\n✅ Internet for live data + analysis\n✅ Smart trading notifications",
+                        fontSize = 10.sp,
                         color = OdinSilver,
-                        lineHeight = 14.sp
+                        lineHeight = 13.sp
                     )
-                }
-            }
-        }
-
-        item {
-            // $10 Real Test Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = OdinSurfaceVariant),
-                border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.4f)),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.AttachMoney, contentDescription = null, tint = OdinGold, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { onNavigateToGmailNews?.invoke() },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = OdinCyan.copy(alpha = 0.2f)),
+                        border = BorderStroke(1.dp, OdinCyan.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.Email, contentDescription = null, tint = OdinCyan, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (isPersian) "تست 10 دلار واقعی - LIT" else "$10 Real Test - LIT",
-                            fontWeight = FontWeight.Bold,
-                            color = OdinGold,
-                            fontSize = 13.sp
+                            text = if (isPersian) "اتصال جیمیل و بررسی اخبار" else "Connect Gmail & Check News",
+                            fontSize = 11.sp,
+                            color = OdinCyan,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = if (isPersian)
-                            "سرمایه: 10 دلار (MT5)\nوین ریت LIT: 50-65% (واقعی) با RR 1:2\n4 نماد: BTC, ETH, EURUSD, XAUUSD\nمدیریت: 1% هر ترید, 3% DD روزانه, 15% کل\nآیا سود می‌دهد؟ LIT مطمئن‌ترین است اما تضمینی نیست!\nبقا > سود رویایی\nپیشنهاد: حداقل 100 دلار + 6 ماه پیپر"
-                        else
-                            "Capital: $10 (MT5)\nLIT Winrate: 50-65% (real) with RR 1:2\n4 Symbols: BTC, ETH, EURUSD, XAUUSD\nRisk: 1% per trade, 3% daily DD, 15% total\nProfitable? LIT most reliable but no guarantee!\nSurvival > Dream Profit\nSuggest: Min $100 + 6 months paper",
-                        fontSize = 11.sp,
-                        color = OdinSilver,
-                        lineHeight = 14.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(text = if (isPersian) "ورود/خروج منطقی" else "Logical Entry/Exit", fontSize = 10.sp, color = OdinCyan)
-                        Text(text = "✓ Order Block + FVG + BOS", fontSize = 10.sp, color = OdinGreen)
+                }
+            }
+        }
+
+        // Bottom 4 Cards - Like image: XAU, Global Currency, IRR Exchange, Multi-Wallet
+        item {
+            Text(
+                text = if (isPersian) "ویژگی‌های یکپارچه - تم طلایی" else "Integrated Features - Gold Theme",
+                fontWeight = FontWeight.Bold,
+                color = OdinGoldLight,
+                fontSize = 13.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GoldFeatureCard(
+                    icon = Icons.Default.Star,
+                    title = "XAU",
+                    subtitle = if (isPersian) "قیمت طلا\n(13.0 USD)" else "GOLD PRICE\n(13.0 USD)",
+                    desc = if (isPersian) "ترید پرحجم" else "HIGH-VOLUME",
+                    modifier = Modifier.weight(1f)
+                )
+                GoldFeatureCard(
+                    icon = Icons.Default.AttachMoney,
+                    title = "$",
+                    subtitle = if (isPersian) "جفت ارز جهانی" else "GLOBAL CURRENCY",
+                    desc = "KEY RATE = 0.0000",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GoldFeatureCard(
+                    icon = Icons.Default.Language,
+                    title = "﷼",
+                    subtitle = if (isPersian) "نرخ ریال ایران" else "IRANIAN RIAL",
+                    desc = "1 USD = ... 30 IRR",
+                    modifier = Modifier.weight(1f)
+                )
+                GoldFeatureCard(
+                    icon = Icons.Default.AccountBalanceWallet,
+                    title = "WALLET",
+                    subtitle = if (isPersian) "کیف پول جهانی" else "GLOBAL MULTI-WALLET",
+                    desc = if (isPersian) "ذخیره امن چندزنجیره" else "MULTI-CHAIN SECURE",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        // Subscribe Now - Like image
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                border = BorderStroke(1.5.dp, OdinGold),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(OdinGoldDark, OdinGold, OdinGoldLight)
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = if (isPersian) "به زودی" else "COMING SOON",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.Black
+                        )
+                        Text(
+                            text = "SUBSCRIBE NOW",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black.copy(alpha = 0.8f),
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = if (isPersian) "نسخه نهایی یکپارچه - تم پیتبول طلایی ODIN" else "Final Integrated Version - ODIN Pitbull Gold Theme",
+                            fontSize = 10.sp,
+                            color = Color.Black.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }
         }
 
         item {
-            // Risk Rules (Non-negotiable)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = OdinRed.copy(alpha = 0.08f)),
-                border = BorderStroke(1.dp, OdinRed.copy(alpha = 0.3f)),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = if (isPersian) "⚠️ قوانین ریسک غیرقابل مذاکره" else "⚠️ Non-Negotiable Risk Rules",
-                        fontWeight = FontWeight.Bold,
-                        color = OdinRed,
-                        fontSize = 13.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    RiskRule(text = if (isPersian) "حداکثر 1% ریسک هر معامله" else "Max 1% risk per trade")
-                    RiskRule(text = if (isPersian) "حداکثر 3% DD روزانه → Kill-switch" else "Max 3% daily DD → Kill-switch")
-                    RiskRule(text = if (isPersian) "حداکثر 15% DD کلی → توقف کامل" else "Max 15% total DD → Full stop")
-                    RiskRule(text = if (isPersian) "Position sizing بر اساس ATR" else "ATR-based position sizing")
-                    RiskRule(text = if (isPersian) "هیچ سود تضمینی نیست!" else "No guaranteed profit!")
-                }
-            }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = if (isPersian) "اودین ایجنت v1.0.0-odin-quant - بقا > سود رویایی" else "ODIN AGENT v1.0.0-odin-quant - Survival > Dream Profit",
-                fontSize = 10.sp,
+                text = if (isPersian) "اودین ایجنت v1.0.9-final-gold - بقا > سود رویایی - دوزبانه کامل - جیمیل + اینترنت" else "ODIN AGENT v1.0.9-final-gold - Survival > Dream Profit - Fully Bilingual - Gmail + Internet",
+                fontSize = 9.sp,
                 color = OdinSilverMuted,
                 modifier = Modifier.fillMaxWidth(),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(20.dp))
         }
@@ -329,10 +628,25 @@ fun DashboardScreen(
 }
 
 @Composable
+private fun VerifiedBadge(text: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(OdinGold.copy(alpha = 0.15f))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = OdinGold, modifier = Modifier.size(10.dp))
+        Spacer(modifier = Modifier.width(3.dp))
+        Text(text = text, fontSize = 7.sp, color = OdinGoldLight, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
 private fun RiskItem(label: String, value: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = label, fontSize = 10.sp, color = OdinSilverMuted)
-        Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = color)
+        Text(text = label, fontSize = 9.sp, color = OdinSilverMuted)
+        Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = color)
     }
 }
 
@@ -340,32 +654,65 @@ private fun RiskItem(label: String, value: String, color: Color) {
 private fun ActionCard(
     title: String,
     subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     tint: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = OdinSurfaceVariant),
-        border = BorderStroke(1.dp, OdinBorder),
+        colors = CardDefaults.cardColors(containerColor = OdinSurface),
+        border = BorderStroke(1.dp, tint.copy(alpha = 0.3f)),
         shape = RoundedCornerShape(12.dp),
         onClick = onClick
     ) {
         Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
             Spacer(modifier = Modifier.height(6.dp))
-            Text(text = title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text(text = subtitle, fontSize = 10.sp, color = OdinSilverMuted)
+            Text(text = title, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center)
+            Text(text = subtitle, fontSize = 9.sp, color = OdinSilverMuted, textAlign = TextAlign.Center)
         }
     }
 }
 
 @Composable
-private fun RiskRule(text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
-        Text(text = "•", color = OdinRed, fontSize = 12.sp)
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(text = text, fontSize = 11.sp, color = OdinSilver)
+private fun GoldFeatureCard(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    desc: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.4f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            OdinGold.copy(alpha = 0.2f),
+                            OdinGoldDark.copy(alpha = 0.1f),
+                            OdinSurface
+                        )
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(10.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                Icon(icon, contentDescription = null, tint = OdinGoldLight, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.Black, color = OdinGoldLight)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(text = subtitle, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center, lineHeight = 9.sp)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(text = desc, fontSize = 6.sp, color = OdinSilverMuted, textAlign = TextAlign.Center)
+            }
+        }
     }
 }
