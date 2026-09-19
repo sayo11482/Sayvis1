@@ -239,7 +239,7 @@ class GeminiProvider(
 
     companion object {
         const val DEFAULT_MODEL = "gemini-3.6-flash"
-        private const val QUOTE: String = "\u0022"
+        private const val QUOTE: String = "\""
 
         /** Models tried (in order) when the requested one is retired. */
         val FALLBACK_MODELS: List<String> = listOf(
@@ -248,10 +248,15 @@ class GeminiProvider(
             "gemini-2.0-flash"
         )
 
-        /** Pure: requested model first, then the live fallbacks (deduped). */
+        /** Pure: requested model first, then the live fallbacks (no duplicates). */
         fun modelFallbackChain(requested: String): List<String> {
-            val req = requested.trim().ifBlank { DEFAULT_MODEL }
-            return (listOf(req) + FALLBACK_MODELS.filter { it != req }).distinct()
+            val head = requested.trim().ifBlank { DEFAULT_MODEL }
+            val chain = ArrayList<String>()
+            chain.add(head)
+            for (candidate in FALLBACK_MODELS) {
+                if (!chain.contains(candidate)) chain.add(candidate)
+            }
+            return chain
         }
 
         /** Pure: does this provider error mean "try another model"? */
