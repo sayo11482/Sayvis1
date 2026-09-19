@@ -239,6 +239,7 @@ class GeminiProvider(
 
     companion object {
         const val DEFAULT_MODEL = "gemini-3.6-flash"
+        private const val QUOTE: String = "\u0022"
 
         /** Models tried (in order) when the requested one is retired. */
         val FALLBACK_MODELS: List<String> = listOf(
@@ -260,7 +261,7 @@ class GeminiProvider(
                 m.contains("is not found") ||
                 m.contains("not found for api version") ||
                 m.contains("models/gemini") && m.contains("404") ||
-                m.contains(""code":404") ||
+                m.contains(QUOTE + "code" + QUOTE + ":404") ||
                 m.contains("http 404") && m.contains("models/")
         }
         private const val PLACEHOLDER = "MY_GEMINI_API_KEY"
