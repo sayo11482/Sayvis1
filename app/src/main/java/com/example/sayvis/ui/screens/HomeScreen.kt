@@ -292,7 +292,7 @@ fun HomeScreen(
                         }
                     }
                     // Mini sparkline of the first available series (live chart pulse).
-                    val series = snap.series.values.firstOrNull { it.size >= 10 }
+                    val series = snap?.series?.values?.firstOrNull { it.size >= 10 }
                     if (series != null) {
                         androidx.compose.foundation.Canvas(
                             modifier = Modifier
@@ -300,7 +300,7 @@ fun HomeScreen(
                                 .height(34.dp)
                                 .testTag("home_market_spark")
                         ) {
-                            val values = series.takeLast(60)
+                            val values = series.takeLast(60).map { it.toFloat() }
                             val minV = values.min()
                             val maxV = values.max()
                             val span = (maxV - minV).takeIf { it > 0f } ?: 1f
