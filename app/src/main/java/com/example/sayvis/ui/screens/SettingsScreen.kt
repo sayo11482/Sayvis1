@@ -368,7 +368,7 @@ fun SettingsScreen(
                         label = s.model,
                         value = settings.ai.geminiModel,
                         onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(geminiModel = it.trim()))) },
-                        hint = "gemini-2.5-flash / gemini-2.5-pro",
+                        hint = "gemini-3.6-flash / gemini-flash-latest",
                         monospace = true
                     )
 

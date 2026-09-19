@@ -223,7 +223,8 @@ class SettingsStore private constructor(context: Context) {
             ),
             ai = AiSettings(
                 provider = enumOr(ai.optString("provider"), AiProviderKind.LOCAL),
-                geminiModel = ai.optString("geminiModel", "gemini-2.5-flash"),
+                geminiModel = ai.optString("geminiModel", "gemini-3.6-flash")
+                    .let { stored -> if (stored == "gemini-2.5-flash") "gemini-3.6-flash" else stored }, // retired-model migration
                 openRouterModel = ai.optString("openRouterModel", "anthropic/claude-3.5-sonnet"),
                 groqModel = ai.optString("groqModel", "llama-3.3-70b-versatile"),
                 openAiModel = ai.optString("openAiModel", "gpt-4o-mini"),

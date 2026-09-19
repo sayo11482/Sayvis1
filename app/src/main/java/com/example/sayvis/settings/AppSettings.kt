@@ -125,7 +125,7 @@ data class MtGatewayProfile(
 data class AiSettings(
     val provider: AiProviderKind = AiProviderKind.LOCAL,
     val geminiApiKey: String = "",
-    val geminiModel: String = "gemini-2.5-flash",
+    val geminiModel: String = "gemini-3.6-flash",
     val openRouterApiKey: String = "",
     val openRouterModel: String = "anthropic/claude-3.5-sonnet",
     val groqApiKey: String = "",

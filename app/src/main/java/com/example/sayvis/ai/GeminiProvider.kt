@@ -45,11 +45,11 @@ class GeminiProvider(
     ): AIResponse = withContext(Dispatchers.IO) {
         val start = System.currentTimeMillis()
         val apiKey = resolveKey(settings)
-        val model = settings.geminiModel.ifBlank { DEFAULT_MODEL }
+        val requested = settings.geminiModel.ifBlank { DEFAULT_MODEL }
 
         if (apiKey.isBlank()) {
             return@withContext failure(
-                model,
+                requested,
                 start,
                 "Gemini API key is not configured. Open Settings → AI & API and paste your key."
             )
@@ -74,6 +74,30 @@ class GeminiProvider(
             }
         )
 
+        // v5.0.1: Google retires model aliases over time (gemini-2.5-flash
+        // became unavailable to NEW users mid-2026). Instead of dying with a
+        // 404, walk the fallback chain and answer with the first live model.
+        var last: AIResponse? = null
+        for (model in modelFallbackChain(requested)) {
+            val response = runCatching { callGemini(model, apiKey, contents, systemInstruction, context, settings, start) }
+                .getOrElse { e -> failure(model, start, e.message ?: "Unknown network error") }
+            if (response.isSuccess) return@withContext response
+            last = response
+            if (!isModelRetiredError(response.errorMessage.orEmpty())) return@withContext response
+        }
+        last ?: failure(requested, start, "No Gemini model answered.")
+    }
+
+    /** One HTTP round-trip against a single Gemini model. */
+    private suspend fun callGemini(
+        model: String,
+        apiKey: String,
+        contents: JSONArray,
+        systemInstruction: String,
+        context: AiRequestContext,
+        settings: AiSettings,
+        start: Long
+    ): AIResponse = withContext(Dispatchers.IO) {
         val body = JSONObject().apply {
             put("contents", contents)
             put("systemInstruction", JSONObject().apply {
@@ -117,7 +141,7 @@ class GeminiProvider(
                         reason += " — سرویس جمینای از موقعیت مکانی فعلی (تحریم جغرافیایی گوگل) در دسترس نیست؛ VPN لازم است. / " +
                             "Gemini blocks this region (HTTP 403). A VPN is required, or use the local core + web search."
                     }
-                    return@withContext failure(model, start, reason)
+                    return@use failure(model, start, reason)
                 }
                 val candidate = JSONObject(payload)
                     .optJSONArray("candidates")
@@ -214,7 +238,31 @@ class GeminiProvider(
     }.getOrElse { body.take(220) }
 
     companion object {
-        const val DEFAULT_MODEL = "gemini-2.5-flash"
+        const val DEFAULT_MODEL = "gemini-3.6-flash"
+
+        /** Models tried (in order) when the requested one is retired. */
+        val FALLBACK_MODELS: List<String> = listOf(
+            "gemini-3.6-flash",
+            "gemini-flash-latest",
+            "gemini-2.0-flash"
+        )
+
+        /** Pure: requested model first, then the live fallbacks (deduped). */
+        fun modelFallbackChain(requested: String): List<String> {
+            val req = requested.trim().ifBlank { DEFAULT_MODEL }
+            return (listOf(req) + FALLBACK_MODELS.filter { it != req }).distinct()
+        }
+
+        /** Pure: does this provider error mean "try another model"? */
+        fun isModelRetiredError(message: String): Boolean {
+            val m = message.lowercase(java.util.Locale.ROOT)
+            return m.contains("no longer available") ||
+                m.contains("is not found") ||
+                m.contains("not found for api version") ||
+                m.contains("models/gemini") && m.contains("404") ||
+                m.contains(""code":404") ||
+                m.contains("http 404") && m.contains("models/")
+        }
         private const val PLACEHOLDER = "MY_GEMINI_API_KEY"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
