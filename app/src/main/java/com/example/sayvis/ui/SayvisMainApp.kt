@@ -132,6 +132,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
     val connectivity by viewModel.connectivity.collectAsState()
     val sportsSuggestions: List<com.example.sayvis.ai.SearchTasteEngine.Suggestion> by viewModel.sportsSuggestions.collectAsState()
     val recentSearchCount = viewModel.recentSearches().size
+    val marketSnapshot by viewModel.marketSnapshot.collectAsState()
     var importedNote by remember { mutableStateOf("") }
 
     val strings = remember(isPersian) { SayvisStrings.of(isPersian) }
@@ -335,7 +336,8 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         onSendMessage = { viewModel.sendMessage(it) },
                         onApproveOpportunity = { viewModel.approveOpportunity(it) },
                         onDismissOpportunity = { viewModel.dismissOpportunity(it) },
-                        onToggleEmergencyLock = { viewModel.toggleEmergencyLock() }
+                        onToggleEmergencyLock = { viewModel.toggleEmergencyLock() },
+                        marketSnapshot = marketSnapshot
                     )
 
                     SayvisScreen.ASSISTANT -> ChatScreen(

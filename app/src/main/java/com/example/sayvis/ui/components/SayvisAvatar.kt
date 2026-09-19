@@ -1,6 +1,5 @@
 package com.example.sayvis.ui.components
 
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -8,36 +7,44 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.sayvis.settings.AiVisualStyle
 import com.example.sayvis.ui.AvatarState
+import com.example.sayvis.ui.theme.SayvisGold
+import com.example.sayvis.ui.theme.SayvisGoldLight
 import com.example.sayvis.ui.theme.SayvisRedAlert
 import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * The SAYVIS avatar rendering the four atomic-breathing AI views
- * ([AiVisualStyle]): geometric wireframe with electron orbits, stereologic
- * sections, a binary 0/1 glyph ring and a hologram scan — all cycling through
- * the five-colour neon palette and reacting to the microphone [level].
+ * The SAYVIS atomic core (v5.1.0) — the "breathing reactor" the owner asked
+ * for: a golden nucleus around three elliptical electron orbits that never
+ * stop moving, exactly like breathing:
+ *
+ *  - IDLE             slow spin + a ~2.4s inhale/exhale glow (rest breathing);
+ *  - THINKING         the reactor spins up (3x rotation) and burns brighter;
+ *  - SPEAKING         nucleus pulses with every cycle (voice-breath);
+ *  - OPPORTUNITY_AWARE an electron flare sweeps the orbits in gold;
+ *  - EMERGENCY_LOCKED orbits freeze into alert red.
+ *
+ * The microphone [level] feeds the nucleus radius and the electron trails so
+ * the core literally breathes with ambient activity. All legacy parameters
+ * ([style], [level]) stay for compatibility — every style now renders this
+ * signature golden atom.
  */
 @Composable
 fun SayvisAvatar(
@@ -47,190 +54,190 @@ fun SayvisAvatar(
     style: AiVisualStyle = AiVisualStyle.GEOMETRIC,
     level: Float = 0f
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "avatar_loop")
+    val infiniteTransition = rememberInfiniteTransition(label = "atomic_core")
 
-    val rotation by infiniteTransition.animateFloat(
+    // Orbit spin: the core "thinks faster" — 3x when THINKING, frozen when locked.
+    val spinDuration = when (state) {
+        AvatarState.THINKING -> 3000
+        AvatarState.SPEAKING -> 5200
+        AvatarState.EMERGENCY_LOCKED -> 24000
+        else -> 9000
+    }
+    val spin by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = if (state == AvatarState.THINKING) 3000 else 12000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "halo_rotation"
+        animationSpec = infiniteRepeatable(animation = tween(durationMillis = spinDuration, easing = LinearEasing)),
+        label = "orbit_spin"
+    )
+    val spin2 by infiniteTransition.animateFloat(
+        initialValue = 360f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(animation = tween(durationMillis = (spinDuration * 14) / 10, easing = LinearEasing)),
+        label = "orbit_spin_reverse"
     )
 
-    val pulse by infiniteTransition.animateFloat(
-        initialValue = 0.92f,
-        targetValue = 1.08f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = if (state == AvatarState.SPEAKING) 600 else 2400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse_scale"
+    // Breathing: nucleus scale + glow, faster when speaking (voice-breath).
+    val breathDuration = when (state) {
+        AvatarState.SPEAKING -> 700
+        AvatarState.THINKING -> 1100
+        else -> 2400
+    }
+    val breath by infiniteTransition.animateFloat(
+        initialValue = 0.88f,
+        targetValue = 1.12f,
+        animationSpec = infiniteRepeatable(animation = tween(breathDuration), repeatMode = RepeatMode.Reverse),
+        label = "core_breath"
     )
 
-    val coreColor: Color = when (state) {
-        AvatarState.IDLE -> aiStyleColor(rotation / 360f)
-        AvatarState.THINKING -> aiStyleColor(rotation / 360f + 0.1f)
-        AvatarState.SPEAKING -> aiStyleColor(rotation / 360f + 0.25f)
-        AvatarState.OPPORTUNITY_AWARE -> aiStyleColor(rotation / 360f + 0.55f)
+    // Electron flare sweep (opportunity awareness = a comet laps the orbits).
+    val flare by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = if (state == AvatarState.OPPORTUNITY_AWARE) 1400 else 6000, easing = LinearEasing)
+        ),
+        label = "electron_flare"
+    )
+
+    val voiceLevel = level.coerceIn(0f, 1f)
+
+    val nucleusColor = when (state) {
         AvatarState.EMERGENCY_LOCKED -> SayvisRedAlert
-        AvatarState.OFFLINE -> Color(0xFF94A3B8)
+        AvatarState.OFFLINE -> Color(0xFF8A929C)
+        else -> SayvisGoldLight
     }
-    val accentColor: Color = aiStyleColor(rotation / 360f + 0.4f)
-
-    val glyphPaint = remember {
-        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = android.graphics.Typeface.MONOSPACE
-            textAlign = android.graphics.Paint.Align.CENTER
-        }
+    val orbitColor = when (state) {
+        AvatarState.EMERGENCY_LOCKED -> SayvisRedAlert
+        AvatarState.OFFLINE -> Color(0xFF6E757E)
+        else -> SayvisGold
     }
 
-    Box(
+    Canvas(
         modifier = modifier
             .size(size)
-            .testTag("sayvis_avatar"),
-        contentAlignment = Alignment.Center
+            .testTag("sayvis_avatar")
     ) {
-        Canvas(modifier = Modifier.size(size)) {
-            val center = Offset(this.size.width / 2f, this.size.height / 2f)
-            val baseRadius = (this.size.minDimension / 2f) * 0.72f * pulse
-            val voiceLevel = level.coerceIn(0f, 1f)
-            val phase = rotation / 360f
-            val angle = Math.toRadians(rotation.toDouble()).toFloat()
+        val center = Offset(size.toPx() / 2f, size.toPx() / 2f)
+        val baseRadius = size.toPx() / 2f
 
-            // 1. Ambient breathing glow (palette + voice reactive).
+        // Ambient halo — the exhale of the reactor.
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    nucleusColor.copy(alpha = 0.16f + 0.10f * breath - 0.08f + 0.10f * voiceLevel),
+                    Color.Transparent
+                ),
+                center = center,
+                radius = baseRadius * (0.82f + 0.10f * breath)
+            ),
+            radius = baseRadius * (0.82f + 0.10f * breath),
+            center = center
+        )
+
+        // Three golden elliptical orbits at distinct angles — the atom.
+        val orbitStroke = 1.6.dp.toPx()
+        drawOrbit(center, baseRadius * 0.92f, 0.42f, spin, orbitColor, orbitStroke)
+        drawOrbit(center, baseRadius * 0.84f, 0.42f, spin + 60f, orbitColor.copy(alpha = 0.85f), orbitStroke)
+        drawOrbit(center, baseRadius * 0.74f, 0.40f, spin2, orbitColor.copy(alpha = 0.7f), orbitStroke * 0.9f)
+
+        // Electrons riding the outer two orbits (three per orbit).
+        drawElectrons(center, baseRadius * 0.92f, 0.42f, spin, nucleusColor, flare, 0)
+        drawElectrons(center, baseRadius * 0.84f, 0.42f, spin + 60f, nucleusColor, 1f - flare, 1)
+
+        // Opportunity flare: a comet sweeping the outermost orbit.
+        if (state == AvatarState.OPPORTUNITY_AWARE) {
+            val angle = flare * 360f
+            val rad = Math.toRadians(angle.toDouble())
+            val rx = baseRadius * 0.92f
+            val ry = rx * 0.42f
+            val ex = center.x + rx * cos(rad).toFloat()
+            val ey = center.y + ry * sin(rad).toFloat()
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(coreColor.copy(alpha = 0.30f + 0.15f * voiceLevel), Color.Transparent),
-                    center = center,
-                    radius = baseRadius * (1.35f + 0.12f * voiceLevel)
+                    colors = listOf(Color.White, nucleusColor, Color.Transparent),
+                    center = Offset(ex, ey),
+                    radius = 7.dp.toPx()
                 ),
-                radius = baseRadius * (1.35f + 0.12f * voiceLevel),
-                center = center
-            )
-
-            // 2. Style-specific atomic view.
-            when (style) {
-                AiVisualStyle.GEOMETRIC -> {
-                    val projected = AiStyleMath.rotateAndProject(angle, angle * 0.6f + 0.7f)
-                    val wireRadius = baseRadius * 0.95f
-                    val verts = ArrayList<Offset>(projected.size / 2)
-                    for (i in projected.indices step 2) {
-                        verts.add(Offset(center.x + projected[i] * wireRadius, center.y + projected[i + 1] * wireRadius))
-                    }
-                    for ((a, b) in AiStyleMath.ICOSAHEDRON_EDGES) {
-                        val depth = ((projected[a * 2 + 1] + 1.5f) / 3f).coerceIn(0f, 1f)
-                        drawLine(
-                            color = aiStyleColor(phase + depth * 0.35f, 0.35f + 0.55f * depth),
-                            start = verts[a],
-                            end = verts[b],
-                            strokeWidth = (0.8f + 1.0f * depth).dp.toPx(),
-                            cap = StrokeCap.Round
-                        )
-                    }
-                    // One electron orbit with a glowing electron.
-                    drawOval(
-                        color = accentColor.copy(alpha = 0.5f),
-                        topLeft = Offset(center.x - wireRadius, center.y - wireRadius * 0.35f),
-                        size = Size(wireRadius * 2f, wireRadius * 0.7f),
-                        style = Stroke(width = 0.9f.dp.toPx())
-                    )
-                    val ea = angle * 1.5f
-                    val (ex, ey) = AiStyleMath.orbitPosition(ea, 0.35f)
-                    drawCircle(
-                        color = Color.White,
-                        radius = 2.0f.dp.toPx(),
-                        center = Offset(center.x + ex * wireRadius, center.y + ey * wireRadius)
-                    )
-                }
-
-                AiVisualStyle.STEREOLOGY -> {
-                    val fractions = listOf(1.0f, 0.76f, 0.52f)
-                    fractions.forEachIndexed { index, fraction ->
-                        val direction = if (index % 2 == 0) rotation else -rotation * 1.3f
-                        rotate(direction, pivot = center) {
-                            val squash = 0.28f + 0.17f * index
-                            drawOval(
-                                color = aiStyleColor(phase + index * 0.25f, 0.85f),
-                                topLeft = Offset(center.x - baseRadius * fraction, center.y - baseRadius * fraction * squash),
-                                size = Size(baseRadius * 2f * fraction, baseRadius * 2f * fraction * squash),
-                                style = Stroke(width = 1.2.dp.toPx())
-                            )
-                        }
-                    }
-                }
-
-                AiVisualStyle.BINARY -> {
-                    val glyphCount = 10
-                    val native = drawContext.canvas.nativeCanvas
-                    glyphPaint.textSize = baseRadius * 0.30f
-                    for (i in 0 until glyphCount) {
-                        val glyphAngle = Math.toRadians((i * (360f / glyphCount) + rotation).toDouble())
-                        val x = center.x + baseRadius * cos(glyphAngle).toFloat()
-                        val y = center.y + baseRadius * sin(glyphAngle).toFloat() + glyphPaint.textSize * 0.36f
-                        val bit = ((i * 31 + (rotation / 30f).toInt()) % 3) != 0
-                        val glyphColor = aiStyleColor(phase + i / glyphCount.toFloat())
-                        val alpha = if (i % 2 == 0) 235 else 140
-                        glyphPaint.color = android.graphics.Color.argb(
-                            alpha,
-                            (glyphColor.red * 255).toInt(),
-                            (glyphColor.green * 255).toInt(),
-                            (glyphColor.blue * 255).toInt()
-                        )
-                        native.drawText(if (bit) "1" else "0", x, y, glyphPaint)
-                    }
-                }
-
-                AiVisualStyle.HOLOGRAM -> {
-                    drawCircle(
-                        color = coreColor.copy(alpha = 0.8f),
-                        radius = baseRadius,
-                        center = center,
-                        style = Stroke(width = 1.3.dp.toPx())
-                    )
-                    val beams = 3
-                    for (b in 0 until beams) {
-                        val beamPhase = ((phase) + b / beams.toFloat()) % 1f
-                        val y = center.y - baseRadius + 2f * baseRadius * beamPhase
-                        drawLine(
-                            color = aiStyleColor(phase + b * 0.3f, 0.7f - 0.18f * b),
-                            start = Offset(center.x - baseRadius * 0.96f, y),
-                            end = Offset(center.x + baseRadius * 0.96f, y),
-                            strokeWidth = (1.3f - b * 0.3f).dp.toPx()
-                        )
-                    }
-                }
-            }
-
-            // 3. Inner hexagonal cognitive core.
-            val hexPath = Path()
-            val hexRadius = baseRadius * 0.60f
-            for (i in 0 until 6) {
-                val hexAngle = (i * 60f - 30f) * (Math.PI / 180f)
-                val x = (center.x + hexRadius * cos(hexAngle)).toFloat()
-                val y = (center.y + hexRadius * sin(hexAngle)).toFloat()
-                if (i == 0) hexPath.moveTo(x, y) else hexPath.lineTo(x, y)
-            }
-            hexPath.close()
-
-            drawPath(path = hexPath, color = coreColor.copy(alpha = 0.22f))
-            drawPath(path = hexPath, color = coreColor, style = Stroke(width = 2.dp.toPx()))
-
-            // 4. Central sovereign nucleus (breathes with the voice).
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.95f),
-                        accentColor,
-                        Color.Transparent
-                    ),
-                    center = center,
-                    radius = 9.dp.toPx() * (1f + 0.25f * voiceLevel)
-                ),
-                radius = 9.dp.toPx() * (1f + 0.25f * voiceLevel),
-                center = center
+                radius = 7.dp.toPx(),
+                center = Offset(ex, ey)
             )
         }
+
+        // The nucleus — the breathing heart of SAYVIS.
+        val nucleusRadius = baseRadius * (0.26f + 0.05f * breath + 0.06f * voiceLevel)
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.98f),
+                    nucleusColor,
+                    orbitColor.copy(alpha = 0.55f),
+                    Color.Transparent
+                ),
+                center = center,
+                radius = nucleusRadius * 1.5f
+            ),
+            radius = nucleusRadius * 1.5f,
+            center = center
+        )
+        drawCircle(
+            color = Color.White.copy(alpha = 0.9f),
+            radius = nucleusRadius * 0.34f,
+            center = center
+        )
+    }
+}
+
+/** One elliptical orbit rotated by [angle] degrees around [center]. */
+private fun DrawScope.drawOrbit(
+    center: Offset,
+    radius: Float,
+    squash: Float,
+    angle: Float,
+    color: Color,
+    stroke: Float
+) {
+    rotate(degrees = angle, pivot = center) {
+        drawOval(
+            brush = Brush.horizontalGradient(
+                listOf(color.copy(alpha = 0.4f), color, color.copy(alpha = 0.4f))
+            ),
+            topLeft = Offset(center.x - radius, center.y - radius * squash),
+            size = androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f * squash),
+            style = Stroke(width = stroke)
+        )
+    }
+}
+
+/** Three electrons on one orbit; the leading one carries the [flare] glow. */
+private fun DrawScope.drawElectrons(
+    center: Offset,
+    radius: Float,
+    squash: Float,
+    angle: Float,
+    color: Color,
+    flare: Float,
+    seed: Int
+) {
+    for (i in 0 until 3) {
+        val degree = angle + i * 120f + seed * 37f
+        val rad = Math.toRadians(degree.toDouble())
+        val ex = center.x + radius * cos(rad).toFloat()
+        val ey = center.y + radius * squash * sin(rad).toFloat()
+        val isLeader = (i + seed) % 3 == 0
+        val glowRadius = if (isLeader) 3.2.dp.toPx() * (0.8f + 0.6f * flare) else 2.dp.toPx()
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = if (isLeader) 0.95f else 0.75f),
+                    color,
+                    Color.Transparent
+                ),
+                center = Offset(ex, ey),
+                radius = glowRadius * 1.6f
+            ),
+            radius = glowRadius * 1.6f,
+            center = Offset(ex, ey)
+        )
+        drawCircle(color = Color.White.copy(alpha = 0.85f), radius = glowRadius * 0.4f, center = Offset(ex, ey))
     }
 }

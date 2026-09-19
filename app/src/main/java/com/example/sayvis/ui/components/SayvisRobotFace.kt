@@ -257,7 +257,7 @@ fun SayvisRobotFace(
 
             // --- chin notch: the SAYVIS plate reduced to one quiet gold tick ---
             drawRoundRect(
-                color = Color(0xFFC7CCD3).copy(alpha = if (offline) 0.2f else 0.5f),
+                color = Color(0xFFD4AF37).copy(alpha = if (offline) 0.2f else 0.5f),
                 topLeft = Offset(cx - px(9f), headTop + headH + px(5f)),
                 size = Size(px(18f), px(1.6f)),
                 cornerRadius = CornerRadius(px(0.8f))

@@ -432,8 +432,8 @@ class FloatingAvatarService : Service() {
             private const val LONG_PRESS_MS = 600L
 
             // SAYVIS theme colours mirrored for the classic-View overlay canvas.
-            private val CYAN = 0xFFE8EAED.toInt()
-            private val GOLD = 0xFFC7CCD3.toInt()
+            private val CYAN = 0xFFD4AF37.toInt()
+            private val GOLD = 0xFFF3CA68.toInt()
             private val GREEN = 0xFF10B981.toInt()
             private val SILVER = 0xFF94A3B8.toInt()
             private val BACKDROP = 0xD90B1220.toInt()

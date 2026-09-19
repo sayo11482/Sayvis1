@@ -13,13 +13,13 @@ val SayvisSurface = Color(0xFF14171B)
 val SayvisSurfaceVariant = Color(0xFF1C2026)
 val SayvisBorder = Color(0xFF272C33)
 
-// Premium actions: restrained champagne-silver (GOLD tone in a gray world).
-val SayvisGold = Color(0xFFC7CCD3)
-val SayvisGoldLight = Color(0xFFDDE1E6)
+// Premium actions: deep aurum (kept distinct from the bright accent).
+val SayvisGold = Color(0xFFC9A227)
+val SayvisGoldLight = Color(0xFFF3CA68)
 
-// Interactive accent: silver-white (was cyan — Arena black/gray redesign).
-val SayvisCyan = Color(0xFFE8EAED)
-val SayvisCyanLight = Color(0xFFF4F5F7)
+// Interactive accent: AURUM gold (v5.1.0 atomic-gold identity).
+val SayvisCyan = Color(0xFFD4AF37)
+val SayvisCyanLight = Color(0xFFF3CA68)
 
 val SayvisSilver = Color(0xFFA6ADB6)
 val SayvisMuted = Color(0xFF6E757E)

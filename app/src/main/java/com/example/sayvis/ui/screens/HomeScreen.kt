@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Code
@@ -69,9 +70,16 @@ import com.example.sayvis.ui.theme.SayvisCyan
 import com.example.sayvis.ui.theme.SayvisGold
 import com.example.sayvis.ui.theme.SayvisGreenSuccess
 import com.example.sayvis.ui.theme.SayvisRedAlert
+import com.example.sayvis.ui.theme.SayvisSilver
 import com.example.sayvis.ui.theme.SayvisSilverMuted
 import com.example.sayvis.ui.theme.SayvisSurface
 import com.example.sayvis.ui.theme.SayvisSurfaceVariant
+
+private fun fmtQuote(v: Double): String = when {
+    v >= 100000 -> "%.0f".format(v)
+    v >= 1000 -> "%.1f".format(v)
+    else -> "%.4f".format(v)
+}
 
 @Composable
 fun HomeScreen(
@@ -89,6 +97,7 @@ fun HomeScreen(
     onApproveOpportunity: (String) -> Unit,
     onDismissOpportunity: (String) -> Unit,
     onToggleEmergencyLock: () -> Unit,
+    marketSnapshot: com.example.sayvis.trading.MarketDataService.Snapshot? = null,
     modifier: Modifier = Modifier
 ) {
     var quickInput by remember { mutableStateOf("") }
@@ -171,6 +180,14 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
+                    text = if (isPersian) "سایو · پلتفرم هوش مصنوعی شخصی" else "SAYO · Personal AI Platform",
+                    fontSize = 11.sp,
+                    color = SayvisGold,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
                     text = if (isPersian) "سایویس" else "SAYVIS",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold,
@@ -197,6 +214,115 @@ fun HomeScreen(
                     color = if (emergencyLockActive) SayvisRedAlert else SayvisSilverMuted,
                     fontSize = 13.sp
                 )
+            }
+        }
+
+        // ===== LIVE FOREX/MARKET STRIP (v5.1.0) — real symbols, real data ====
+        item {
+            val snap = marketSnapshot
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(SayvisSurface)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.ShowChart,
+                        contentDescription = null,
+                        tint = SayvisGold,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isPersian) "مارکت لایو — فارکس و فلزات" else "Live market — forex & metals",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SayvisSilver,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(SayvisGreenSuccess)
+                    )
+                }
+                val quotes = snap?.quotes?.values?.take(4).orEmpty()
+                if (quotes.isEmpty()) {
+                    Text(
+                        text = if (isPersian) "در حال دریافت نمادهای زنده…" else "Fetching live symbols…",
+                        fontSize = 10.5.sp,
+                        color = SayvisSilverMuted
+                    )
+                } else {
+                    quotes.forEach { q ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = q.symbol.labelFa,
+                                fontSize = 11.5.sp,
+                                color = SayvisSilver,
+                                modifier = Modifier.weight(1f)
+                            )
+                            val change = q.change24hPercent
+                            val changeColor = when {
+                                change == null -> SayvisSilverMuted
+                                change >= 0 -> SayvisGreenSuccess
+                                else -> SayvisRedAlert
+                            }
+                            Text(
+                                text = fmtQuote(q.price),
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = change?.let { (if (it >= 0) "+" else "") + "%.2f%%".format(it) }
+                                    ?: if (isPersian) "—" else "-",
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = changeColor
+                            )
+                        }
+                    }
+                    // Mini sparkline of the first available series (live chart pulse).
+                    val series = snap.series.values.firstOrNull { it.size >= 10 }
+                    if (series != null) {
+                        androidx.compose.foundation.Canvas(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(34.dp)
+                                .testTag("home_market_spark")
+                        ) {
+                            val values = series.takeLast(60)
+                            val minV = values.min()
+                            val maxV = values.max()
+                            val span = (maxV - minV).takeIf { it > 0f } ?: 1f
+                            val stepX = size.width / (values.size - 1).coerceAtLeast(1)
+                            val up = values.last() >= values.first()
+                            val lineColor = if (up) SayvisGreenSuccess else SayvisRedAlert
+                            val path = androidx.compose.ui.graphics.Path()
+                            values.forEachIndexed { i, v ->
+                                val x = i * stepX
+                                val y = size.height - ((v - minV) / span) * size.height
+                                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                            }
+                            drawPath(
+                                path = path,
+                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    listOf(lineColor.copy(alpha = 0.5f), lineColor)
+                                ),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                            )
+                        }
+                    }
+                }
             }
         }
 
