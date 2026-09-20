@@ -1,9 +1,9 @@
 package com.odin.agent.trading
 
 /**
- * ODIN v1.0.16 - Symbol Manager - REAL prices - Tether unit - Correct IRR
- * واحد تتر - دلار به تومان 235 هزار تومان واقعی (2025-2026 بازار آزاد)
- * All prices REAL - No simulated visible
+ * ODIN v1.0.24 - Symbol Manager - VITTAVERSE ONLY - REAL - واحد مشخص تومان/تتر + اسپرد محاسبه
+ * فقط بروکر ویتاورس - https://vittaverse.com/fa/
+ * تمام قیمت‌ها واقعی - واحد مشخص - اسپرد محاسبه می‌شود
  */
 
 data class TradingSymbol(

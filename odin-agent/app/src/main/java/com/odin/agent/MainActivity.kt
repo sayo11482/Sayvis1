@@ -28,16 +28,10 @@ class MainActivity : ComponentActivity() {
 enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageVector) {
     DASHBOARD("Dashboard", "داشبورد", Icons.Default.Dashboard),
     LIVE_CHART("Real Chart", "چارت واقعی", Icons.Default.ShowChart),
-    BACKTEST_CONT("No Ban", "بدون ممنوعیت", Icons.Default.AllInclusive),
-    SCANNER_ALARM("Real Scanner", "اسکنر واقعی", Icons.Default.NotificationImportant),
-    AWARE("AWARE", "آگاه", Icons.Default.Psychology),
-    TRADING_HUB("Trading", "معاملات", Icons.Default.SwapHoriz),
-    MT5_REAL("MT5 Real", "MT5 واقعی", Icons.Default.AccountBalance),
-    NOBITEX_REAL("Nobitex", "نوبیتکس", Icons.Default.CurrencyExchange),
-    LIT_MONITOR("80% Monitor", "مانیتور 80%", Icons.Default.Radar),
-    STRATEGIES("Strategies", "استراتژی‌ها", Icons.Default.AutoAwesome),
-    GMAIL_NEWS("Gmail News", "اخبار جیمیل", Icons.Default.Email),
-    SETTINGS("Settings", "تنظیمات", Icons.Default.Settings)
+    SCANNER_ALARM("Scanner Vittaverse", "اسکنر ویتاورس", Icons.Default.NotificationImportant),
+    TRADING_HUB("Vittaverse", "ویتاورس", Icons.Default.AccountBalance),
+    BACKTEST("Backtest Vittaverse", "بک‌تست ویتاورس", Icons.Default.BarChart),
+    AWARE("AWARE Security", "امنیت آگاه", Icons.Default.Security)
 }
 
 @Composable
@@ -46,26 +40,14 @@ fun OdinApp() {
     var isPersian by remember { mutableStateOf(true) }
     val riskManager = remember { RiskManager(initialCapital = 10000.0) }
     var riskStatus by remember { mutableStateOf(riskManager.getStatus()) }
-    var enabledStrategies by remember {
-        mutableStateOf(listOf(
-            QuantStrategyType.TV_80_PERCENT,
-            QuantStrategyType.LIT_LIQUIDITY_INVERSION,
-            QuantStrategyType.TREND_FOLLOWING,
-            QuantStrategyType.MEAN_REVERSION,
-            QuantStrategyType.MOMENTUM_BREAKOUT
-        ))
-    }
     var currentRegime by remember { mutableStateOf(MarketRegime.TRENDING) }
     var regimeIndex by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) {
         while (true) {
             kotlinx.coroutines.delay(10000)
-            // REAL regime detection - cycle deterministically or from real market data - NO RANDOM
-            // Will be updated from RealMarketDataManager real indicators in future
             val regimes = MarketRegime.values()
             regimeIndex = (regimeIndex + 1) % regimes.size
-            // For now keep trending as default REAL, actual detection from EntryScanner REAL
-            currentRegime = regimes[regimeIndex % 2] // Alternate trending/ranging deterministically - REAL only
+            currentRegime = regimes[regimeIndex % 2]
             riskStatus = riskManager.getStatus()
         }
     }
@@ -75,20 +57,18 @@ fun OdinApp() {
         containerColor = OdinDeepSpace,
         bottomBar = {
             NavigationBar(containerColor = Color(0xFF050505), contentColor = OdinSilver) {
-                // New requirement: bottom bar has Trading instead of separate Nobitex and MT5
-                // 5 tabs: Dashboard, Real Chart, Scanner, Trading (MT5+Nobitex hub), AWARE
                 val mainTabs = listOf(
                     OdinScreen.DASHBOARD,
                     OdinScreen.LIVE_CHART,
                     OdinScreen.SCANNER_ALARM,
                     OdinScreen.TRADING_HUB,
-                    OdinScreen.AWARE
+                    OdinScreen.BACKTEST
                 )
                 mainTabs.forEach { screen ->
                     NavigationBarItem(
                         icon = { Icon(screen.icon, contentDescription = null) },
                         label = { Text(text = if (isPersian) screen.titleFa else screen.titleEn, maxLines = 1, fontSize = androidx.compose.ui.unit.TextUnit.Unspecified) },
-                        selected = currentScreen == screen || (screen == OdinScreen.TRADING_HUB && (currentScreen == OdinScreen.MT5_REAL || currentScreen == OdinScreen.NOBITEX_REAL)),
+                        selected = currentScreen == screen,
                         onClick = { currentScreen = screen },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = OdinGoldLight,
@@ -104,8 +84,11 @@ fun OdinApp() {
         topBar = {
             @OptIn(ExperimentalMaterial3Api::class)
             TopAppBar(
-                title = { Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) { Text(text = "odin metatrading", color = OdinGoldLight, fontWeight = FontWeight.Black, fontSize = 14.sp) } },
-                actions = { IconButton(onClick = { isPersian = !isPersian }) { Text(text = if (isPersian) "FA | EN" else "EN | FA", color = OdinGold, fontWeight = FontWeight.Bold, fontSize = 10.sp) } },
+                title = { Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) { Text(text = "ODIN × ویتاورس v1.0.24", color = OdinGoldLight, fontWeight = FontWeight.Black, fontSize = 13.sp) } },
+                actions = {
+                    IconButton(onClick = { isPersian = !isPersian }) { Text(text = if (isPersian) "FA | EN" else "EN | FA", color = OdinGold, fontWeight = FontWeight.Bold, fontSize = 10.sp) }
+                    IconButton(onClick = { currentScreen = OdinScreen.AWARE }) { Icon(Icons.Default.Security, contentDescription = null, tint = if (currentScreen == OdinScreen.AWARE) OdinGreen else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF050505), titleContentColor = OdinSilver)
             )
         }
@@ -117,9 +100,9 @@ fun OdinApp() {
                     currentRegime = currentRegime,
                     isPersian = isPersian,
                     onNavigateToStrategies = { currentScreen = OdinScreen.TRADING_HUB },
-                    onNavigateToBacktest = { currentScreen = OdinScreen.BACKTEST_CONT },
+                    onNavigateToBacktest = { currentScreen = OdinScreen.BACKTEST },
                     onNavigateToPaperTrade = { currentScreen = OdinScreen.LIVE_CHART },
-                    onNavigateToGmailNews = { currentScreen = OdinScreen.GMAIL_NEWS }
+                    onNavigateToGmailNews = { currentScreen = OdinScreen.AWARE }
                 )
                 OdinScreen.LIVE_CHART -> {
                     if (selectedEntrySignal != null) {
@@ -128,16 +111,10 @@ fun OdinApp() {
                         LiveChartScreen(isPersian = isPersian)
                     }
                 }
-                OdinScreen.BACKTEST_CONT -> ContinuousBacktestScreen(isPersian = isPersian)
                 OdinScreen.SCANNER_ALARM -> EntryScannerScreen(isPersian = isPersian, onSignalClick = { signal -> selectedEntrySignal = signal; currentScreen = OdinScreen.LIVE_CHART })
                 OdinScreen.TRADING_HUB -> TradingHubScreen(isPersian = isPersian)
-                OdinScreen.MT5_REAL -> TradingHubScreen(isPersian = isPersian)
-                OdinScreen.NOBITEX_REAL -> TradingHubScreen(isPersian = isPersian)
+                OdinScreen.BACKTEST -> BacktestScreen(isPersian = isPersian)
                 OdinScreen.AWARE -> AwareScreen(isPersian = isPersian)
-                OdinScreen.LIT_MONITOR -> MultiSymbolScreen(isPersian = isPersian)
-                OdinScreen.STRATEGIES -> StrategiesScreen(isPersian = isPersian, enabledStrategies = enabledStrategies, onToggleStrategy = { type, enabled -> enabledStrategies = if (enabled) enabledStrategies + type else enabledStrategies - type })
-                OdinScreen.GMAIL_NEWS -> GmailNewsScreen(isPersian = isPersian)
-                OdinScreen.SETTINGS -> SettingsScreen(isPersian = isPersian)
             }
         }
     }

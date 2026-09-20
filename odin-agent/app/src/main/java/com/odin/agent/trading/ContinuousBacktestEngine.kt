@@ -54,10 +54,11 @@ class ContinuousBacktestEngine {
     private val _state = MutableStateFlow(ContinuousBacktestState())
     val state: StateFlow<ContinuousBacktestState> = _state
 
-    private val initialCapital = 100.0
+    private var initialCapital = 100.0
     private val indicators = TradingViewIndicators()
     private val marketData = RealMarketDataManager()
 
+    fun setCapital(capital: Double) { initialCapital = capital }
     fun startContinuous() { _state.value = _state.value.copy(isRunning = true) }
     fun stopContinuous() { _state.value = _state.value.copy(isRunning = false) }
 
