@@ -8,30 +8,44 @@ import com.example.sayvis.ai.ChatTurn
 import com.example.sayvis.ai.ProviderType
 import com.example.sayvis.ai.TranslationResult
 import com.example.sayvis.ai.TranslationService
+import com.example.sayvis.ai.toProviderType
 import com.example.sayvis.data.local.SayvisDatabase
 import com.example.sayvis.data.repository.SayvisRepository
+import com.example.sayvis.engine.AutonomousMissionAgent
 import com.example.sayvis.engine.AwareEngine
+import com.example.sayvis.engine.CognitiveIngestionItem
+import com.example.sayvis.engine.CognitiveProfileSyncEngine
+import com.example.sayvis.engine.ConnectionQuality
+import com.example.sayvis.engine.MissionSolutionPlan
+import com.example.sayvis.engine.NetworkAiStabilityManager
+import com.example.sayvis.engine.StabilityMode
 import com.example.sayvis.i18n.ContextLocalization
 import com.example.sayvis.i18n.SayvisStrings
 import com.example.sayvis.model.AuditEvent
 import com.example.sayvis.model.AwareOpportunity
 import com.example.sayvis.model.ContextSnapshot
 import com.example.sayvis.model.Device
+import com.example.sayvis.model.EpistemicStatus
 import com.example.sayvis.model.FocusActivity
 import com.example.sayvis.model.LifeDomain
 import com.example.sayvis.model.LifeScenario
 import com.example.sayvis.model.LitAnalysisSignal
 import com.example.sayvis.model.LitSignalType
+import com.example.sayvis.model.MemoryItem
+import com.example.sayvis.model.MemoryType
 import com.example.sayvis.model.Mission
 import com.example.sayvis.model.MissionStatus
 import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.model.PrivacyLevel
+import com.example.sayvis.model.RetentionPolicy
 import com.example.sayvis.model.RiskLevel
 import com.example.sayvis.model.SystemState
 import com.example.sayvis.model.UicAttribute
 import com.example.sayvis.model.UicCategory
 import com.example.sayvis.model.UicStatus
 import com.example.sayvis.scripts.AutomationScript
+import com.example.sayvis.scripts.GitHubScriptCandidate
+import com.example.sayvis.scripts.GitHubScriptIntegrator
 import com.example.sayvis.scripts.ScriptContext
 import com.example.sayvis.scripts.ScriptEffect
 import com.example.sayvis.scripts.ScriptEngine
@@ -129,7 +143,9 @@ data class ChatMessage(
     val isActionProposal: Boolean = false,
     val opportunityId: String? = null,
     val providerUsed: ProviderType? = null,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val isThinking: Boolean = false,
+    val errorCode: String? = null
 )
 
 class SayvisViewModel(application: Application) : AndroidViewModel(application) {
@@ -146,6 +162,10 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val aiOrchestrator = AIOrchestrator()
 
     val awareEngine = AwareEngine(repository)
+    val stabilityManager = NetworkAiStabilityManager(viewModelScope)
+    val missionAgent = AutonomousMissionAgent(repository)
+    val cognitiveSyncEngine = CognitiveProfileSyncEngine(repository)
+    val gitHubIntegrator = GitHubScriptIntegrator()
 
     // ------------------------------------------------------------ navigation
     private val _currentScreen = MutableStateFlow(SayvisScreen.HOME)
@@ -176,6 +196,43 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         .map { it.forceOfflineMode }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    // ------------------------------------------------ Network Stability & Speed
+    val networkSpeedDisplay: StateFlow<String> = combine(
+        stabilityManager.speedKbps,
+        forceOfflineMode,
+        isPersian
+    ) { _, offline, fa ->
+        if (offline) (if (fa) "۰ کیلوبایت/ث" else "0 KB/s") else stabilityManager.formattedSpeed(fa)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, "۴۸.۵ مگابیت/ث")
+
+    val stabilityScore: StateFlow<Int> = stabilityManager.stabilityScore
+    val stabilityMode: StateFlow<StabilityMode> = stabilityManager.stabilityMode
+    val autoRetryEnabled: StateFlow<Boolean> = stabilityManager.autoRetryEnabled
+    val autoLocalFailover: StateFlow<Boolean> = stabilityManager.autoLocalFailover
+    val networkLatencyMs: StateFlow<Long> = stabilityManager.latencyMs
+    val connectionQuality: StateFlow<ConnectionQuality> = stabilityManager.connectionQuality
+
+    fun toggleFullNetworkConnection() {
+        val currentlyOffline = settingsStore.current().forceOfflineMode
+        val nextOffline = !currentlyOffline
+        settingsStore.update { it.copy(forceOfflineMode = nextOffline) }
+        stabilityManager.setNetworkAccess(!nextOffline)
+        updateAvatarState()
+
+        audit(
+            actor = "OWNER",
+            action = if (nextOffline) "network.killswitch.disconnect_all" else "network.killswitch.reconnect_all",
+            riskLevel = RiskLevel.HIGHER_RISK,
+            auth = "OWNER_CONFIRMED",
+            result = "SUCCESS",
+            digest = if (nextOffline) "Complete network cutoff (speed 0 KB/s)" else "Complete network restored"
+        )
+    }
+
+    fun setStabilityMode(mode: StabilityMode) = stabilityManager.setStabilityMode(mode)
+    fun setAutoRetry(enabled: Boolean) = stabilityManager.setAutoRetry(enabled)
+    fun setAutoLocalFailover(enabled: Boolean) = stabilityManager.setAutoLocalFailover(enabled)
+
     fun updateSettings(mutator: (AppSettings) -> AppSettings) {
         settingsStore.update(mutator)
     }
@@ -189,10 +246,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setLanguage(language: AppLanguage) = settingsStore.setLanguage(language)
 
-    fun toggleOfflineMode() {
-        settingsStore.update { it.copy(forceOfflineMode = !it.forceOfflineMode) }
-        updateAvatarState()
-    }
+    fun toggleOfflineMode() = toggleFullNetworkConnection()
 
     fun toggleEmergencyLock() {
         val newState = !settingsStore.current().emergencyLockActive
@@ -235,6 +289,16 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val _isProbing = MutableStateFlow(false)
     val isProbing: StateFlow<Boolean> = _isProbing.asStateFlow()
 
+    // ------------------------------------------------------------ Persistent Memory
+    val allMemories: StateFlow<List<MemoryItem>> = repository.allMemories.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    private val _apiRemembered = MutableStateFlow(false)
+    val apiRemembered: StateFlow<Boolean> = combine(allMemories, _apiRemembered) { memories, localFlag ->
+        localFlag || memories.any { it.type == MemoryType.SYSTEM_MEMORY && (it.id.startsWith("mem_api_") || it.source == "AI_ORCHESTRATOR") }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     /** True when the selected provider can actually serve requests right now. */
     val aiReady: StateFlow<Boolean> = combine(settings, forceOfflineMode) { current, offline ->
         aiOrchestrator.isCloudReady(current.ai, offline) || current.ai.provider == AiProviderKind.LOCAL
@@ -254,8 +318,9 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                         messageEn = it.message ?: "Unknown error"
                     )
                 }
+            val activeProvider = settingsStore.current().ai.provider
             _probe.value = ProviderProbe(
-                provider = settingsStore.current().ai.provider,
+                provider = activeProvider,
                 model = outcome.model,
                 success = outcome.success,
                 latencyMs = outcome.latencyMs,
@@ -263,6 +328,31 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 messageEn = outcome.messageEn
             )
             _isProbing.value = false
+
+            // Remember API connection into persistent system memory upon verification
+            if (outcome.success) {
+                val fa = isPersian.value
+                val memoryItem = MemoryItem(
+                    id = "mem_api_" + UUID.randomUUID().toString().take(6),
+                    type = MemoryType.SYSTEM_MEMORY,
+                    content = if (fa) {
+                        "اتصال API سرویس ${activeProvider.name} (مدل: ${outcome.model}) با موفقیت برقرار و در حافظه ثبت شد (تأخیر: ${outcome.latencyMs}ms)."
+                    } else {
+                        "API connection established for ${activeProvider.name} (model: ${outcome.model}) and remembered into memory (${outcome.latencyMs}ms)."
+                    },
+                    source = "AI_ORCHESTRATOR",
+                    confidence = 1.0f,
+                    provenance = if (fa) "تأییدیه اتصال API" else "Verified API Probe",
+                    importance = 9,
+                    retentionPolicy = RetentionPolicy.PERSISTENT,
+                    epistemicStatus = EpistemicStatus.CONFIRMED,
+                    createdAt = System.currentTimeMillis(),
+                    updatedAt = System.currentTimeMillis()
+                )
+                repository.recordMemoryItem(memoryItem)
+                _apiRemembered.value = true
+            }
+
             audit(
                 actor = "OWNER",
                 action = "ai.provider.probe",
@@ -322,15 +412,37 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         val current = settingsStore.current()
         val persian = current.isPersian(SayvisStrings.deviceIsPersian())
 
-        _chatMessages.value = _chatMessages.value + ChatMessage(sender = "OWNER", text = text)
+        val thinkingId = "thinking_" + UUID.randomUUID().toString().take(6)
+        val thinkingMsg = ChatMessage(
+            id = thinkingId,
+            sender = "SAYVIS",
+            text = if (persian) "کد ۰۱: در حال فکر کردن و تحلیل شناختی..." else "Code 01: Reasoning & cognitive processing...",
+            isThinking = true,
+            errorCode = "01",
+            providerUsed = current.ai.provider.toProviderType()
+        )
+
+        _chatMessages.value = _chatMessages.value + ChatMessage(sender = "OWNER", text = text) + thinkingMsg
         _avatarState.value = AvatarState.THINKING
+
+        audit(
+            actor = "SAYVIS_AGENT",
+            action = "ai.query.thinking",
+            riskLevel = RiskLevel.LOW_RISK,
+            auth = "SESSION_VALIDATED",
+            result = "IN_PROGRESS",
+            digest = "[کد ۰۱] در حال تفکر: ${text.take(30)}"
+        )
 
         viewModelScope.launch {
             val uicSummary = uicAttributes.value.joinToString("\n") {
                 "- [${it.category.name}] ${it.title}: ${it.value} (status ${it.status.name}, confidence ${it.confidence})"
             }
             val systemContext = ContextLocalization.systemContextLine(contextSnapshot.value, persian)
-            val history = _chatMessages.value.takeLast(10).map { ChatTurn(it.sender, it.text) }
+            val history = _chatMessages.value
+                .filter { !it.isThinking }
+                .takeLast(10)
+                .map { ChatTurn(it.sender, it.text) }
 
             val response = aiOrchestrator.querySAYVIS(
                 prompt = text,
@@ -346,15 +458,19 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             _avatarState.value = AvatarState.SPEAKING
 
             val fallbackText = if (response.text.isBlank()) {
-                if (persian) "پاسخی تولید نشد. وضعیت سرویس هوش مصنوعی را در تنظیمات بررسی کنید."
-                else "No answer was produced. Check the AI provider status in Settings."
+                if (persian) "کد ۰۱: خطای عدم دریافت پاسخ از سرویس هوش مصنوعی. وضعیت سرویس را در تنظیمات بررسی کنید."
+                else "Code 01: No answer was produced. Check the AI provider status in Settings."
             } else response.text
 
-            _chatMessages.value = _chatMessages.value + ChatMessage(
+            val finalMsg = ChatMessage(
                 sender = "SAYVIS",
                 text = fallbackText,
-                providerUsed = response.providerUsed
+                providerUsed = response.providerUsed,
+                errorCode = if (response.isSuccess) null else "01"
             )
+
+            // Replace the thinking bubble with the real response
+            _chatMessages.value = _chatMessages.value.filter { it.id != thinkingId } + finalMsg
             updateAvatarState()
 
             audit(
@@ -363,7 +479,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 riskLevel = RiskLevel.LOW_RISK,
                 auth = "SESSION_VALIDATED",
                 result = if (response.isSuccess) "SUCCESS" else "FAILED",
-                digest = "Provider ${response.providerUsed.displayName} model ${response.model} (${text.take(30)})"
+                digest = "[کد ۰۱] Provider ${response.providerUsed.displayName} model ${response.model} (${text.take(30)})"
             )
         }
     }
@@ -601,6 +717,31 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     val scripts: StateFlow<List<AutomationScript>> = scriptStore.scripts
     val lastScriptRun: StateFlow<ScriptRunResult?> = scriptStore.lastRun
 
+    private val _gitHubCandidates = MutableStateFlow<List<GitHubScriptCandidate>>(emptyList())
+    val gitHubCandidates: StateFlow<List<GitHubScriptCandidate>> = _gitHubCandidates.asStateFlow()
+
+    fun loadGitHubScriptCandidates(repo: String = "sayo11482/Sayvis1") {
+        _gitHubCandidates.value = gitHubIntegrator.discoverCandidates(repo)
+    }
+
+    fun mergeSelectedGitHubScripts(selectedList: List<GitHubScriptCandidate>) {
+        if (selectedList.isEmpty()) return
+        val (count, titles) = gitHubIntegrator.mergeCandidates(selectedList, scriptStore, scriptEngine)
+        val persian = isPersian.value
+        pushAssistantMessage(
+            if (persian) "📦 $count اسکریپت از مخزن گیت‌هاب با موفقیت با سایویس ادغام شد: ${titles.joinToString("، ")}"
+            else "📦 $count scripts merged from GitHub into Sayvis: ${titles.joinToString(", ")}"
+        )
+        audit(
+            actor = "OWNER",
+            action = "automation.github.merge",
+            riskLevel = RiskLevel.MEDIUM_RISK,
+            auth = "OWNER_CONFIRMED",
+            result = "SUCCESS",
+            digest = "Merged $count scripts from GitHub: ${titles.joinToString()}"
+        )
+    }
+
     fun saveScript(script: AutomationScript) = scriptStore.upsert(script)
     fun deleteScript(id: String) = scriptStore.delete(id)
     fun toggleScript(id: String, enabled: Boolean) = scriptStore.setEnabled(id, enabled)
@@ -757,6 +898,25 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // ------------------------------------------------------------------ UIC
+    private val _syncCandidates = MutableStateFlow<List<CognitiveIngestionItem>>(emptyList())
+    val syncCandidates: StateFlow<List<CognitiveIngestionItem>> = _syncCandidates.asStateFlow()
+
+    fun loadCognitiveSyncCandidates() {
+        _syncCandidates.value = cognitiveSyncEngine.discoverIngestionItems()
+    }
+
+    fun syncAllCognitiveSources() {
+        val items = if (_syncCandidates.value.isEmpty()) cognitiveSyncEngine.discoverIngestionItems() else _syncCandidates.value
+        viewModelScope.launch {
+            val count = cognitiveSyncEngine.syncItemsToProfile(items, isPersian.value)
+            val persian = isPersian.value
+            pushAssistantMessage(
+                if (persian) "🧠 $count ویژگی شناختی جدید بر اساس سرچ‌های گوگل، یادداشت‌های دیوایس و آلارم‌ها به پرونده افزوده شد."
+                else "🧠 $count new cognitive attributes ingested into profile from Google searches, notes and alarms."
+            )
+        }
+    }
+
     fun confirmUicAttribute(id: String) {
         viewModelScope.launch { repository.updateUicStatus(id, UicStatus.CONFIRMED) }
     }
@@ -814,6 +974,49 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // ------------------------------------------------------------- missions
+    private val _currentMissionPlan = MutableStateFlow<MissionSolutionPlan?>(null)
+    val currentMissionPlan: StateFlow<MissionSolutionPlan?> = _currentMissionPlan.asStateFlow()
+
+    private val _missionAgentBusy = MutableStateFlow(false)
+    val missionAgentBusy: StateFlow<Boolean> = _missionAgentBusy.asStateFlow()
+
+    fun searchMissionSolution(missionId: String) {
+        val target = missions.value.find { it.id == missionId } ?: return
+        _missionAgentBusy.value = true
+        viewModelScope.launch {
+            val plan = missionAgent.searchSolution(target, isPersian.value)
+            _currentMissionPlan.value = plan
+            _missionAgentBusy.value = false
+            audit(
+                actor = "AUTONOMOUS_MISSION_AGENT",
+                action = "mission.agent.search_solution",
+                riskLevel = RiskLevel.LOW_RISK,
+                auth = "SYSTEM_VALIDATED",
+                result = "SUCCESS",
+                digest = "Formulated plan for ${target.title}: ${plan.strategy(isPersian.value)}"
+            )
+        }
+    }
+
+    fun executeMissionSolution(plan: MissionSolutionPlan) {
+        val target = missions.value.find { it.id == plan.missionId } ?: return
+        _missionAgentBusy.value = true
+        viewModelScope.launch {
+            val updated = missionAgent.executeSolution(plan, target)
+            _currentMissionPlan.value = null
+            _missionAgentBusy.value = false
+            val persian = isPersian.value
+            pushAssistantMessage(
+                if (persian) "✅ ایجنت مأموریت راهکار را اجرا کرد: پیشرفت به ${updated.progressPercent}٪ رسید و موانع مرتفع شدند."
+                else "✅ Mission Agent executed solution: progress updated to ${updated.progressPercent}% and blockers resolved."
+            )
+        }
+    }
+
+    fun dismissMissionPlan() {
+        _currentMissionPlan.value = null
+    }
+
     fun toggleMissionTask(missionId: String, taskId: String, currentCompleted: Boolean) {
         viewModelScope.launch { repository.updateTaskCompletion(missionId, taskId, !currentCompleted) }
     }

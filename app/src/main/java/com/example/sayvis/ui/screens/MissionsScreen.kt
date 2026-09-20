@@ -2,6 +2,7 @@ package com.example.sayvis.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,12 +17,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -30,10 +37,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -51,17 +61,20 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.sayvis.engine.MissionSolutionPlan
+import com.example.sayvis.engine.SolutionStep
 import com.example.sayvis.model.Mission
-import com.example.sayvis.ui.components.SayvisText
 import com.example.sayvis.model.MissionPriority
 import com.example.sayvis.model.MissionStatus
 import com.example.sayvis.model.MissionTask
+import com.example.sayvis.ui.components.SayvisText
 import com.example.sayvis.ui.theme.SayvisAmberWarning
 import com.example.sayvis.ui.theme.SayvisBorder
 import com.example.sayvis.ui.theme.SayvisCyan
 import com.example.sayvis.ui.theme.SayvisGold
 import com.example.sayvis.ui.theme.SayvisGreenSuccess
 import com.example.sayvis.ui.theme.SayvisRedAlert
+import com.example.sayvis.ui.theme.SayvisSilver
 import com.example.sayvis.ui.theme.SayvisSilverMuted
 import com.example.sayvis.ui.theme.SayvisSurface
 import com.example.sayvis.ui.theme.SayvisSurfaceVariant
@@ -71,6 +84,11 @@ import java.util.UUID
 fun MissionsScreen(
     missions: List<Mission>,
     isPersian: Boolean,
+    currentMissionPlan: MissionSolutionPlan? = null,
+    missionAgentBusy: Boolean = false,
+    onSearchSolution: (String) -> Unit = {},
+    onExecuteSolution: (MissionSolutionPlan) -> Unit = {},
+    onDismissPlan: () -> Unit = {},
     onToggleTask: (String, String, Boolean) -> Unit,
     onAddMission: (Mission) -> Unit,
     modifier: Modifier = Modifier
@@ -114,14 +132,28 @@ fun MissionsScreen(
                         color = Color.White
                     )
                     Text(
-                        text = if (isPersian) "ردیابی اهداف، وظایف، موانع و تحلیل پیشرفت" else "Goal-to-task decomposition, blocker detection & telemetry",
+                        text = if (isPersian) "ردیابی اهداف، وظایف، موانع و اجرای خودکار توسط ایجنت راهکار"
+                               else "Goal tracking, task decomposition & autonomous execution agent",
                         fontSize = 11.sp,
                         color = SayvisSilverMuted
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Dedicated Autonomous Mission Agent Section
+            AutonomousMissionAgentPanel(
+                missions = missions,
+                currentPlan = currentMissionPlan,
+                isBusy = missionAgentBusy,
+                isPersian = isPersian,
+                onSearchForMission = onSearchSolution,
+                onExecutePlan = onExecuteSolution,
+                onDismissPlan = onDismissPlan
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -148,9 +180,11 @@ fun MissionsScreen(
                     MissionItemCard(
                         mission = mission,
                         isPersian = isPersian,
+                        hasActivePlan = currentMissionPlan?.missionId == mission.id,
                         onToggleTask = { taskId, completed ->
                             onToggleTask(mission.id, taskId, completed)
-                        }
+                        },
+                        onTriggerAgent = { onSearchSolution(mission.id) }
                     )
                 }
 
@@ -171,11 +205,290 @@ fun MissionsScreen(
     }
 }
 
+/**
+ * Autonomous Solution & Execution Agent Panel.
+ * Not just a voice assistant: diagnoses problems, finds solutions, and executes steps.
+ */
+@Composable
+fun AutonomousMissionAgentPanel(
+    missions: List<Mission>,
+    currentPlan: MissionSolutionPlan?,
+    isBusy: Boolean,
+    isPersian: Boolean,
+    onSearchForMission: (String) -> Unit,
+    onExecutePlan: (MissionSolutionPlan) -> Unit,
+    onDismissPlan: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("autonomous_mission_agent_panel"),
+        colors = CardDefaults.cardColors(containerColor = SayvisSurfaceVariant),
+        border = BorderStroke(1.dp, if (currentPlan != null) SayvisGold else SayvisCyan.copy(alpha = 0.5f)),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(SayvisCyan.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = SayvisCyan,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = if (isPersian) "ایجنت کاوشگر و مجری راهکار" else "Autonomous Solution & Execution Agent",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = if (isPersian) "یافتن راهکار برای موانع مأموریت‌ها و اجرای مستقیم اقدامات"
+                                   else "Diagnoses blockers, invents workarounds & executes actions",
+                            fontSize = 10.sp,
+                            color = SayvisSilverMuted
+                        )
+                    }
+                }
+
+                if (currentPlan != null) {
+                    IconButton(
+                        onClick = onDismissPlan,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = SayvisSilverMuted, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            when {
+                isBusy -> {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(SayvisGold.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = SayvisGold,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = if (isPersian) "ایجنت در حال کاوش راهکار و تدوین برنامه عملیاتی..." else "Agent is searching solutions & synthesizing plan...",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = SayvisGold
+                        )
+                    }
+                }
+
+                currentPlan != null -> {
+                    // Display Synthesized Solution Plan
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(SayvisSurface, RoundedCornerShape(10.dp))
+                            .padding(12.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(SayvisGreenSuccess.copy(alpha = 0.2f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = if (isPersian) "راهکار شناسایی شد" else "Solution Devised",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SayvisGreenSuccess
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = currentPlan.missionTitle,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = SayvisCyan
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Diagnosis
+                        Text(
+                            text = if (isPersian) "تشخیص مسأله:" else "Diagnosis:",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = SayvisGold
+                        )
+                        Text(
+                            text = currentPlan.diagnosis(isPersian),
+                            fontSize = 11.5.sp,
+                            color = SayvisSilver,
+                            lineHeight = 17.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Strategy
+                        Text(
+                            text = if (isPersian) "راهکار اجرایی:" else "Action Strategy:",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = SayvisCyan
+                        )
+                        Text(
+                            text = currentPlan.strategy(isPersian),
+                            fontSize = 11.5.sp,
+                            color = Color.White,
+                            lineHeight = 17.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Steps list
+                        Text(
+                            text = if (isPersian) "مراحل انجام و اجرا:" else "Action Steps:",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = SayvisSilverMuted
+                        )
+
+                        currentPlan.steps.forEachIndexed { idx, step ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clip(CircleShape)
+                                        .background(SayvisCyan.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${idx + 1}",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = SayvisCyan
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    Text(
+                                        text = step.title(isPersian),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = step.description(isPersian),
+                                        fontSize = 10.sp,
+                                        color = SayvisSilverMuted
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Execute Button
+                        Button(
+                            onClick = { onExecutePlan(currentPlan) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp)
+                                .testTag("agent_execute_solution_btn"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = SayvisGreenSuccess,
+                                contentColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isPersian) "انجام و اجرای راهکار توسط ایجنت (+${currentPlan.projectedProgressGain}٪)"
+                                       else "Execute Solution via Agent (+${currentPlan.projectedProgressGain}%)",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                else -> {
+                    // Idle state with prompt
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (isPersian) "یک مأموریت را برای بررسی موانع، یافتن راهکار و اجرای خودکار انتخاب کنید:"
+                                   else "Select a mission to diagnose blockers, find solutions & execute:",
+                            fontSize = 11.sp,
+                            color = SayvisSilverMuted,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        val target = missions.firstOrNull { it.tasks.any { t -> t.isBlocked } } ?: missions.firstOrNull()
+                        if (target != null) {
+                            Button(
+                                onClick = { onSearchForMission(target.id) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = SayvisCyan,
+                                    contentColor = Color.Black
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.testTag("agent_quick_search_btn")
+                            ) {
+                                Icon(Icons.Default.Build, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (isPersian) "کاوش راهکار" else "Search Solution",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun MissionItemCard(
     mission: Mission,
     isPersian: Boolean,
-    onToggleTask: (String, Boolean) -> Unit
+    hasActivePlan: Boolean = false,
+    onToggleTask: (String, Boolean) -> Unit,
+    onTriggerAgent: () -> Unit = {}
 ) {
     val statusColor = when (mission.status) {
         MissionStatus.ACTIVE -> SayvisCyan
@@ -191,11 +504,11 @@ fun MissionItemCard(
             .fillMaxWidth()
             .testTag("mission_card_${mission.id}"),
         colors = CardDefaults.cardColors(containerColor = SayvisSurfaceVariant),
-        border = BorderStroke(1.dp, SayvisBorder),
+        border = BorderStroke(1.dp, if (hasActivePlan) SayvisGold else SayvisBorder),
         shape = RoundedCornerShape(14.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header Row: Priority + Status
+            // Header Row: Priority + Status + Agent Trigger Button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -231,12 +544,38 @@ fun MissionItemCard(
                     }
                 }
 
-                Text(
-                    text = "${mission.progressPercent}%",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = SayvisCyan
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Agent Action Trigger
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(SayvisCyan.copy(alpha = 0.15f))
+                            .border(BorderStroke(1.dp, SayvisCyan.copy(alpha = 0.4f)), RoundedCornerShape(6.dp))
+                            .clickable { onTriggerAgent() }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .testTag("mission_agent_trigger_${mission.id}")
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = SayvisCyan, modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (isPersian) "ایجنت راهکار" else "Solution Agent",
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = SayvisCyan
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = "${mission.progressPercent}%",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SayvisCyan
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -266,7 +605,7 @@ fun MissionItemCard(
                     .fillMaxWidth()
                     .height(5.dp)
                     .clip(RoundedCornerShape(3.dp)),
-                color = SayvisCyan,
+                color = if (mission.progressPercent >= 100) SayvisGreenSuccess else SayvisCyan,
                 trackColor = SayvisSurface
             )
 

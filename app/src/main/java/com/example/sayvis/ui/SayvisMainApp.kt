@@ -1,6 +1,7 @@
 package com.example.sayvis.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -120,6 +122,19 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
     val probe by viewModel.probe.collectAsState()
     val isProbing by viewModel.isProbing.collectAsState()
 
+    val networkSpeedDisplay by viewModel.networkSpeedDisplay.collectAsState()
+    val currentMissionPlan by viewModel.currentMissionPlan.collectAsState()
+    val missionAgentBusy by viewModel.missionAgentBusy.collectAsState()
+    val syncCandidates by viewModel.syncCandidates.collectAsState()
+    val gitHubCandidates by viewModel.gitHubCandidates.collectAsState()
+    val apiRemembered by viewModel.apiRemembered.collectAsState()
+    val stabilityScore by viewModel.stabilityScore.collectAsState()
+    val stabilityMode by viewModel.stabilityMode.collectAsState()
+    val autoRetryEnabled by viewModel.autoRetryEnabled.collectAsState()
+    val autoLocalFailover by viewModel.autoLocalFailover.collectAsState()
+    val networkLatencyMs by viewModel.networkLatencyMs.collectAsState()
+    val connectionQuality by viewModel.connectionQuality.collectAsState()
+
     val strings = remember(isPersian) { SayvisStrings.of(isPersian) }
     val layoutDirection = if (isPersian && settings.localization.forceRtlForPersian) LayoutDirection.Rtl else LayoutDirection.Ltr
 
@@ -174,22 +189,59 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         }
                     },
                     actions = {
-                        // Offline mode toggle
-                        IconButton(
-                            onClick = { viewModel.toggleOfflineMode() },
+                        // Green Online / Offline toggle button with dynamic internet speed display
+                        Box(
                             modifier = Modifier
-                                .size(36.dp)
+                                .clip(RoundedCornerShape(9.dp))
+                                .background(
+                                    if (!forceOfflineMode) SayvisGreenSuccess.copy(alpha = 0.16f)
+                                    else SayvisRedAlert.copy(alpha = 0.14f)
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (!forceOfflineMode) SayvisGreenSuccess else SayvisRedAlert.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(9.dp)
+                                )
+                                .clickable { viewModel.toggleFullNetworkConnection() }
+                                .padding(horizontal = 8.dp, vertical = 5.dp)
                                 .testTag("toggle_offline_button")
                         ) {
-                            Icon(
-                                imageVector = if (forceOfflineMode) Icons.Default.WifiOff else Icons.Default.Wifi,
-                                contentDescription = strings.offlineMode,
-                                tint = if (forceOfflineMode) SayvisAmberWarning else SayvisGreenSuccess,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                // Glowing status indicator dot
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(if (!forceOfflineMode) SayvisGreenSuccess else SayvisRedAlert)
+                                )
+                                // Online / Offline label
+                                Text(
+                                    text = if (!forceOfflineMode) strings.onlineStatus else strings.offlineStatus,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (!forceOfflineMode) SayvisGreenSuccess else SayvisRedAlert
+                                )
+                                // Vertical divider
+                                Box(
+                                    modifier = Modifier
+                                        .width(1.dp)
+                                        .height(10.dp)
+                                        .background(if (!forceOfflineMode) SayvisGreenSuccess.copy(alpha = 0.35f) else SayvisRedAlert.copy(alpha = 0.35f))
+                                )
+                                // Live Internet speed display
+                                Text(
+                                    text = networkSpeedDisplay,
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (!forceOfflineMode) Color.White else SayvisSilverMuted
+                                )
+                            }
                         }
 
-                        Spacer(modifier = Modifier.width(2.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
 
                         // Emergency lock kill switch
                         Box(
@@ -346,6 +398,16 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         onSettingsChange = { next -> viewModel.updateSettings { next } },
                         probe = probe,
                         isProbing = isProbing,
+                        apiRemembered = apiRemembered,
+                        stabilityScore = stabilityScore,
+                        stabilityMode = stabilityMode,
+                        autoRetryEnabled = autoRetryEnabled,
+                        autoLocalFailover = autoLocalFailover,
+                        networkLatencyMs = networkLatencyMs,
+                        connectionQuality = connectionQuality,
+                        onSetStabilityMode = { viewModel.setStabilityMode(it) },
+                        onSetAutoRetry = { viewModel.setAutoRetry(it) },
+                        onSetAutoLocalFailover = { viewModel.setAutoLocalFailover(it) },
                         gatewayState = gatewayState,
                         scriptCount = scripts.size,
                         vaultHardwareBacked = viewModel.vaultHardwareBacked,
@@ -363,6 +425,11 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                     SayvisScreen.MISSIONS -> MissionsScreen(
                         missions = missions,
                         isPersian = isPersian,
+                        currentMissionPlan = currentMissionPlan,
+                        missionAgentBusy = missionAgentBusy,
+                        onSearchSolution = { viewModel.searchMissionSolution(it) },
+                        onExecuteSolution = { viewModel.executeMissionSolution(it) },
+                        onDismissPlan = { viewModel.dismissMissionPlan() },
                         onToggleTask = { missionId, taskId, completed -> viewModel.toggleMissionTask(missionId, taskId, completed) },
                         onAddMission = { mission -> coroutineScope.launch { viewModel.repository.addMission(mission) } }
                     )
@@ -370,6 +437,9 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                     SayvisScreen.UIC -> UicScreen(
                         attributes = uicAttributes,
                         isPersian = isPersian,
+                        syncCandidates = syncCandidates,
+                        onLoadSyncCandidates = { viewModel.loadCognitiveSyncCandidates() },
+                        onSyncAllSources = { viewModel.syncAllCognitiveSources() },
                         onConfirmStatus = { viewModel.confirmUicAttribute(it) },
                         onRevokeStatus = { viewModel.revokeUicAttribute(it) },
                         onDeleteAttribute = { viewModel.deleteUicAttribute(it) },
@@ -456,6 +526,9 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         automationEnabled = settings.runAutomationScripts,
                         persianDigits = settings.localization.persianDigits,
                         isPersian = isPersian,
+                        gitHubCandidates = gitHubCandidates,
+                        onLoadGitHubCandidates = { viewModel.loadGitHubScriptCandidates(it) },
+                        onMergeGitHubScripts = { viewModel.mergeSelectedGitHubScripts(it) },
                         onRun = { viewModel.runScript(it) },
                         onSave = { viewModel.saveScript(it) },
                         onDelete = { viewModel.deleteScript(it) },

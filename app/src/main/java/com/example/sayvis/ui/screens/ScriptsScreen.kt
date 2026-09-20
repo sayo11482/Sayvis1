@@ -1,6 +1,12 @@
 package com.example.sayvis.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,32 +18,50 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sayvis.i18n.LocalStrings
 import com.example.sayvis.i18n.PersianFormat
 import com.example.sayvis.scripts.AutomationScript
+import com.example.sayvis.scripts.GitHubScriptCandidate
 import com.example.sayvis.scripts.ScriptEngine
 import com.example.sayvis.scripts.ScriptRunResult
 import com.example.sayvis.scripts.ScriptTrigger
@@ -59,13 +83,11 @@ import com.example.sayvis.ui.theme.SayvisGreenSuccess
 import com.example.sayvis.ui.theme.SayvisRedAlert
 import com.example.sayvis.ui.theme.SayvisSilver
 import com.example.sayvis.ui.theme.SayvisSilverMuted
+import com.example.sayvis.ui.theme.SayvisSurface
+import com.example.sayvis.ui.theme.SayvisSurfaceVariant
 
 /**
- * Script editor + runner for the SAYVIS automation language.
- *
- * This is the "ability to write code" surface: the owner authors rules, validates them
- * against a real parser, runs them and reads the console. The interpreter never performs
- * I/O itself — it returns effects that the ViewModel pushes through the zero-trust gate.
+ * Script editor + runner + GitHub script integrator for SAYVIS.
  */
 @Composable
 fun ScriptsScreen(
@@ -74,6 +96,9 @@ fun ScriptsScreen(
     automationEnabled: Boolean,
     persianDigits: Boolean,
     isPersian: Boolean,
+    gitHubCandidates: List<GitHubScriptCandidate> = emptyList(),
+    onLoadGitHubCandidates: (String) -> Unit = {},
+    onMergeGitHubScripts: (List<GitHubScriptCandidate>) -> Unit = {},
     onRun: (AutomationScript) -> Unit,
     onSave: (AutomationScript) -> Unit,
     onDelete: (String) -> Unit,
@@ -87,6 +112,10 @@ fun ScriptsScreen(
     var editing by remember { mutableStateOf<AutomationScript?>(null) }
     var showReference by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<AutomationScript?>(null) }
+
+    LaunchedEffect(Unit) {
+        onLoadGitHubCandidates("sayo11482/Sayvis1")
+    }
 
     LazyColumn(
         modifier = modifier
@@ -120,6 +149,16 @@ fun ScriptsScreen(
                     }
                 }
             }
+        }
+
+        // ------------------------------------ GitHub Script Integrator Tool
+        item {
+            GitHubScriptIntegratorSection(
+                candidates = gitHubCandidates,
+                isPersian = isPersian,
+                onRefresh = onLoadGitHubCandidates,
+                onMergeSelected = onMergeGitHubScripts
+            )
         }
 
         // ------------------------------------------------------------ editor
@@ -272,6 +311,245 @@ fun ScriptsScreen(
     }
 }
 
+/**
+ * Tool that connects to GitHub, identifies compatible automation scripts, lets the owner
+ * select desired items with checkboxes, and merges them directly into Sayvis.
+ */
+@Composable
+fun GitHubScriptIntegratorSection(
+    candidates: List<GitHubScriptCandidate>,
+    isPersian: Boolean,
+    onRefresh: (String) -> Unit,
+    onMergeSelected: (List<GitHubScriptCandidate>) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var repoName by remember { mutableStateOf("sayo11482/Sayvis1") }
+    val selectedMap = remember { mutableStateMapOf<String, Boolean>() }
+
+    // Pre-select first 2 candidates for convenient onboarding
+    LaunchedEffect(candidates) {
+        candidates.take(2).forEach {
+            if (!selectedMap.containsKey(it.id)) selectedMap[it.id] = true
+        }
+    }
+
+    val selectedCandidates = candidates.filter { selectedMap[it.id] == true }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("github_script_integrator_card"),
+        colors = CardDefaults.cardColors(containerColor = SayvisSurfaceVariant),
+        border = BorderStroke(1.dp, SayvisCyan.copy(alpha = 0.5f)),
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(SayvisCyan.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null, tint = SayvisCyan, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = if (isPersian) "ادغام اسکریپت از گیت‌هاب" else "GitHub Script Integrator",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = if (isPersian) "شناسایی موارد خاص در گیت‌هاب و ادغام با سایویس"
+                                   else "Identify specific GitHub scripts & merge into Sayvis",
+                            fontSize = 10.sp,
+                            color = SayvisSilverMuted
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.size(26.dp)
+                ) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Toggle",
+                        tint = SayvisSilverMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Repo target & status pill
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "GitHub: $repoName",
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace,
+                    color = SayvisGold
+                )
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(SayvisCyan.copy(alpha = 0.2f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "${candidates.size} " + (if (isPersian) "اسکریپت شناسایی شد" else "scripts identified"),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SayvisCyan
+                    )
+                }
+            }
+
+            // Expandable List of GitHub Candidates with Selection Checkboxes
+            AnimatedVisibility(visible = expanded || candidates.isNotEmpty()) {
+                Column(modifier = Modifier.padding(top = 10.dp)) {
+                    Text(
+                        text = if (isPersian) "موارد شناسایی‌شده را انتخاب کرده و روی ادغام با سایویس بزنید:"
+                               else "Select identified items and tap Merge into Sayvis:",
+                        fontSize = 10.5.sp,
+                        color = SayvisSilverMuted
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    candidates.forEach { candidate ->
+                        val isChecked = selectedMap[candidate.id] ?: false
+                        var showSnippet by remember { mutableStateOf(false) }
+
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = SayvisSurface),
+                            border = BorderStroke(
+                                1.dp,
+                                if (isChecked) SayvisCyan.copy(alpha = 0.6f) else SayvisBorder
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = isChecked,
+                                        onCheckedChange = { selectedMap[candidate.id] = it },
+                                        colors = CheckboxDefaults.colors(
+                                            checkedColor = SayvisCyan,
+                                            uncheckedColor = SayvisSilverMuted,
+                                            checkmarkColor = Color.Black
+                                        ),
+                                        modifier = Modifier.size(26.dp)
+                                    )
+
+                                    Spacer(modifier = Modifier.width(6.dp))
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = candidate.name,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            SayvisStatusPill(text = candidate.trigger.label(isPersian), color = SayvisGold)
+                                        }
+                                        Text(
+                                            text = candidate.description(isPersian),
+                                            fontSize = 10.sp,
+                                            color = SayvisSilverMuted,
+                                            lineHeight = 14.sp
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = { showSnippet = !showSnippet },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (showSnippet) Icons.Default.KeyboardArrowUp else Icons.Default.Code,
+                                            contentDescription = "Code",
+                                            tint = SayvisCyan,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    }
+                                }
+
+                                if (showSnippet) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 6.dp)
+                                            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                            .padding(6.dp)
+                                    ) {
+                                        Text(
+                                            text = candidate.source,
+                                            fontSize = 9.5.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            color = SayvisSilver
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Merge Action Button
+                    Button(
+                        onClick = { onMergeSelected(selectedCandidates) },
+                        enabled = selectedCandidates.isNotEmpty(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(38.dp)
+                            .testTag("github_merge_scripts_btn"),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = SayvisCyan,
+                            contentColor = Color.Black,
+                            disabledContainerColor = SayvisSurfaceVariant,
+                            disabledContentColor = SayvisSilverMuted
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isPersian) "ادغام کدهای انتخابی با سایویس (${selectedCandidates.size} مورد)"
+                                   else "Merge Selected Code into Sayvis (${selectedCandidates.size})",
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ScriptRow(
     script: AutomationScript,
@@ -300,32 +578,34 @@ private fun ScriptRow(
                     fontSize = 10.sp,
                     color = SayvisSilverMuted
                 )
-                script.lastRunAt?.let { ran ->
-                    Text(
-                        text = "${if (isPersian) "آخرین اجرا: " else "Last run: "}${PersianFormat.relative(ran, persianDigits)}",
-                        fontSize = 10.sp,
-                        color = if (script.lastSuccess == true) SayvisGreenSuccess else SayvisAmberWarning
-                    )
-                }
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Row {
-                    IconButton(onClick = onRun, modifier = Modifier.size(32.dp).testTag("script_run_${script.id}")) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = s.runScript, tint = SayvisGreenSuccess, modifier = Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Edit, contentDescription = s.edit, tint = SayvisCyan, modifier = Modifier.size(16.dp))
-                    }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = s.delete, tint = SayvisRedAlert, modifier = Modifier.size(16.dp))
-                    }
-                }
-                SayvisToggleRow(
-                    label = if (script.enabled) s.enableScript else (if (isPersian) "غیرفعال" else "Disabled"),
-                    hint = null,
-                    checked = script.enabled,
-                    onCheckedChange = onToggle
-                )
+            SayvisToggleRow(
+                label = "",
+                checked = script.enabled,
+                onCheckedChange = onToggle,
+                modifier = Modifier.width(48.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            SayvisButton(
+                label = s.runScript,
+                onClick = onRun,
+                modifier = Modifier.weight(1f),
+                tone = ButtonTone.SUCCESS,
+                icon = Icons.Default.PlayArrow
+            )
+            SayvisButton(
+                label = s.editScript,
+                onClick = onEdit,
+                modifier = Modifier.weight(1f),
+                tone = ButtonTone.NEUTRAL,
+                icon = Icons.Default.Edit
+            )
+            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Default.Delete, contentDescription = s.deleteScript, tint = SayvisRedAlert)
             }
         }
     }
@@ -346,38 +626,46 @@ private fun ScriptEditor(
     val validation = remember(draft.source) { engine.validate(draft.source) }
     var idea by remember { mutableStateOf("") }
 
-    SayvisSectionHeader(title = if (draft.name.isBlank()) s.newScript else s.editScript)
+    SayvisCard(borderColor = SayvisCyan, containerColor = SayvisSurfaceVariant) {
+        Text(
+            text = if (draft.id.startsWith("script_new_")) s.newScript else s.editScript,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = SayvisCyan
+        )
+        Spacer(modifier = Modifier.height(8.dp))
 
-    SayvisCard(borderColor = SayvisCyan.copy(alpha = 0.35f)) {
         SayvisField(
             label = s.scriptName,
             value = draft.name,
             onValueChange = { onDraftChange(draft.copy(name = it)) },
-            hint = if (isPersian) "مثلاً نگهبان باتری" else "e.g. Battery guardian"
+            hint = if (isPersian) "مثال: هشدار افت باتری" else "e.g. Low Battery Alert",
+            singleLine = true
         )
+
         SayvisField(
             label = s.scriptDescription,
             value = draft.description,
             onValueChange = { onDraftChange(draft.copy(description = it)) },
-            hint = if (isPersian) "یک خط توضیح" else "One line of context"
+            hint = s.optional,
+            singleLine = true
         )
+
         SayvisOptionRow(
             label = s.scriptTrigger,
-            options = ScriptTrigger.entries.map { it.label(isPersian) },
-            selectedIndex = ScriptTrigger.entries.indexOf(draft.trigger),
-            onSelect = { onDraftChange(draft.copy(trigger = ScriptTrigger.entries[it])) }
+            options = ScriptTrigger.entries.map { it.label(isPersian) to it },
+            selected = draft.trigger,
+            onSelect = { onDraftChange(draft.copy(trigger = it)) }
         )
 
-        SayvisDivider()
-
         SayvisField(
-            label = s.scriptSource,
+            label = s.scriptCode,
             value = draft.source,
             onValueChange = { onDraftChange(draft.copy(source = it)) },
-            hint = "WHEN battery < 20 THEN notify \"...\"",
+            hint = "# WHEN battery < 20 THEN notify \"...\"",
             singleLine = false,
-            minLines = 7,
-            monospace = true
+            minLines = 5,
+            isMonospace = true
         )
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -397,7 +685,6 @@ private fun ScriptEditor(
 
         SayvisDivider()
 
-        // Ask the assistant to write the script — bridges natural language to code.
         Text(
             text = if (isPersian) "می‌خواهید سایو کد را بنویسد؟" else "Want SAYO to write the code?",
             fontSize = 11.5.sp,

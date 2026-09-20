@@ -276,6 +276,55 @@ class SayvisStrings(val fa: Boolean) {
     val seconds get() = t("ثانیه", "s")
     val items get() = t("مورد", "items")
 
+    // ----------------------------------------------------------- new features
+    // Online / Offline & Speed
+    val onlineStatus get() = t("آنلاین", "ONLINE")
+    val offlineStatus get() = t("آفلاین", "OFFLINE")
+    val internetSpeed get() = t("سرعت اینترنت", "Internet Speed")
+    val completeDisconnect get() = t("قطع کامل اینترنت", "Complete Internet Cutoff")
+    val completeConnect get() = t("اتصال کامل اینترنت", "Full Internet Reconnect")
+
+    // Stability System
+    val stabilitySystemTitle get() = t("سیستم اتصال پایدار اینترنت و هوش مصنوعی", "Internet & AI Stability System")
+    val stabilitySystemSubtitle get() = t("تنظیم پایش ضربان، تلاش مجدد و جابجایی خودکار به هوش محلی", "Configure heartbeat, auto-retry and failover to local AI")
+    val stabilityScoreLabel get() = t("شاخص پایداری شبکه", "Network Stability Score")
+    val autoRetryTitle get() = t("تلاش مجدد خودکار در صورت بروز اختلال", "Auto-Retry on Network Jitter")
+    val autoLocalFailoverTitle get() = t("سوییچ خودکار به هوش محلی هنگام قطع ارتباط", "Auto-Failover to Local AI when Offline")
+
+    // API Memory
+    val apiRememberedTitle get() = t("ثبت دائمی در حافظهٔ سایویس", "Committed to Persistent Memory")
+    val apiRememberedDesc get() = t("اتصال API با موفقیت در سیستم حافظه ثبت شده و به‌خاطر سپرده شد.", "API connection was successfully verified and committed to memory.")
+
+    // Autonomous Mission Agent
+    val missionAgentTitle get() = t("ایجنت کاوشگر و مجری راهکار", "Autonomous Solution & Execution Agent")
+    val missionAgentSubtitle get() = t("تحلیل هوشمند موانع مأموریت، کاوش راهکارها و اجرای مستقیم اقدامات", "Intelligent blocker diagnosis, solution synthesis & direct execution")
+    val missionAgentExploreBtn get() = t("کاوش راهکار توسط ایجنت", "Explore Solution with Agent")
+    val missionAgentExecuteBtn get() = t("انجام و اجرای راهکار", "Execute Solution Plan")
+    val missionAgentDiagnosis get() = t("تحلیل و تشخیص ایجنت", "Agent Diagnosis")
+    val missionAgentStrategy get() = t("راهکار اجرایی تدوین‌شده", "Devised Strategy")
+    val missionAgentSteps get() = t("مراحل اجرایی برنامه", "Execution Plan Steps")
+    val missionAgentSuccessMsg get() = t("راهکار با موفقیت توسط ایجنت اجرا و اعمال شد.", "Solution executed and applied by agent successfully.")
+
+    // UIC Sync (Google Searches, Notes, Alarms)
+    val uicSyncHeader get() = t("به‌روزرسانی هوشمند پروندهٔ شناختی", "Smart Profile Auto-Update")
+    val uicSyncSubheader get() = t("استخراج و همگام‌سازی از سرچ‌های گوگل، یادداشت‌های دیوایس، آلارم‌ها و دستورات صوتی", "Ingest from Google searches, device notes, alarms & directives")
+    val uicSyncGoogleTitle get() = t("سوابق جستجوی گوگل", "Google Search History")
+    val uicSyncNotesTitle get() = t("یادداشت‌های داخل دیوایس", "Device Internal Notes")
+    val uicSyncAlarmsTitle get() = t("آلارم‌ها و دستورات تنظیمی", "Alarms & Command Directives")
+    val uicSyncExecuteBtn get() = t("همگام‌سازی و اعمال به پروندهٔ شناختی", "Sync & Apply to Cognitive Profile")
+    val uicSyncSuccess get() = t("مورد جدید با موفقیت به پرونده شناختی افزوده شد.", "new attributes added to cognitive profile.")
+
+    // GitHub Script Integrator
+    val ghIntegratorTitle get() = t("ابزار شناسایی و ادغام اسکریپت از گیت‌هاب", "GitHub Script Integrator")
+    val ghIntegratorSubtitle get() = t("شناسایی اسکریپت‌های مخزن، انتخاب موارد خاص و ادغام مستقیم با سایویس", "Identify repo scripts, select target modules & merge into Sayvis")
+    val ghScanBtn get() = t("اسکن اسکریپت‌های گیت‌هاب", "Scan GitHub Scripts")
+    val ghMergeBtn get() = t("ادغام کدهای انتخابی با سایویس", "Merge Selected Code into Sayvis")
+    val ghMergeSuccessMsg get() = t("اسکریپت با موفقیت با سامانه سایویس ادغام شد.", "scripts successfully merged into Sayvis.")
+
+    // Thinking & Code 01
+    val code01ThinkingMsg get() = t("کد ۰۱: در حال فکر کردن و تحلیل شناختی...", "Code 01: Reasoning & cognitive processing...")
+    val code01ErrorMsg get() = t("کد ۰۱: خطا در فرآیند تفکر هوش مصنوعی", "Code 01: AI thinking process error")
+
     // --------------------------------------------------- status / risk vocabulary
     fun risk(levelName: String): String = when (levelName) {
         "LOW_RISK" -> t("کم‌خطر", "Low risk")

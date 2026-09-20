@@ -24,6 +24,8 @@ enum class ProviderType(val displayName: String, val displayNameFa: String) {
     }
 }
 
+fun AiProviderKind.toProviderType(): ProviderType = ProviderType.from(this)
+
 data class AIResponse(
     val text: String,
     val providerUsed: ProviderType,

@@ -3,6 +3,7 @@ package com.example.sayvis.data.repository
 import com.example.sayvis.data.local.AuditEventEntity
 import com.example.sayvis.data.local.AwareOpportunityEntity
 import com.example.sayvis.data.local.DeviceEntity
+import com.example.sayvis.data.local.MemoryItemEntity
 import com.example.sayvis.data.local.MissionEntity
 import com.example.sayvis.data.local.SayvisDatabase
 import com.example.sayvis.data.local.UicAttributeEntity
@@ -12,6 +13,7 @@ import com.example.sayvis.model.CognitiveLoadLevel
 import com.example.sayvis.model.ContextSnapshot
 import com.example.sayvis.model.Device
 import com.example.sayvis.model.FocusActivity
+import com.example.sayvis.model.MemoryItem
 import com.example.sayvis.model.Mission
 import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.model.RiskLevel
@@ -160,6 +162,47 @@ class SayvisRepository(private val database: SayvisDatabase) {
             auth = "OWNER_CONFIRMED",
             result = "SUCCESS",
             digest = "Mission: ${mission.title}"
+        )
+    }
+
+    suspend fun updateMission(mission: Mission) {
+        database.missionDao().updateMission(MissionEntity.fromDomain(mission))
+        recordAuditEvent(
+            actor = "AUTONOMOUS_MISSION_AGENT",
+            action = "mission.update",
+            riskLevel = RiskLevel.LOW_RISK,
+            auth = "SYSTEM_VALIDATED",
+            result = "SUCCESS",
+            digest = "Mission ${mission.id} updated -> ${mission.progressPercent}%"
+        )
+    }
+
+    // --- Memory System ---
+    val allMemories: Flow<List<MemoryItem>> = database.memoryDao().getAllMemoriesFlow().map { entities ->
+        entities.map { it.toDomain() }
+    }
+
+    suspend fun recordMemoryItem(item: MemoryItem) {
+        database.memoryDao().insertMemory(MemoryItemEntity.fromDomain(item))
+        recordAuditEvent(
+            actor = "SAYVIS_MEMORY",
+            action = "memory.item.record",
+            riskLevel = RiskLevel.LOW_RISK,
+            auth = "SYSTEM_VALIDATED",
+            result = "SUCCESS",
+            digest = "Memory [${item.type.name}] recorded: ${item.content.take(50)}"
+        )
+    }
+
+    suspend fun deleteMemoryItem(id: String) {
+        database.memoryDao().deleteMemory(id)
+        recordAuditEvent(
+            actor = "OWNER",
+            action = "memory.item.delete",
+            riskLevel = RiskLevel.MEDIUM_RISK,
+            auth = "OWNER_CONFIRMED",
+            result = "SUCCESS",
+            digest = "Memory deleted: $id"
         )
     }
 

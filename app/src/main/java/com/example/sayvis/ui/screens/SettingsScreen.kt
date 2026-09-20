@@ -18,11 +18,13 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -39,6 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.sayvis.engine.ConnectionQuality
+import com.example.sayvis.engine.StabilityMode
 import com.example.sayvis.i18n.LocalStrings
 import com.example.sayvis.i18n.PersianFormat
 import com.example.sayvis.settings.AiProviderKind
@@ -80,6 +84,16 @@ fun SettingsScreen(
     onSettingsChange: (AppSettings) -> Unit,
     probe: ProviderProbe?,
     isProbing: Boolean,
+    apiRemembered: Boolean = false,
+    stabilityScore: Int = 99,
+    stabilityMode: StabilityMode = StabilityMode.HIGH_RESILIENCE,
+    autoRetryEnabled: Boolean = true,
+    autoLocalFailover: Boolean = true,
+    networkLatencyMs: Long = 24L,
+    connectionQuality: ConnectionQuality = ConnectionQuality.EXCELLENT,
+    onSetStabilityMode: (StabilityMode) -> Unit = {},
+    onSetAutoRetry: (Boolean) -> Unit = {},
+    onSetAutoLocalFailover: (Boolean) -> Unit = {},
     gatewayState: MtGatewayState,
     scriptCount: Int,
     vaultHardwareBacked: Boolean,
@@ -425,6 +439,33 @@ fun SettingsScreen(
                 }
             }
 
+            if (apiRemembered) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                        .background(SayvisGreenSuccess.copy(alpha = 0.12f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = SayvisGreenSuccess,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isPersian) "اتصال API با موفقیت در حافظهٔ دائمی سایویس ثبت شد"
+                               else "API connection permanently remembered into Sayvis memory",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SayvisGreenSuccess
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -440,6 +481,81 @@ fun SettingsScreen(
                     color = if (vaultHardwareBacked) SayvisGreenSuccess else SayvisAmberWarning
                 )
             }
+        }
+
+        // =================================================== STABILITY SYSTEM
+        SayvisSectionHeader(
+            title = if (isPersian) "اتصال پایدار اینترنت و هوش مصنوعی" else "Stable Internet & AI Connection",
+            subtitle = if (isPersian) "تنظیم پایش، تلاش مجدد و جابجایی خودکار" else "Heartbeat, auto-retry & failover regulation",
+            icon = Icons.Default.NetworkCheck
+        )
+
+        SayvisCard {
+            // Stability metrics bar
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Wifi,
+                        contentDescription = null,
+                        tint = if (connectionQuality == ConnectionQuality.OFFLINE) SayvisRedAlert else SayvisGreenSuccess,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isPersian) "شاخص پایداری:" else "Stability Index:",
+                        fontSize = 11.sp,
+                        color = SayvisSilverMuted
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = PersianFormat.digits("$stabilityScore%", settings.localization.persianDigits),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SayvisGreenSuccess
+                    )
+                }
+
+                SayvisStatusPill(
+                    text = connectionQuality.label(isPersian),
+                    color = when (connectionQuality) {
+                        ConnectionQuality.EXCELLENT -> SayvisGreenSuccess
+                        ConnectionQuality.GOOD -> SayvisCyan
+                        ConnectionQuality.DEGRADED -> SayvisAmberWarning
+                        ConnectionQuality.OFFLINE -> SayvisRedAlert
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Stability mode selection
+            SayvisOptionRow(
+                label = if (isPersian) "حالت پایداری اتصال" else "Connection Stability Mode",
+                hint = if (isPersian) "میزان حساسیت مانیتورینگ ضربان و زمان‌بندی تلاش مجدد" else "Monitoring heartbeat frequency & auto-recovery aggressiveness",
+                options = StabilityMode.entries.map { it.label(isPersian) },
+                selectedIndex = StabilityMode.entries.indexOf(stabilityMode),
+                onSelect = { onSetStabilityMode(StabilityMode.entries[it]) }
+            )
+
+            SayvisDivider()
+
+            SayvisToggleRow(
+                label = if (isPersian) "تلاش مجدد خودکار (Auto-Retry)" else "Auto-Retry on Network Jitter",
+                hint = if (isPersian) "ارسال خودکار مجدد کوئری در صورت نوسان ارتباطی" else "Resends failed queries when latency spikes",
+                checked = autoRetryEnabled,
+                onCheckedChange = onSetAutoRetry
+            )
+
+            SayvisToggleRow(
+                label = if (isPersian) "سوییچ خودکار به هوش محلی هنگام قطعی" else "Auto-Failover to Local AI when Offline",
+                hint = if (isPersian) "هدایت بی‌وقفه درخواست‌ها به مدل محلی در زمان قطعی کامل اینترنت" else "Routes requests to local cognitive core seamlessly during disconnections",
+                checked = autoLocalFailover,
+                onCheckedChange = onSetAutoLocalFailover
+            )
         }
 
         // ============================================================ TRADING
