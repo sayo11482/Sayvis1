@@ -300,7 +300,7 @@ fun BacktestScreen(isPersian: Boolean) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.BarChart, contentDescription = null, tint = OdinSilverMuted, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = if (isPersian) "بک‌تست ویتاورس اجرا نشده - سرمایه ${capital.toInt()}$ - ${symbolInfo?.unitFa ?: ""} - اسپرد $spread" else "No Vittaverse backtest - Capital ${capital.toInt()}$ - Spread $spread", fontSize = 10.sp, color = OdinSilverMuted)
+                            Text(text = if (isPersian) "بک‌تست ویتاورس اجرا نشده - سرمایه ${capital.toInt()}$ - ${if (symbolInfo?.unit == "Toman") "تومان" else "تتر"} - اسپرد $spread" else "No Vittaverse backtest - Capital ${capital.toInt()}$ - Spread $spread", fontSize = 10.sp, color = OdinSilverMuted)
                             Text(text = if (isPersian) "سرمایه قابل تنظیم - قبلاً 10$ ثابت بود - الان ${capital.toInt()}$" else "Adjustable capital - prev fixed 10$ - Now ${capital.toInt()}$", fontSize = 8.sp, color = OdinSilverDim)
                         }
                     }

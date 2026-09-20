@@ -35,6 +35,8 @@ data class EntrySignal(
     val confidence: Double,
     val rr: Double,
     val confluence: Int,
+    val sl: Double = 0.0,
+    val tp: Double = 0.0,
     val reason: String,
     val timestamp: Long = System.currentTimeMillis(),
     val isAlarm: Boolean = true,
@@ -290,11 +292,15 @@ class EntryScannerWithAlarm(private val context: Context? = null) {
                     else
                         "اسپرد ${String.format("%.4f", spread)} هزینه ${String.format("%.4f", spreadCostUSDT)} تتر"
 
+                    val entryPrice = if (side == SignalSide.BUY) ask else bid
+                    val slPrice = if (side == SignalSide.BUY) entryPrice - atr * 1.5 else entryPrice + atr * 1.5
+                    val tpPrice = if (side == SignalSide.BUY) entryPrice + (entryPrice - slPrice) * rr else entryPrice - (slPrice - entryPrice) * rr
+
                     val signal = EntrySignal(
                         id = "entry_${symbol}_${System.currentTimeMillis()}",
                         symbol = symbol,
                         side = side,
-                        price = if (side == SignalSide.BUY) ask else bid,
+                        price = entryPrice,
                         bid = bid,
                         ask = ask,
                         spread = spread,
@@ -310,6 +316,8 @@ class EntryScannerWithAlarm(private val context: Context? = null) {
                         confidence = confidence,
                         rr = rr,
                         confluence = confluence,
+                        sl = slPrice,
+                        tp = tpPrice,
                         reason = "${strategy.name} ${side.name} $symbol $reason | $spreadCostDesc | سرمایه ${capital}$ | Confluence $confluence RR 1:${String.format("%.1f", rr)} Conf ${confidence.toInt()}% - REAL ${realPrice.source} - بروکر ویتاورس",
                         source = "REAL ${realPrice.source} - Vittaverse",
                         broker = "Vittaverse"

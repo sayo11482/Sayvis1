@@ -221,7 +221,7 @@ fun LiveChartScreen(
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(text = priceSource, fontSize = 7.sp, color = OdinCyan, lineHeight = 8.sp)
-                            if (marketState.isConnected) {
+                            if (marketState.connected) {
                                 LinearProgressIndicator(progress = ((marketState.updateCount % 100) / 100f), modifier = Modifier.fillMaxWidth().height(2.dp).clip(RoundedCornerShape(1.dp)).padding(top = 4.dp), color = OdinGreen, trackColor = Color(0xFF1A1A1A))
                             }
                         }

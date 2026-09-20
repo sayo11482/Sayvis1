@@ -100,8 +100,8 @@ fun DashboardScreen(
                                 Text(text = if (isPersian) "ویتاورس https://vittaverse.com/fa/ - هر لحظه نوسان واقعی - واحد تومان/تتر" else "Vittaverse https://vittaverse.com/fa/ - REAL fluctuating - Unit Toman/USDT", fontSize = 8.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
                             }
                         }
-                        Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(if (marketDataState.isConnected) OdinGreen.copy(alpha = 0.15f) else OdinRed.copy(alpha = 0.15f)).padding(horizontal = 8.dp, vertical = 3.dp)) {
-                            Text(text = if (marketDataState.isConnected) if (isPersian) "● زنده واقعی ${marketDataState.updateCount}" else "● LIVE REAL ${marketDataState.updateCount}" else if (isPersian) "○ قطع" else "○ OFF", fontSize = 8.sp, fontWeight = FontWeight.Black, color = if (marketDataState.isConnected) OdinGreen else OdinRed)
+                        Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(if (marketDataState.connected) OdinGreen.copy(alpha = 0.15f) else OdinRed.copy(alpha = 0.15f)).padding(horizontal = 8.dp, vertical = 3.dp)) {
+                            Text(text = if (marketDataState.connected) if (isPersian) "● زنده واقعی ${marketDataState.updateCount}" else "● LIVE REAL ${marketDataState.updateCount}" else if (isPersian) "○ قطع" else "○ OFF", fontSize = 8.sp, fontWeight = FontWeight.Black, color = if (marketDataState.connected) OdinGreen else OdinRed)
                         }
                     }
 
@@ -137,7 +137,7 @@ fun DashboardScreen(
                                 Column { Text(text = if (isPersian) "قیمت‌های به‌روزرسانی" else "Price Updates", fontSize = 7.sp, color = OdinSilverMuted); Text(text = "${marketDataState.updateCount}", fontSize = 12.sp, fontWeight = FontWeight.Black, color = OdinGoldLight) }
                                 Column { Text(text = if (isPersian) "نمادهای فعال ویتاورس" else "Active Vittaverse", fontSize = 7.sp, color = OdinSilverMuted); Text(text = "${marketDataState.prices.size}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White) }
                                 Column { Text(text = if (isPersian) "آخرین به‌روزرسانی" else "Last Update", fontSize = 7.sp, color = OdinSilverMuted); Text(text = if (marketDataState.lastUpdate > 0) "${(System.currentTimeMillis() - marketDataState.lastUpdate) / 1000}s ago" else "—", fontSize = 9.sp, color = OdinGreen) }
-                                Column { Text(text = if (isPersian) "وضعیت" else "Status", fontSize = 7.sp, color = OdinSilverMuted); Text(text = if (marketDataState.isConnected) if (isPersian) "متصل واقعی" else "REAL Connected" else "Offline", fontSize = 9.sp, color = if (marketDataState.isConnected) OdinGreen else OdinRed, fontWeight = FontWeight.Bold) }
+                                Column { Text(text = if (isPersian) "وضعیت" else "Status", fontSize = 7.sp, color = OdinSilverMuted); Text(text = if (marketDataState.connected) if (isPersian) "متصل واقعی" else "REAL Connected" else "Offline", fontSize = 9.sp, color = if (marketDataState.connected) OdinGreen else OdinRed, fontWeight = FontWeight.Bold) }
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             LinearProgressIndicator(progress = ((marketDataState.updateCount % 100) / 100f), modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)), color = OdinGreen, trackColor = Color(0xFF1A1A1A))
@@ -231,7 +231,7 @@ fun DashboardScreen(
                         Column { Text(text = if (isPersian) "داده منتقل شده ویتاورس" else "Vittaverse Data Transferred", fontSize = 7.sp, color = OdinSilverMuted); Text(text = "${String.format("%.1f", dataTransferredKb)} KB", fontSize = 11.sp, fontWeight = FontWeight.Black, color = OdinCyan) }
                         Column { Text(text = if (isPersian) "به‌روزرسانی" else "Updates", fontSize = 7.sp, color = OdinSilverMuted); Text(text = "${marketDataState.updateCount}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinGold) }
                         Column { Text(text = if (isPersian) "پینگ" else "Ping", fontSize = 7.sp, color = OdinSilverMuted); Text(text = "${speedResult?.pingMs ?: 0}ms", fontSize = 11.sp, color = OdinGreen) }
-                        Column { Text(text = if (isPersian) "وضعیت اتصال" else "Conn Status", fontSize = 7.sp, color = OdinSilverMuted); Text(text = if (marketDataState.isConnected) if (isPersian) "متصل واقعی" else "REAL Connected" else "Offline", fontSize = 9.sp, color = if (marketDataState.isConnected) OdinGreen else OdinRed, fontWeight = FontWeight.Bold) }
+                        Column { Text(text = if (isPersian) "وضعیت اتصال" else "Conn Status", fontSize = 7.sp, color = OdinSilverMuted); Text(text = if (marketDataState.connected) if (isPersian) "متصل واقعی" else "REAL Connected" else "Offline", fontSize = 9.sp, color = if (marketDataState.connected) OdinGreen else OdinRed, fontWeight = FontWeight.Bold) }
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
