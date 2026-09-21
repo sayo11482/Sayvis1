@@ -260,7 +260,7 @@ class SayvisArenaAgentProfessionalUnitTest {
     fun `escapeHtml is correct for all special chars`() {
         assertEquals("&lt;div&gt;", ArenaAgent.escapeHtml("<div>"))
         assertEquals("&amp;", ArenaAgent.escapeHtml("&"))
-        assertEquals("&quot;", ArenaAgent.escapeHtml("""))
+        assertEquals("&quot;", ArenaAgent.escapeHtml("\""))
         assertEquals("&#39;", ArenaAgent.escapeHtml("'"))
         assertEquals("a &amp; b", ArenaAgent.escapeHtml("a & b"))
     }
