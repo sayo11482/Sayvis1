@@ -2365,11 +2365,12 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
 
     // ------------------------------------------------- simulation & signals
     val tradingGate get() = com.example.sayvis.model.TradingGateState(
-        liveTradingBlocked = settingsStore.current().trading.executionMode == TradingExecutionMode.PAPER_SIMULATION,
+        liveTradingBlocked = settingsStore.current().trading.executionMode != TradingExecutionMode.LIVE_EXECUTION,
         paperTradingMode = settingsStore.current().trading.executionMode == TradingExecutionMode.PAPER_SIMULATION,
         killSwitchEngaged = settingsStore.current().emergencyLockActive,
         maxDailyDrawdownLimitUsd = settingsStore.current().trading.maxDailyLossUsd,
-        activePositionsCount = _gatewayState.value.positions.size
+        activePositionsCount = _gatewayState.value.positions.size,
+        executionMode = settingsStore.current().trading.executionMode
     )
 
     val litSignals: List<LitAnalysisSignal> = listOf(

@@ -168,6 +168,7 @@ fun SimulationTradingScreen(
             ) {
                 // === INTELLIGENT TRADING GATE — LIVE ENABLED (هوشمند) ===
                 item {
+                    val isDemo = tradingGate.executionMode == com.example.sayvis.settings.TradingExecutionMode.DEMO_EXECUTION
                     val gateColor: Color
                     val gateIcon = when {
                         tradingGate.killSwitchEngaged -> {
@@ -176,14 +177,14 @@ fun SimulationTradingScreen(
                         }
                         tradingGate.liveTradingBlocked -> {
                             gateColor = SayvisAmberWarning
-                            Icons.Default.Warning
+                            // Paper shows Warning, Demo shows AutoGraph to hint routing
+                            if (isDemo) Icons.Default.AutoGraph else Icons.Default.Warning
                         }
                         else -> {
                             gateColor = SayvisGreenSuccess
                             Icons.Default.CheckCircle
                         }
                     }
-                    if (tradingGate.killSwitchEngaged) gateColor else if (tradingGate.liveTradingBlocked) SayvisAmberWarning else SayvisGreenSuccess
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -215,7 +216,11 @@ fun SimulationTradingScreen(
                                     Text(
                                         text = when {
                                             tradingGate.killSwitchEngaged -> if (isPersian) "دروازه ایمنی: قفل اضطراری فعال" else "Safety Gate: Kill Switch ENGAGED"
-                                            tradingGate.liveTradingBlocked -> if (isPersian) "حالت تمرین — کاغذی" else "Paper Practice Mode"
+                                            tradingGate.liveTradingBlocked -> if (isPersian) {
+                                                if (isDemo) "حساب دمو — مسیردهی آزمایشی" else "حالت تمرین — کاغذی"
+                                            } else {
+                                                if (isDemo) "Demo Routing — Test Funds" else "Paper Practice Mode"
+                                            }
                                             else -> if (isPersian) "معاملات زندهٔ هوشمند: فعال ✅" else "Smart Live Trading: ACTIVE ✅"
                                         },
                                         fontWeight = FontWeight.Bold,
@@ -238,7 +243,11 @@ fun SimulationTradingScreen(
                                     Text(
                                         text = when {
                                             tradingGate.killSwitchEngaged -> if (isPersian) "متوقف" else "PAUSED"
-                                            tradingGate.liveTradingBlocked -> if (isPersian) "بدون ریسک" else "RISK-FREE"
+                                            tradingGate.liveTradingBlocked -> if (isPersian) {
+                                                if (isDemo) "دمو" else "بدون ریسک"
+                                            } else {
+                                                if (isDemo) "DEMO" else "RISK-FREE"
+                                            }
                                             else -> if (isPersian) "هوش فعال" else "AI ACTIVE"
                                         },
                                         color = gateColor,
@@ -255,9 +264,13 @@ fun SimulationTradingScreen(
                                     tradingGate.killSwitchEngaged -> if (isPersian)
                                         "هوش مصنوعی معاملات زنده را با قفل اضطراری متوقف کرده است. برای ادامه، قفل را غیرفعال کنید — سقف زیان روزانه ${tradingGate.maxDailyDrawdownLimitUsd.toInt()} دلار و Kill Switch برای محافظت فعال می‌مانند. همهٔ تحلیل‌های LIT و بک‌تست‌ها همچنان برای یافتن بهترین ورود (RR≥۱:۳) در دسترس‌اند."
                                     else "AI live trading is paused by the Kill Switch. Disengage it to resume — daily loss cap \$${tradingGate.maxDailyDrawdownLimitUsd.toInt()} and Kill Switch stay armed. All LIT analysis & backtests keep finding the best entry (RR≥1:3)."
-                                    tradingGate.liveTradingBlocked -> if (isPersian)
-                                        "در حالت فعلی «شبیه‌سازی کاغذی»، هوش سایویس بازار را لحظه‌ای می‌خواند، بک‌تست می‌گیرد و بهترین معامله با بیشترین بازدهی (RR≥۱:۳) را پیدا می‌کند — بدون ارسال سفارش واقعی. برای ورود زنده: در «درگاه معاملاتی» سطح را به «اجرای زنده روی حساب واقعی» تغییر دهید و با هوش بک‌تست‌شده وارد شوید."
-                                    else "In paper mode, SAYVIS AI reads live markets, backtests and finds the trade with the highest yield (RR≥1:3) — without routing a real order. To go live: set the level to “Live on REAL account” in the Trading Gateway and enter with the backtested AI."
+                                    tradingGate.liveTradingBlocked -> if (isPersian) {
+                                        if (isDemo) "در حالت دمو، سایویس سفارش‌ها را به حساب دمو می‌فرستد (پول واقعی نه) و همان هوش RR≥۱:۳ بهترین ورود را پیدا می‌کند — ابزار تمرینی با مسیردهی واقعی اما بدون ریسک سرمایه. برای اجرای ریال، سطح را به «زنده روی حساب واقعی» ببرید."
+                                        else "در حالت فعلی «شبیه‌سازی کاغذی»، هوش سایویس بازار را لحظه‌ای می‌خواند، بک‌تست می‌گیرد و بهترین معامله با بیشترین بازدهی (RR≥۱:۳) را پیدا می‌کند — بدون ارسال سفارش واقعی. برای ورود زنده: در «درگاه معاملاتی» سطح را به «اجرای زنده روی حساب واقعی» تغییر دهید و با هوش بک‌تست‌شده وارد شوید."
+                                    } else {
+                                        if (isDemo) "In Demo, SAYVIS routes orders to the Demo account (no real money) with the same RR≥1:3 best-entry hunt — realistic routing without capital risk. To go live for real funds, set the level to “Live on REAL account”."
+                                        else "In paper mode, SAYVIS AI reads live markets, backtests and finds the trade with the highest yield (RR≥1:3) — without routing a real order. To go live: set the level to “Live on REAL account” in the Trading Gateway and enter with the backtested AI."
+                                    }
                                     else -> if (isPersian)
                                         "✅ معاملات زندهٔ هوشمند فعال است: هوش سایویس از آموزش‌ها و بک‌تست‌ها بهترین نقطهٔ ورود با بیشترین بازدهی و RR≥۱:۳ را پیدا کرده و با تأیید شما مستقیم وارد می‌شود. Kill Switch و سقف زیان روزانه ${tradingGate.maxDailyDrawdownLimitUsd.toInt()} دلار همواره محافظ سرمایه‌اند."
                                     else "✅ Smart live trading is ACTIVE: SAYVIS AI — trained on your lessons & backtests — finds the highest-yield entry with RR≥1:3 and enters on your confirmation. Kill Switch & daily cap \$${tradingGate.maxDailyDrawdownLimitUsd.toInt()} guard capital at all times."

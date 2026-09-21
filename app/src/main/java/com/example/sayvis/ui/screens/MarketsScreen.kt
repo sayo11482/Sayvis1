@@ -189,7 +189,7 @@ fun MarketsScreen(
                             color = SayvisSilver,
                             modifier = Modifier.weight(1f)
                         )
-                        if (gatewayState.profile.executionMode.name == "LIVE_EXECUTION") {
+                        if (gatewayState.profile.executionMode == com.example.sayvis.settings.TradingExecutionMode.LIVE_EXECUTION) {
                             Text(
                                 text = "LIVE",
                                 fontSize = 9.sp,
@@ -361,7 +361,7 @@ fun MarketsScreen(
                         )
                     }
                     Text(
-                        text = if (gatewayState.profile.executionMode.name == "PAPER_SIMULATION") s.litRiskNotePaper else s.litRiskNote,
+                        text = if (gatewayState.profile.executionMode == com.example.sayvis.settings.TradingExecutionMode.PAPER_SIMULATION) s.litRiskNotePaper else s.litRiskNote,
                         fontSize = 9.5.sp,
                         color = SayvisGold.copy(alpha = 0.9f)
                     )

@@ -114,10 +114,7 @@ fun TradingViewChart(
                               .find(function(el){ return /Continue with Google|Google/.test(el.innerText||'') && el.offsetParent!==null; });
                             if(gBtn){
                               console.log('[SAYVIS] auto-click Google SSO for '+g);
-                              // gBtn.click(); // Uncomment when allowing automatic click-through:
-                              // Keep it as a visible hint so the owner controls the final tap
-                              // (avoids mysterious pop-up blockers). The session still ends up
-                              // tied to the SAME Google account that SAYVIS is signed in with.
+                              try{ gBtn.click(); }catch(e){ console.log('[SAYVIS] click failed '+e); }
                               clearInterval(timer);
                             }
                           }, 800);
