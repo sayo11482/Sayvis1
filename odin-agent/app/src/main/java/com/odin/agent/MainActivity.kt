@@ -27,6 +27,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageVector) {
+    ARENA_AGENT("Arena AI", "ایجنت آرنا", Icons.Default.SmartToy),
     DASHBOARD("Dashboard", "داشبورد", Icons.Default.Dashboard),
     LIVE_CHART("Real Chart", "چارت واقعی", Icons.Default.ShowChart),
     SCANNER_ALARM("Scanner Vittaverse", "اسکنر ویتاورس", Icons.Default.NotificationImportant),
@@ -37,7 +38,7 @@ enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageV
 
 @Composable
 fun OdinApp() {
-    var currentScreen by remember { mutableStateOf(OdinScreen.DASHBOARD) }
+    var currentScreen by remember { mutableStateOf(OdinScreen.ARENA_AGENT) }
     var isPersian by remember { mutableStateOf(true) }
     val riskManager = remember { RiskManager(initialCapital = 10000.0) }
     var riskStatus by remember { mutableStateOf(riskManager.getStatus()) }
@@ -59,11 +60,11 @@ fun OdinApp() {
         bottomBar = {
             NavigationBar(containerColor = Color(0xFF050505), contentColor = OdinSilver) {
                 val mainTabs = listOf(
+                    OdinScreen.ARENA_AGENT,
                     OdinScreen.DASHBOARD,
                     OdinScreen.LIVE_CHART,
                     OdinScreen.SCANNER_ALARM,
-                    OdinScreen.TRADING_HUB,
-                    OdinScreen.BACKTEST
+                    OdinScreen.TRADING_HUB
                 )
                 mainTabs.forEach { screen ->
                     NavigationBarItem(
@@ -85,10 +86,11 @@ fun OdinApp() {
         topBar = {
             @OptIn(ExperimentalMaterial3Api::class)
             TopAppBar(
-                title = { Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) { Text(text = "ODIN × ویتاورس v1.0.24", color = OdinGoldLight, fontWeight = FontWeight.Black, fontSize = 13.sp) } },
+                title = { Row(verticalAlignment = Alignment.CenterVertically) { Text(text = "ODIN × ویتاورس v1.0.25 Arena AI", color = OdinGoldLight, fontWeight = FontWeight.Black, fontSize = 12.sp) } },
                 actions = {
                     IconButton(onClick = { isPersian = !isPersian }) { Text(text = if (isPersian) "FA | EN" else "EN | FA", color = OdinGold, fontWeight = FontWeight.Bold, fontSize = 10.sp) }
                     IconButton(onClick = { currentScreen = OdinScreen.AWARE }) { Icon(Icons.Default.Security, contentDescription = null, tint = if (currentScreen == OdinScreen.AWARE) OdinGreen else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
+                    IconButton(onClick = { currentScreen = OdinScreen.BACKTEST }) { Icon(Icons.Default.BarChart, contentDescription = null, tint = if (currentScreen == OdinScreen.BACKTEST) OdinGold else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF050505), titleContentColor = OdinSilver)
             )
@@ -96,6 +98,7 @@ fun OdinApp() {
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             when (currentScreen) {
+                OdinScreen.ARENA_AGENT -> ArenaAgentScreen(isPersian = isPersian)
                 OdinScreen.DASHBOARD -> DashboardScreen(
                     riskStatus = riskStatus,
                     currentRegime = currentRegime,
