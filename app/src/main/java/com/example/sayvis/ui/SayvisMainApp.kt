@@ -58,6 +58,7 @@ import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.ui.components.LocalTranslation
 import com.example.sayvis.ui.screens.AwareScreen
 import com.example.sayvis.ui.screens.AgentScreen
+import com.example.sayvis.ui.screens.ArenaAgentScreen
 import com.example.sayvis.ui.screens.DigitalMirrorScreen
 import com.example.sayvis.ui.screens.MarketsScreen
 import com.example.sayvis.ui.screens.RobotScreen
@@ -561,6 +562,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                     )
 
                     SayvisScreen.AGENT -> AgentScreen(viewModel = viewModel)
+                    SayvisScreen.ARENA_AGENT -> ArenaAgentScreen(viewModel = viewModel)
                     SayvisScreen.MIRROR -> DigitalMirrorScreen()
                     SayvisScreen.MARKETS -> MarketsScreen(viewModel = viewModel)
 

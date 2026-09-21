@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoGraph
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Mic
@@ -105,6 +106,7 @@ fun ToolsScreen(
         ToolEntry(SayvisScreen.TRADING, Icons.Default.AutoGraph, SayvisCyan, "tool_trading")
     )
     val systemTools = listOf(
+        ToolEntry(SayvisScreen.ARENA_AGENT, Icons.Default.AutoAwesome, SayvisGold, "tool_arena_agent"),
         ToolEntry(SayvisScreen.ROBOT, Icons.Default.SmartToy, SayvisCyan, "tool_robot"),
         ToolEntry(SayvisScreen.AGENT, Icons.Default.TravelExplore, SayvisGold, "tool_agent"),
         ToolEntry(SayvisScreen.MIRROR, Icons.Default.CameraFront, SayvisGreenSuccess, "tool_mirror"),
@@ -243,6 +245,7 @@ private fun ToolCard(
 }
 
 private fun toolTitle(screen: SayvisScreen, s: com.example.sayvis.i18n.SayvisStrings): String = when (screen) {
+    SayvisScreen.ARENA_AGENT -> if (s.fa) "ایجنت آرنا گرافیکی" else "Arena Graphical Agent"
     SayvisScreen.MISSIONS -> s.toolMissions
     SayvisScreen.UIC -> s.toolUic
     SayvisScreen.AWARE -> s.toolAware
@@ -257,6 +260,7 @@ private fun toolTitle(screen: SayvisScreen, s: com.example.sayvis.i18n.SayvisStr
 }
 
 private fun toolHint(screen: SayvisScreen, s: com.example.sayvis.i18n.SayvisStrings): String = when (screen) {
+    SayvisScreen.ARENA_AGENT -> if (s.fa) "مثل Arena AI — محیط زنده: فایل، ترمینال، پیش‌نمایش گرافیکی" else "Like Arena AI — live: files, terminal & graphical preview"
     SayvisScreen.MISSIONS -> s.toolMissionsHint
     SayvisScreen.UIC -> s.toolUicHint
     SayvisScreen.AWARE -> s.toolAwareHint
