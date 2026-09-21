@@ -1354,25 +1354,6 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         val persian = current.isPersian(SayvisStrings.deviceIsPersian())
         val plan = AutoMission.plan(clean)
 
-        // The mission is created IMMEDIATELY with one task per plan step —
-        // the owner watches these checkboxes flip by themselves below.
-        val tasks = plan.steps.map { step ->
-            MissionTask(id = "task_" + UUID.randomUUID().toString().take(6), title = step.title(persian))
-        }
-        val boundPlan = plan.copy(steps = plan.steps.mapIndexed { i, st -> st.copy(taskId = tasks[i].id) })
-        val mission = Mission(
-            id = "mission_" + UUID.randomUUID().toString().take(6),
-            title = MissionPlanner.titleFromGoal(clean),
-            description = (if (persian) "اجرای خودکار توسط ایجنت سایویس — " else "Auto-executed by the SAYVIS agent — ") +
-                (if (persian) "${plan.steps.size} گام، هدف ${plan.targetCount}" else "${plan.steps.size} steps, target ${plan.targetCount}"),
-            priority = MissionPriority.HIGH,
-            status = MissionStatus.ACTIVE,
-            progressPercent = 0,
-            deadline = "",
-            tasks = tasks
-        )
-        repository.addMission(mission)
-
         _missionAgentBusy.value = true
         _missionAgentSteps.value = emptyList()
         _missionAgentResult.value = null
@@ -1380,6 +1361,27 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         _avatarState.value = AvatarState.THINKING
 
         viewModelScope.launch {
+            // The mission is created immediately with one task per plan step —
+            // the owner watches these checkboxes flip by themselves.
+            val tasks: List<com.example.sayvis.model.MissionTask> = plan.steps.map { step: AutoMission.PlanStep ->
+                com.example.sayvis.model.MissionTask(
+                    id = "task_" + UUID.randomUUID().toString().take(6),
+                    title = step.title(persian)
+                )
+            }
+            val boundPlan = plan.copy(steps = plan.steps.mapIndexed { i, st -> st.copy(taskId = tasks[i].id) })
+            val mission = Mission(
+                id = "mission_" + UUID.randomUUID().toString().take(6),
+                title = MissionPlanner.titleFromGoal(clean),
+                description = (if (persian) "اجرای خودکار توسط ایجنت سایویس — " else "Auto-executed by the SAYVIS agent — ") +
+                    (if (persian) "${plan.steps.size} گام، هدف ${plan.targetCount}" else "${plan.steps.size} steps, target ${plan.targetCount}"),
+                priority = MissionPriority.HIGH,
+                status = MissionStatus.ACTIVE,
+                progressPercent = 0,
+                deadline = "",
+                tasks = tasks
+            )
+            repository.addMission(mission)
             try {
                 val executor = MissionExecutor(getApplication())
                 val result = executor.execute(clean, boundPlan, persian, MissionExecutor.Live(
