@@ -33,7 +33,10 @@ enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageV
     LIVE_CHART("Real Chart", "چارت واقعی", Icons.Default.ShowChart),
     SCANNER_ALARM("Scanner Vittaverse", "اسکنر ویتاورس", Icons.Default.NotificationImportant),
     TRADING_HUB("Vittaverse", "ویتاورس", Icons.Default.AccountBalance),
-    BACKTEST("Backtest Vittaverse", "بک‌تست ویتاورس", Icons.Default.BarChart),
+    BACKTEST("Backtest 10$", "بک‌تست 10$", Icons.Default.BarChart),
+    OUTCOME("Outcome 10$", "برآیند 10$", Icons.Default.AccountBalanceWallet),
+    SELF_UPGRADE("Self-Upgrade", "خود ارتقایی", Icons.Default.SystemUpdate),
+    CAPABILITIES("Capabilities", "قابلیت‌ها", Icons.Default.Extension),
     AWARE("AWARE Security", "امنیت آگاه", Icons.Default.Security)
 }
 
@@ -65,7 +68,7 @@ fun OdinApp() {
                     OdinScreen.DASHBOARD,
                     OdinScreen.LIVE_CHART,
                     OdinScreen.SCANNER_ALARM,
-                    OdinScreen.TRADING_HUB
+                    OdinScreen.OUTCOME
                 )
                 mainTabs.forEach { screen ->
                     NavigationBarItem(
@@ -87,11 +90,13 @@ fun OdinApp() {
         topBar = {
             @OptIn(ExperimentalMaterial3Api::class)
             TopAppBar(
-                title = { Row(verticalAlignment = Alignment.CenterVertically) { Text(text = "ODIN × ویتاورس v1.0.25 Arena AI", color = OdinGoldLight, fontWeight = FontWeight.Black, fontSize = 12.sp) } },
+                title = { Row(verticalAlignment = Alignment.CenterVertically) { Text(text = "Odin.trade v1.0.26", color = OdinGoldLight, fontWeight = FontWeight.Black, fontSize = 13.sp) } },
                 actions = {
                     IconButton(onClick = { isPersian = !isPersian }) { Text(text = if (isPersian) "FA | EN" else "EN | FA", color = OdinGold, fontWeight = FontWeight.Bold, fontSize = 10.sp) }
-                    IconButton(onClick = { currentScreen = OdinScreen.AWARE }) { Icon(Icons.Default.Security, contentDescription = null, tint = if (currentScreen == OdinScreen.AWARE) OdinGreen else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
-                    IconButton(onClick = { currentScreen = OdinScreen.BACKTEST }) { Icon(Icons.Default.BarChart, contentDescription = null, tint = if (currentScreen == OdinScreen.BACKTEST) OdinGold else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
+                    IconButton(onClick = { currentScreen = OdinScreen.SELF_UPGRADE }) { Icon(Icons.Default.SystemUpdate, contentDescription = null, tint = if (currentScreen == OdinScreen.SELF_UPGRADE) OdinCyan else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
+                    IconButton(onClick = { currentScreen = OdinScreen.CAPABILITIES }) { Icon(Icons.Default.Extension, contentDescription = null, tint = if (currentScreen == OdinScreen.CAPABILITIES) OdinGold else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
+                    IconButton(onClick = { currentScreen = OdinScreen.TRADING_HUB }) { Icon(Icons.Default.AccountBalance, contentDescription = null, tint = if (currentScreen == OdinScreen.TRADING_HUB) OdinGreen else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
+                    IconButton(onClick = { currentScreen = OdinScreen.AWARE }) { Icon(Icons.Default.Security, contentDescription = null, tint = if (currentScreen == OdinScreen.AWARE) OdinGreen else OdinSilverMuted, modifier = Modifier.size(16.dp)) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF050505), titleContentColor = OdinSilver)
             )
@@ -119,6 +124,9 @@ fun OdinApp() {
                 OdinScreen.SCANNER_ALARM -> EntryScannerScreen(isPersian = isPersian, onSignalClick = { signal -> selectedEntrySignal = signal; currentScreen = OdinScreen.LIVE_CHART })
                 OdinScreen.TRADING_HUB -> TradingHubScreen(isPersian = isPersian)
                 OdinScreen.BACKTEST -> BacktestScreen(isPersian = isPersian)
+                OdinScreen.OUTCOME -> InvestmentOutcomeScreen(isPersian = isPersian)
+                OdinScreen.SELF_UPGRADE -> SelfUpgradeScreen(isPersian = isPersian)
+                OdinScreen.CAPABILITIES -> CapabilitiesScreen(isPersian = isPersian, onNavigateToUpgrade = { currentScreen = OdinScreen.SELF_UPGRADE })
                 OdinScreen.AWARE -> AwareScreen(isPersian = isPersian)
             }
         }

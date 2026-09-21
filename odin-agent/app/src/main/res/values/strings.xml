@@ -1,6 +1,8 @@
 <resources>
-    <string name="app_name">ODIN AGENT</string>
-    <string name="app_name_fa">اودین ایجنت</string>
-    <string name="odin_tagline">Professional Quantitative Trading AI Agent</string>
-    <string name="odin_tagline_fa">عامل ترید کوانت و هوش مصنوعی حرفه‌ای</string>
+    <string name="app_name">Odin.trade</string>
+    <string name="app_name_fa">اودین ترید</string>
+    <string name="odin_tagline">Professional Quantitative Trading AI Agent - Arena AI</string>
+    <string name="odin_tagline_fa">ایجنت ترید کوانت حرفه‌ای - آرنا AI - ویتاورس واقعی</string>
+    <string name="odin_trade_url">https://Odin.trade</string>
+    <string name="vittaverse_url">https://vittaverse.com/fa/</string>
 </resources>
