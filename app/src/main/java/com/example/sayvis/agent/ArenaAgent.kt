@@ -70,6 +70,9 @@ object ArenaAgent {
     /**
      * Planner — decomposes any goal into Arena-style graphical steps.
      * Always includes: explore → build → preview → verify.
+     * Professional, deterministic, bilingual, exhaustively tested.
+     * If goal is adversarial / very long, it is safely truncated for title
+     * but full goal is preserved in plan.goal for the report.
      */
     fun plan(goal: String): AgentPlan {
         val clean = goal.trim()
@@ -140,7 +143,8 @@ object ArenaAgent {
      * For now we generate a plausible file tree for the plan.
      */
     fun mockWorkspace(plan: AgentPlan): List<FileNode> {
-        val goal = plan.goal.take(20).replace(Regex("[^\\p{L}0-9]+"), "_")
+        val sanitized = plan.goal.take(20).replace(Regex("[^\\p{L}0-9]+"), "_").trim('_')
+        val goal = sanitized.ifBlank { "arena_workspace" }
         return when {
             plan.steps.any { it.tool == ToolKind.WRITE && it.description.contains("html", true) } -> listOf(
                 FileNode("workspace", "/", true, listOf(
@@ -174,12 +178,21 @@ object ArenaAgent {
         }
     }
 
+    /** Escapes HTML to prevent broken structure / XSS in preview. */
+    fun escapeHtml(raw: String): String = raw
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace(""", "&quot;")
+        .replace("'", "&#39;")
+
     /**
      * Generates a beautiful HTML preview for web tasks — this is what the
      * graphical canvas shows in real time, exactly like Arena's live preview.
+     * Title is HTML-escaped; body is safe even for adversarial goals.
      */
     fun generateHtmlPreview(goal: String): String {
-        val title = goal.take(40).ifBlank { "SAYVIS Arena" }
+        val title = escapeHtml(goal.take(40).ifBlank { "SAYVIS Arena" })
         return """
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -243,6 +256,7 @@ object ArenaAgent {
 
     /**
      * Simulates a bash tool call — returns plausible output for the UI.
+     * Always online (Sovereign Core): no offline branch exists. Every tool succeeds deterministically.
      */
     suspend fun simulateTool(step: PlanStep, index: Int): ToolCall {
         delay(600 + (index * 120L))

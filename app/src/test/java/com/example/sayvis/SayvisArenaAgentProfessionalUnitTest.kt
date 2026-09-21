@@ -244,4 +244,25 @@ class SayvisArenaAgentProfessionalUnitTest {
         assertTrue(types.contains(ArenaAgent.GraphType.CANVAS))
         assertEquals(7, types.size)
     }
+
+    @Test
+    fun `html escaping prevents broken structure for adversarial input`() {
+        val adversarial = "<script>alert(1)</script>"
+        val html = ArenaAgent.generateHtmlPreview(adversarial)
+        assertFalse(html.contains("<script>alert(1)</script>"))
+        assertTrue(html.contains("&lt;script&gt;"))
+        assertTrue(html.contains("&amp;") || html.contains("&lt;"))
+        assertTrue(html.contains("<html"))
+        assertTrue(html.contains("</html>"))
+    }
+
+    @Test
+    fun `escapeHtml is correct for all special chars`() {
+        assertEquals("&lt;div&gt;", ArenaAgent.escapeHtml("<div>"))
+        assertEquals("&amp;", ArenaAgent.escapeHtml("&"))
+        assertEquals("&quot;", ArenaAgent.escapeHtml("""))
+        assertEquals("&#39;", ArenaAgent.escapeHtml("'"))
+        assertEquals("a &amp; b", ArenaAgent.escapeHtml("a & b"))
+    }
+
 }

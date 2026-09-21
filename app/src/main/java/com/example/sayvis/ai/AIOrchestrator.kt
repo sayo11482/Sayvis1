@@ -12,7 +12,7 @@ import com.example.sayvis.settings.AiSettings
  *  2. Cloud provider configured → try it, on failure auto-failover through all configured clouds.
  *  3. No cloud key / all clouds failed → Sovereign Core (never offline, always answers).
  */
-class AIOrchestrator(
+open class AIOrchestrator(
     private val geminiProvider: GeminiProvider = GeminiProvider(),
     private val openRouterProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.OPENROUTER),
     private val groqProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.GROQ),
@@ -141,7 +141,7 @@ class AIOrchestrator(
         ).filter { it != selected && it != AiProviderKind.LOCAL }
 
     /** Runs a live credential/reachability check for the Settings screen. */
-    suspend fun probe(settings: AiSettings): ProbeOutcome = when (settings.provider) {
+    open suspend fun probe(settings: AiSettings): ProbeOutcome = when (settings.provider) {
         AiProviderKind.GEMINI -> geminiProvider.probe(settings)
         AiProviderKind.OPENROUTER -> openRouterProvider.probe(settings)
         AiProviderKind.GROQ -> groqProvider.probe(settings)
