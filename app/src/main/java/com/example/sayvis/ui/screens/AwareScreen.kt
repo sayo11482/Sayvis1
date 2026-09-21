@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoGraph
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Psychology
@@ -55,6 +56,10 @@ import com.example.sayvis.ui.theme.SayvisGold
 import com.example.sayvis.ui.theme.SayvisGreenSuccess
 import com.example.sayvis.ui.theme.SayvisSilverMuted
 import com.example.sayvis.ui.theme.SayvisSurfaceVariant
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 @Composable
 fun AwareScreen(
@@ -66,6 +71,9 @@ fun AwareScreen(
     onApproveOpportunity: (String) -> Unit,
     onDismissOpportunity: (String) -> Unit,
     onRunScan: () -> Unit,
+    sportsSuggestions: List<com.example.sayvis.ai.SearchTasteEngine.Suggestion> = emptyList(),
+    tasteSearchCount: Int = 0,
+    onImportTaste: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val pendingOpps = opportunities.filter { it.status == OpportunityStatus.PENDING }
@@ -302,6 +310,110 @@ fun AwareScreen(
                     onApprove = {},
                     onDismiss = {}
                 )
+            }
+        }
+
+        // =================== SPORTS TASTE SUGGESTIONS (v5.0.0) ===================
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(com.example.sayvis.ui.theme.SayvisSurface)
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.FitnessCenter,
+                        contentDescription = null,
+                        tint = com.example.sayvis.ui.theme.SayvisCyan,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isPersian) "پیشنهاد ورزشی بر اساس سلیقهٔ شما" else "Sports picks from your taste",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = com.example.sayvis.ui.theme.SayvisSilver
+                    )
+                }
+                Text(
+                    text = if (isPersian)
+                        "بر اساس $tasteSearchCount جستجوی اخیر شما (کالیستنیکس، تنیس و…) — تاریخچهٔ گوگل هم قابل چسباندن است."
+                    else
+                        "From your last $tasteSearchCount searches (calisthenics, tennis, …) — you can also paste your Google activity.",
+                    fontSize = 10.5.sp,
+                    color = com.example.sayvis.ui.theme.SayvisSilverMuted
+                )
+                sportsSuggestions.forEach { sug ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(com.example.sayvis.ui.theme.SayvisSurfaceVariant)
+                            .padding(10.dp)
+                            .testTag("sports_suggestion")
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = sug.title,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = com.example.sayvis.ui.theme.SayvisCyan,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = sug.tag,
+                                fontSize = 9.5.sp,
+                                color = com.example.sayvis.ui.theme.SayvisSilverMuted
+                            )
+                        }
+                        Text(
+                            text = sug.body,
+                            fontSize = 11.sp,
+                            color = com.example.sayvis.ui.theme.SayvisSilver
+                        )
+                        Text(
+                            text = "💡 " + sug.reason,
+                            fontSize = 9.5.sp,
+                            color = com.example.sayvis.ui.theme.SayvisSilverMuted
+                        )
+                    }
+                }
+                var importText by remember { mutableStateOf("") }
+                androidx.compose.material3.OutlinedTextField(
+                    value = importText,
+                    onValueChange = { importText = it },
+                    singleLine = true,
+                    placeholder = {
+                        Text(
+                            if (isPersian) "متن فعالیت اخیر گوگل (اختیاری)…" else "Paste recent Google activity (optional)…",
+                            fontSize = 11.sp,
+                            color = com.example.sayvis.ui.theme.SayvisSilverMuted
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("sports_import_field")
+                )
+                Button(
+                    onClick = { if (importText.isNotBlank()) onImportTaste(importText) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = com.example.sayvis.ui.theme.SayvisSurfaceVariant,
+                        contentColor = com.example.sayvis.ui.theme.SayvisSilver
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(34.dp)
+                        .testTag("sports_import_btn")
+                ) {
+                    Text(
+                        if (isPersian) "شخصی‌سازی از تاریخچهٔ چسبانده‌شده" else "Personalise from pasted history",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
 

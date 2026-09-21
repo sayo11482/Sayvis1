@@ -21,9 +21,9 @@ data class LitAnalysisSignal(
 )
 
 data class TradingGateState(
-    val liveTradingBlocked: Boolean = true, // Default STRICTLY BLOCKED
+    val liveTradingBlocked: Boolean = true, // paper simulation by default (owner switches to LIVE in Gateway)
     val paperTradingMode: Boolean = true,
-    val killSwitchEngaged: Boolean = true,
+    val killSwitchEngaged: Boolean = false,
     val maxDailyDrawdownLimitUsd: Double = 50.0,
     val activePositionsCount: Int = 0
 )

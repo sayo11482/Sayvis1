@@ -18,6 +18,8 @@ class AIOrchestrator(
     private val geminiProvider: GeminiProvider = GeminiProvider(),
     private val openRouterProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.OPENROUTER),
     private val groqProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.GROQ),
+    private val openAiProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.OPENAI),
+    private val xaiProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.XAI),
     private val customProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.CUSTOM),
     private val localProvider: LocalCognitiveProvider = LocalCognitiveProvider()
 ) {
@@ -33,6 +35,8 @@ class AIOrchestrator(
         AiProviderKind.GEMINI -> geminiProvider
         AiProviderKind.OPENROUTER -> openRouterProvider
         AiProviderKind.GROQ -> groqProvider
+        AiProviderKind.OPENAI -> openAiProvider
+        AiProviderKind.XAI -> xaiProvider
         AiProviderKind.CUSTOM -> customProvider
         AiProviderKind.LOCAL -> null
     }
@@ -86,25 +90,66 @@ class AIOrchestrator(
                 if (response != null && response.isSuccess) return response
 
                 val reason = response?.errorMessage ?: "provider exception"
-                Log.w(TAG, "Falling back to local core. Reason: $reason")
+                Log.w(TAG, "Primary provider failed; trying automatic failover. Reason: $reason")
+
+                // AUTOMATIC FAILOVER: try every OTHER configured cloud brain
+                // before degrading to the local core — the owner asked for a
+                // fully automatic pipeline, not silence.
+                val tried = mutableListOf("${settings.provider.labelFa} ($reason)")
+                for (candidate in failoverChain(settings.provider)) {
+                    val provider = networkProviderFor(candidate) ?: continue
+                    if (!provider.isConfigured(settings)) continue
+                    val failoverResponse = runCatching { provider.generateResponse(context, settings) }
+                        .getOrElse { null }
+                    if (failoverResponse != null && failoverResponse.isSuccess) {
+                        val note = if (languageFa) {
+                            "🔁 سرویس اصلی («${settings.provider.labelFa}») پاسخ نداد؛ پاسخ از «${candidate.labelFa}» گرفته شد.\n"
+                        } else {
+                            "🔁 The primary service (\"${settings.provider.labelEn}\") was unreachable; answered via \"${candidate.labelEn}\".\n"
+                        }
+                        return failoverResponse.copy(text = note + "\n" + failoverResponse.text)
+                    }
+                    tried += "${candidate.labelFa} (${failoverResponse?.errorMessage ?: "provider exception"})"
+                }
+
                 val fallback = localProvider.generateResponse(context, settings)
                 val warn = if (languageFa) {
-                    "⚠️ پاسخ از هستهٔ محلی آفلاین تولید شد، زیرا سرویس «${settings.provider.labelFa}» پاسخ نداد.\nعلت: $reason\n"
+                    "⚠️ پاسخ از هستهٔ محلی آفلاین تولید شد؛ هیچ سرویس ابری پاسخ نداد.\n" +
+                        tried.joinToString("\n") { "• $it" } + "\n" +
+                        "راهنما: وضعیت شبکه را بررسی کنید (🟠 یعنی VPN لازم است) یا در تنظیمات کلید یکی از سرویس‌ها را وصل کنید."
                 } else {
-                    "⚠️ Answered by the offline local core because the \"${settings.provider.labelEn}\" service did not respond.\nReason: $reason\n"
+                    "⚠️ Answered by the offline local core; no cloud service responded.\n" +
+                        tried.joinToString("\n") { "• $it" } + "\n" +
+                        "Hint: check connectivity (🟠 means a VPN is needed) or connect at least one provider key in Settings."
                 }
-                return fallback.copy(text = warn + "\n" + fallback.text, errorMessage = reason)
+                return fallback.copy(text = warn + "\n" + fallback.text, errorMessage = tried.firstOrNull() ?: reason)
             }
         }
 
         return localProvider.generateResponse(context, settings)
     }
 
+    /**
+     * Automatic failover order: every cloud provider except the selected one,
+     * in a stable preference order (unit-tested).
+     */
+    fun failoverChain(selected: AiProviderKind): List<AiProviderKind> =
+        listOf(
+            AiProviderKind.GEMINI,
+            AiProviderKind.OPENAI,
+            AiProviderKind.XAI,
+            AiProviderKind.OPENROUTER,
+            AiProviderKind.GROQ,
+            AiProviderKind.CUSTOM
+        ).filter { it != selected && it != AiProviderKind.LOCAL }
+
     /** Runs a live credential/reachability check for the Settings screen. */
     suspend fun probe(settings: AiSettings): ProbeOutcome = when (settings.provider) {
         AiProviderKind.GEMINI -> geminiProvider.probe(settings)
         AiProviderKind.OPENROUTER -> openRouterProvider.probe(settings)
         AiProviderKind.GROQ -> groqProvider.probe(settings)
+        AiProviderKind.OPENAI -> openAiProvider.probe(settings)
+        AiProviderKind.XAI -> xaiProvider.probe(settings)
         AiProviderKind.CUSTOM -> customProvider.probe(settings)
         AiProviderKind.LOCAL -> ProbeOutcome(
             success = true,

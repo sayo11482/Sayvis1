@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - arena/01a09a63-sayvis1
+      - arena/01a0a110-sayvis1
       - main
   workflow_dispatch:
 
@@ -50,21 +51,44 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
-      - name: Assemble debug APK
+      - name: Run unit tests & assemble debug APK
         id: build
         run: |
           set -o pipefail
-          gradle assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee build.log
+          gradle testDebugUnitTest assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee build.log
 
       # When compilation fails, surface the actual errors in a place that is
       # readable through the GitHub API (annotations + a PR comment) so they can
       # be fixed without opening the raw log viewer.
+      # Windows edition: the same Kotlin/Compose UI packaged as a runnable
+      # jar + launcher + Persian README, zipped for the release.
+      - name: Build Windows desktop edition
+        id: desktop
+        run: |
+          set -o pipefail
+          gradle :desktop:packageUberJarForCurrentOS --no-daemon --console=plain 2>&1 | tee -a build.log
+          mkdir -p dist/SAYVIS-windows
+          echo "compose jars dir: $(ls -la desktop/build/compose/jars 2>&1 || true)"
+          JAR=$(ls desktop/build/compose/jars/*.jar 2>/dev/null | head -1)
+          [ -n "$JAR" ] || { echo "::error::desktop uber jar not found"; grep -E "^e: |What went wrong|Task '.*' not found|FAILED" build.log | tail -15 || true; exit 1; }
+          cp "$JAR" dist/SAYVIS-windows/sayvis-desktop.jar
+          printf '%s\r\n' '@echo off' 'title SAYVIS' 'where javaw >nul 2>nul && (start javaw -jar "%~dp0sayvis-desktop.jar") || (echo Java 17+ is required. Install from https://adoptium.net and run again. & pause)' > dist/SAYVIS-windows/SAYVIS.bat
+          printf '%s\n' 'SAYVIS - Windows Edition' '=========================' '' '- Java 17 ya Jadid-tar lazem ast (https://adoptium.net).' '- Ejra: dobar kelik rooye SAYVIS.bat' '- Account Google khod ra zakhire konid; QR safheh ra ba scanner daroon app Android bezanid ta goosheh va Windows be ham vasl shavand (yek shabakeh WiFi, port 8765 baz).' '- Kelid Gemini ra dar haman safheh bechabandid ta dastyar Sayo rooye Windows ham faal shavad. Tanzimat dar %USERPROFILE%\.sayvis zakhire mishavad.' > dist/SAYVIS-windows/README-FA.txt
+          cd dist && zip -rq SAYVIS-windows.zip SAYVIS-windows && cd ..
+
+      - name: Upload Windows zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sayvis-windows
+          path: dist/SAYVIS-windows.zip
+          if-no-files-found: error
+
       - name: Report build errors
-        if: failure() && steps.build.outcome == 'failure'
+        if: failure() && (steps.build.outcome == 'failure' || steps.desktop.outcome == 'failure')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          grep -E "^e: |error:|What went wrong|Caused by|Could not|FAILED|Unresolved|> Task .* FAILED" build.log | head -300 > errors.txt || true
+          grep -E "^e: |error:|What went wrong|Caused by|Could not|FAILED|Unresolved|> Task .* FAILED|java\.lang\.|Exception|at org\.robolectric" build.log | head -300 > errors.txt || true
           [ -s errors.txt ] || tail -n 200 build.log > errors.txt
           head -n 10 errors.txt | while IFS= read -r line; do echo "::error::${line}"; done
           {
@@ -103,7 +127,9 @@ jobs:
           OUT="SAYVIS-${VERSION}-debug.apk"
           cp app/build/outputs/apk/debug/app-debug.apk "$OUT"
           sha256sum "$OUT" > "$OUT.sha256"
-          gh release create "$TAG" "$OUT" "$OUT.sha256" \
+          ZIP="SAYVIS-${VERSION}-windows.zip"
+          cp dist/SAYVIS-windows.zip "$ZIP"
+          gh release create "$TAG" "$OUT" "$OUT.sha256" "$ZIP" \
             --target "$GITHUB_SHA" \
             --title "SAYVIS ${VERSION} (build ${GITHUB_RUN_NUMBER})" \
             --notes "نسخهٔ نصبی SAYVIS ${VERSION} — ساخته‌شده به‌صورت خودکار از کامیت ${GITHUB_SHA::7} روی شاخهٔ ${GITHUB_REF_NAME}. امضای debug؛ برای نصب باید «نصب از منابع ناشناس» فعال باشد." \

@@ -7,6 +7,7 @@ val SayvisSurface = com.example.ui.theme.SayvisSurface
 val SayvisSurfaceVariant = com.example.ui.theme.SayvisSurfaceVariant
 val SayvisBorder = com.example.ui.theme.SayvisBorder
 val SayvisGold = com.example.ui.theme.SayvisGold
+val SayvisGoldLight = com.example.ui.theme.SayvisGoldLight
 val SayvisCyan = com.example.ui.theme.SayvisCyan
 val SayvisSilver = com.example.ui.theme.SayvisSilver
 val SayvisGreen = com.example.ui.theme.SayvisGreen

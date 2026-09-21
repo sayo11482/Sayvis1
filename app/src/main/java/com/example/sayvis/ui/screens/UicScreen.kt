@@ -82,6 +82,7 @@ fun UicScreen(
     onRevokeStatus: (String) -> Unit,
     onDeleteAttribute: (String) -> Unit,
     onAddAttribute: (UicCategory, String, String, String) -> Unit,
+    onQuickNote: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedCategory by remember { mutableStateOf<UicCategory?>(null) }
@@ -113,6 +114,28 @@ fun UicScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ===== v5.3.0: quick note → auto-updates the cognitive file =====
+            var quickNote by remember { mutableStateOf("") }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = quickNote,
+                    onValueChange = { quickNote = it },
+                    placeholder = { Text(if (isPersian) "یادداشت امروز — به پروندهٔ شناختی اضافه می‌شود…" else "Today's note — goes into the cognitive file…", fontSize = 10.5.sp) },
+                    modifier = Modifier.weight(1f).testTag("uic_quick_note"),
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.5.sp),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = { onQuickNote(quickNote); quickNote = "" },
+                    enabled = quickNote.isNotBlank(),
+                    modifier = Modifier.testTag("uic_note_add")
+                ) {
+                    Text(if (isPersian) "ثبت" else "Save", fontSize = 11.sp)
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
 
             // Header banner

@@ -93,6 +93,12 @@ interface MemoryDao {
     @Query("SELECT * FROM memory_items ORDER BY importance DESC, updatedAt DESC")
     fun getAllMemoriesFlow(): Flow<List<MemoryItemEntity>>
 
+    @Query(
+        "SELECT * FROM memory_items WHERE content LIKE '%' || :needle || '%' " +
+            "ORDER BY importance DESC, updatedAt DESC LIMIT 8"
+    )
+    suspend fun searchMemories(needle: String): List<MemoryItemEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMemory(entity: MemoryItemEntity)
 

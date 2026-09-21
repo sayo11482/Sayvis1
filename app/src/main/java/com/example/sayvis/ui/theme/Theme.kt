@@ -8,19 +8,19 @@ import com.example.ui.theme.Typography
 
 private val SayvisDarkColorScheme = darkColorScheme(
     primary = SayvisCyan,
-    onPrimary = Color(0xFF030712),
-    primaryContainer = Color(0xFF0C4A6E),
-    onPrimaryContainer = Color(0xFFE0F2FE),
+    onPrimary = Color(0xFF0A0B0E),
+    primaryContainer = Color(0xFF3A2F0B),
+    onPrimaryContainer = Color(0xFFF3CA68),
 
     secondary = SayvisGold,
-    onSecondary = Color(0xFF1E1B09),
-    secondaryContainer = Color(0xFF451A03),
-    onSecondaryContainer = Color(0xFFFEF3C7),
+    onSecondary = Color(0xFF0F1114),
+    secondaryContainer = Color(0xFF3A2F0B),
+    onSecondaryContainer = Color(0xFFF3CA68),
 
     tertiary = SayvisSilver,
-    onTertiary = Color(0xFF0F172A),
-    tertiaryContainer = Color(0xFF1E293B),
-    onTertiaryContainer = Color(0xFFF1F5F9),
+    onTertiary = Color(0xFF0A0B0E),
+    tertiaryContainer = Color(0xFF1C2026),
+    onTertiaryContainer = Color(0xFFF2F4F7),
 
     background = SayvisDeepSpace,
     onBackground = SayvisSilver,
@@ -31,7 +31,7 @@ private val SayvisDarkColorScheme = darkColorScheme(
     onSurfaceVariant = SayvisSilverMuted,
 
     outline = SayvisBorder,
-    outlineVariant = Color(0xFF1E293B),
+    outlineVariant = Color(0xFF20242A),
 
     error = SayvisRedAlert,
     onError = Color.White

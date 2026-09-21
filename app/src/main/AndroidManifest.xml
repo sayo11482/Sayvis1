@@ -3,10 +3,41 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Floating avatar & ambient listening -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Owner-granted device capabilities (requested together at first launch) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
+    <!-- Manager agent: on-device SMS business directory scan -->
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <!-- Connect hub: identify the Google accounts signed in on this device -->
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.location"
+        android:required="false" />
+
     <application
+        android:usesCleartextTraffic="true"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -26,6 +57,65 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            Google-account link: after the owner creates a Gemini key in Google
+            AI Studio (signed in with their Google account), SAYVIS appears in
+            the text-selection menu and the share sheet to capture the key,
+            verify it live and store it in the Keystore-backed vault.
+        -->
+        <!--
+            In-app Google OAuth sign-in: the consent screen redirects back into
+            the app through the sayvis://oauth2 custom scheme (PKCE flow).
+        -->
+        <activity
+            android:name="com.example.sayvis.ui.GoogleSignInActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="oauth2"
+                    android:scheme="sayvis" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name="com.example.sayvis.ui.GoogleLinkActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            Floating avatar & ambient listening: keeps a small overlay avatar on the
+            launcher after Home and runs the on-device owner-voice matcher.
+        -->
+        <service
+            android:name="com.example.sayvis.service.FloatingAvatarService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
     </application>
 
 </manifest>

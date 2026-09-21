@@ -9,6 +9,8 @@ enum class ProviderType(val displayName: String, val displayNameFa: String) {
     OPEN_ROUTER("OpenRouter", "اوپن‌روتر"),
     GROQ_ROUTER("Groq LPU", "گروک"),
     CUSTOM_ENDPOINT("Custom endpoint", "سرویس دلخواه"),
+    OPENAI_CHATGPT("ChatGPT (OpenAI)", "چت‌جی‌پی‌تی"),
+    XAI_GROK("Grok (xAI)", "گراک (xAI)"),
     LOCAL_COGNITIVE("SAYVIS local core", "هستهٔ محلی سایویس");
 
     fun display(isPersian: Boolean): String = if (isPersian) displayNameFa else displayName
@@ -20,6 +22,8 @@ enum class ProviderType(val displayName: String, val displayNameFa: String) {
             AiProviderKind.OPENROUTER -> OPEN_ROUTER
             AiProviderKind.GROQ -> GROQ_ROUTER
             AiProviderKind.CUSTOM -> CUSTOM_ENDPOINT
+            AiProviderKind.OPENAI -> OPENAI_CHATGPT
+            AiProviderKind.XAI -> XAI_GROK
         }
     }
 }

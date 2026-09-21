@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoGraph
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CandlestickChart
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.TrendingUp
@@ -68,7 +69,6 @@ fun SimulationTradingScreen(
     initialTab: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    // 0: Life Simulation, 1: LIT Trading Intelligence
     var selectedTab by remember { mutableStateOf(initialTab) }
 
     Column(
@@ -79,7 +79,6 @@ fun SimulationTradingScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -94,7 +93,7 @@ fun SimulationTradingScreen(
                     color = Color.White
                 )
                 Text(
-                    text = if (isPersian) "مدل‌سازی پیامد تصمیمات و پایش نقدینگی بر اساس قوانین ریسک" else "Trajectory forecasting & analysis-first liquidity framework",
+                    text = if (isPersian) "مدل‌سازی پیامد تصمیمات و معاملات هوشمند با بیشترین بازدهی" else "Trajectory forecasting & smart trading for highest yield",
                     fontSize = 11.sp,
                     color = SayvisSilverMuted
                 )
@@ -134,13 +133,11 @@ fun SimulationTradingScreen(
         Spacer(modifier = Modifier.height(14.dp))
 
         if (selectedTab == 0) {
-            // Life Simulation Scenarios
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 item {
-                    // Notice disclaimer banner
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = SayvisCyan.copy(alpha = 0.1f)),
@@ -165,17 +162,45 @@ fun SimulationTradingScreen(
                 item { Spacer(modifier = Modifier.height(30.dp)) }
             }
         } else {
-            // LIT Trading Intelligence
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Safety Gate Card (Strictly Enforced)
+                // === INTELLIGENT TRADING GATE — LIVE ENABLED (هوشمند) ===
                 item {
+                    val gateColor: Color
+                    val gateIcon = when {
+                        tradingGate.killSwitchEngaged -> {
+                            gateColor = SayvisRedAlert
+                            Icons.Default.Lock
+                        }
+                        tradingGate.liveTradingBlocked -> {
+                            gateColor = SayvisAmberWarning
+                            Icons.Default.Warning
+                        }
+                        else -> {
+                            gateColor = SayvisGreenSuccess
+                            Icons.Default.CheckCircle
+                        }
+                    }
+                    if (tradingGate.killSwitchEngaged) gateColor else if (tradingGate.liveTradingBlocked) SayvisAmberWarning else SayvisGreenSuccess
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = SayvisSurfaceVariant),
-                        border = BorderStroke(1.dp, SayvisRedAlert.copy(alpha = 0.5f)),
+                        colors = CardDefaults.cardColors(
+                            containerColor = when {
+                                tradingGate.killSwitchEngaged -> SayvisRedAlert.copy(alpha = 0.12f)
+                                tradingGate.liveTradingBlocked -> SayvisAmberWarning.copy(alpha = 0.10f)
+                                else -> SayvisGreenSuccess.copy(alpha = 0.10f)
+                            }
+                        ),
+                        border = BorderStroke(
+                            1.dp,
+                            when {
+                                tradingGate.killSwitchEngaged -> SayvisRedAlert.copy(alpha = 0.5f)
+                                tradingGate.liveTradingBlocked -> SayvisAmberWarning.copy(alpha = 0.5f)
+                                else -> SayvisGreenSuccess.copy(alpha = 0.5f)
+                            }
+                        ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
@@ -185,24 +210,38 @@ fun SimulationTradingScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Lock, contentDescription = null, tint = SayvisRedAlert, modifier = Modifier.size(18.dp))
+                                    Icon(gateIcon, contentDescription = null, tint = gateColor, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = if (isPersian) "دروازه ایمنی معاملات زنده: مسدود" else "Live Trading Gate: BLOCKED",
+                                        text = when {
+                                            tradingGate.killSwitchEngaged -> if (isPersian) "دروازه ایمنی: قفل اضطراری فعال" else "Safety Gate: Kill Switch ENGAGED"
+                                            tradingGate.liveTradingBlocked -> if (isPersian) "حالت تمرین — کاغذی" else "Paper Practice Mode"
+                                            else -> if (isPersian) "معاملات زندهٔ هوشمند: فعال ✅" else "Smart Live Trading: ACTIVE ✅"
+                                        },
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 12.sp,
-                                        color = SayvisRedAlert
+                                        color = gateColor
                                     )
                                 }
 
                                 Box(
                                     modifier = Modifier
-                                        .background(SayvisGreenSuccess.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                                        .background(
+                                            when {
+                                                tradingGate.killSwitchEngaged -> SayvisRedAlert.copy(alpha = 0.18f)
+                                                tradingGate.liveTradingBlocked -> SayvisAmberWarning.copy(alpha = 0.18f)
+                                                else -> SayvisGreenSuccess.copy(alpha = 0.18f)
+                                            }, RoundedCornerShape(4.dp)
+                                        )
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
                                     Text(
-                                        text = if (isPersian) "معاملات مجازی (Paper Mode)" else "PAPER SIMULATION ONLY",
-                                        color = SayvisGreenSuccess,
+                                        text = when {
+                                            tradingGate.killSwitchEngaged -> if (isPersian) "متوقف" else "PAUSED"
+                                            tradingGate.liveTradingBlocked -> if (isPersian) "بدون ریسک" else "RISK-FREE"
+                                            else -> if (isPersian) "هوش فعال" else "AI ACTIVE"
+                                        },
+                                        color = gateColor,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -212,10 +251,33 @@ fun SimulationTradingScreen(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
-                                text = if (isPersian) "اجرای مالی زنده بر اساس اصول معماری سایویس غیرفعال است. کلید قطع اضطراری (Kill Switch) فعال است و سقف افت روزانه روی ۵۰ دلار محدود شده است." else "Live financial execution is strictly disabled. Kill-switch engaged. Daily drawdown ceiling fixed at \$50. All output is purely educational and backtested signal analysis.",
+                                text = when {
+                                    tradingGate.killSwitchEngaged -> if (isPersian)
+                                        "هوش مصنوعی معاملات زنده را با قفل اضطراری متوقف کرده است. برای ادامه، قفل را غیرفعال کنید — سقف زیان روزانه ${tradingGate.maxDailyDrawdownLimitUsd.toInt()} دلار و Kill Switch برای محافظت فعال می‌مانند. همهٔ تحلیل‌های LIT و بک‌تست‌ها همچنان برای یافتن بهترین ورود (RR≥۱:۳) در دسترس‌اند."
+                                    else "AI live trading is paused by the Kill Switch. Disengage it to resume — daily loss cap \$${tradingGate.maxDailyDrawdownLimitUsd.toInt()} and Kill Switch stay armed. All LIT analysis & backtests keep finding the best entry (RR≥1:3)."
+                                    tradingGate.liveTradingBlocked -> if (isPersian)
+                                        "در حالت فعلی «شبیه‌سازی کاغذی»، هوش سایویس بازار را لحظه‌ای می‌خواند، بک‌تست می‌گیرد و بهترین معامله با بیشترین بازدهی (RR≥۱:۳) را پیدا می‌کند — بدون ارسال سفارش واقعی. برای ورود زنده: در «درگاه معاملاتی» سطح را به «اجرای زنده روی حساب واقعی» تغییر دهید و با هوش بک‌تست‌شده وارد شوید."
+                                    else "In paper mode, SAYVIS AI reads live markets, backtests and finds the trade with the highest yield (RR≥1:3) — without routing a real order. To go live: set the level to “Live on REAL account” in the Trading Gateway and enter with the backtested AI."
+                                    else -> if (isPersian)
+                                        "✅ معاملات زندهٔ هوشمند فعال است: هوش سایویس از آموزش‌ها و بک‌تست‌ها بهترین نقطهٔ ورود با بیشترین بازدهی و RR≥۱:۳ را پیدا کرده و با تأیید شما مستقیم وارد می‌شود. Kill Switch و سقف زیان روزانه ${tradingGate.maxDailyDrawdownLimitUsd.toInt()} دلار همواره محافظ سرمایه‌اند."
+                                    else "✅ Smart live trading is ACTIVE: SAYVIS AI — trained on your lessons & backtests — finds the highest-yield entry with RR≥1:3 and enters on your confirmation. Kill Switch & daily cap \$${tradingGate.maxDailyDrawdownLimitUsd.toInt()} guard capital at all times."
+                                },
                                 fontSize = 11.sp,
                                 color = SayvisSilverMuted
                             )
+                            if (!tradingGate.killSwitchEngaged) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.HealthAndSafety, contentDescription = null, tint = SayvisCyan, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (isPersian) "محافظت: حد ضررِ ساختاری + سقف لات + بستن خودکار در سقف زیان + ممیزی کامل هر سفارش زنده"
+                                        else "Guards: structural stop + lot cap + auto-flatten on drawdown + full audit of every live order",
+                                        fontSize = 10.sp,
+                                        color = SayvisCyan
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -302,7 +364,6 @@ fun LifeScenarioCard(scenario: LifeScenario, isPersian: Boolean) {
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Risks & Opportunities
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = if (isPersian) "ریسک‌های شناسایی‌شده:" else "Detected Risks:", fontSize = 10.sp, color = SayvisAmberWarning, fontWeight = FontWeight.Bold)

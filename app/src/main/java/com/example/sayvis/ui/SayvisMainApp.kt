@@ -36,6 +36,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -56,7 +57,13 @@ import com.example.sayvis.model.MissionStatus
 import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.ui.components.LocalTranslation
 import com.example.sayvis.ui.screens.AwareScreen
+import com.example.sayvis.ui.screens.AgentScreen
+import com.example.sayvis.ui.screens.DigitalMirrorScreen
+import com.example.sayvis.ui.screens.MarketsScreen
+import com.example.sayvis.ui.screens.RobotScreen
+import com.example.sayvis.ui.screens.AvatarListenScreen
 import com.example.sayvis.ui.screens.ChatScreen
+import com.example.sayvis.ui.screens.ConnectScreen
 import com.example.sayvis.ui.screens.HomeScreen
 import com.example.sayvis.ui.screens.MissionsScreen
 import com.example.sayvis.ui.screens.ScriptsScreen
@@ -79,6 +86,8 @@ import com.example.sayvis.ui.theme.SayvisSilverMuted
 import com.example.sayvis.ui.theme.SayvisSurface
 import com.example.sayvis.ui.theme.SayvisSurfaceVariant
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 /**
  * Application shell.
@@ -119,8 +128,36 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
 
     val probe by viewModel.probe.collectAsState()
     val isProbing by viewModel.isProbing.collectAsState()
+    val listenLevel by com.example.sayvis.voice.ListenBus.level.collectAsState()
+    val connectivity by viewModel.connectivity.collectAsState()
+    val sportsSuggestions: List<com.example.sayvis.ai.SearchTasteEngine.Suggestion> by viewModel.sportsSuggestions.collectAsState()
+    val recentSearchCount = viewModel.recentSearches().size
+    val marketSnapshot by viewModel.marketSnapshot.collectAsState()
+    val netSpeed by viewModel.netSpeed.collectAsState()
+    val statusCode by viewModel.statusCode.collectAsState()
+    val liveTick by viewModel.liveTick.collectAsState()
+    val marketLastRefreshAt by viewModel.marketLastRefreshAt.collectAsState()
+    val chatThinking by viewModel.chatThinking.collectAsState()
+    val missionAgentBusy by viewModel.missionAgentBusy.collectAsState()
+    val missionAgentSteps by viewModel.missionAgentSteps.collectAsState()
+    val missionAgentResult by viewModel.missionAgentResult.collectAsState()
+    val gitHits by viewModel.gitHits.collectAsState()
+    val gitBusy by viewModel.gitBusy.collectAsState()
+    val gitMessage by viewModel.gitMessage.collectAsState()
+    val integrations by viewModel.integrations.collectAsState()
+
+    val statusChipText = remember(statusCode, isPersian) {
+        "کد ${com.example.sayvis.i18n.PersianFormat.digits(statusCode.code.code, isPersian)} · ${statusCode.code.label(isPersian)}"
+    }
+    val speedText = netSpeed?.let { com.example.sayvis.i18n.PersianFormat.digits("%.1f".format(it.mbps), isPersian) } ?: "—"
+    val marketAgeSeconds = remember(liveTick, marketLastRefreshAt) {
+        if (marketLastRefreshAt > 0) ((System.currentTimeMillis() - marketLastRefreshAt) / 1000).coerceAtLeast(0) else -1L
+    }
+    var importedNote by remember { mutableStateOf("") }
 
     val strings = remember(isPersian) { SayvisStrings.of(isPersian) }
+
+    LaunchedEffect(Unit) { viewModel.maybeAutoConnectScreen() }
     val layoutDirection = if (isPersian && settings.localization.forceRtlForPersian) LayoutDirection.Rtl else LayoutDirection.Ltr
 
     CompositionLocalProvider(
@@ -307,6 +344,8 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                 when (currentScreen) {
                     SayvisScreen.HOME -> HomeScreen(
                         avatarState = avatarState,
+                        visualStyle = settings.visualStyle,
+                        listenLevel = listenLevel,
                         contextSnapshot = contextSnapshot,
                         activeMission = missions.firstOrNull { it.status == MissionStatus.ACTIVE },
                         pendingOpportunities = awareOpportunities.filter { it.status == OpportunityStatus.PENDING },
@@ -317,14 +356,42 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         onSendMessage = { viewModel.sendMessage(it) },
                         onApproveOpportunity = { viewModel.approveOpportunity(it) },
                         onDismissOpportunity = { viewModel.dismissOpportunity(it) },
-                        onToggleEmergencyLock = { viewModel.toggleEmergencyLock() }
+                        onToggleEmergencyLock = { viewModel.toggleEmergencyLock() },
+                        marketSnapshot = marketSnapshot,
+                        online = !forceOfflineMode,
+                        onToggleOnline = { viewModel.toggleOfflineMode() },
+                        speedText = speedText,
+                        statusChipText = statusChipText,
+                        marketAgeSeconds = marketAgeSeconds,
+                        onRefreshSpeed = { viewModel.refreshSpeedNow() }
                     )
 
                     SayvisScreen.ASSISTANT -> ChatScreen(
                         messages = chatMessages,
                         avatarState = avatarState,
+                        visualStyle = settings.visualStyle,
+                        listenLevel = listenLevel,
                         isPersian = isPersian,
-                        onSendMessage = { viewModel.sendMessage(it) }
+                        onSendMessage = { viewModel.sendMessage(it) },
+                        pendingAction = viewModel.pendingAction.collectAsState().value,
+                        onApproveAction = { viewModel.approvePendingAction() },
+                        onDismissAction = { viewModel.dismissPendingAction() },
+                        voiceListening = viewModel.voiceListening.collectAsState().value,
+                        thinking = chatThinking,
+                        voiceAvailable = viewModel.voiceAvailable,
+                        brainOptions = listOf(
+                            "AUTO" to (if (isPersian) strings.brainAuto else "Auto"),
+                            "GEMINI" to "Gemini",
+                            "GROQ" to "Groq",
+                            "OPENAI" to "ChatGPT",
+                            "XAI" to "Grok",
+                            "OPENROUTER" to "OpenRouter",
+                            "LOCAL" to (if (isPersian) "محلی" else "Local")
+                        ),
+                        activeBrain = settings.assistantBrain,
+                        activeBrainNote = viewModel.brainNoteFor(settings),
+                        onBrainPick = { viewModel.pickAssistantBrain(it) },
+                        onVoiceInput = { viewModel.startVoiceInput() }
                     )
 
                     SayvisScreen.TOOLS -> ToolsScreen(
@@ -341,6 +408,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         onNavigate = { viewModel.navigateTo(it) }
                     )
 
+                    SayvisScreen.CONNECT -> ConnectScreen(viewModel = viewModel)
                     SayvisScreen.SETTINGS -> SettingsScreen(
                         settings = settings,
                         onSettingsChange = { next -> viewModel.updateSettings { next } },
@@ -350,8 +418,12 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         scriptCount = scripts.size,
                         vaultHardwareBacked = viewModel.vaultHardwareBacked,
                         translationCacheSize = viewModel.translationCacheSize,
-                        appVersion = "1.1.0",
+                        appVersion = com.example.BuildConfig.VERSION_NAME,
                         onTestConnection = { viewModel.testAiConnection() },
+                        onGoogleSignIn = { viewModel.beginGoogleSignIn() },
+                        onGoogleSignOut = { viewModel.googleSignOut() },
+                        onSetGoogleRequireSignIn = { viewModel.setGoogleRequireSignIn(it) },
+                        onOpenConnect = { viewModel.openConnectCenter() },
                         onOpenGateway = { viewModel.navigateTo(SayvisScreen.GATEWAY) },
                         onOpenScripts = { viewModel.navigateTo(SayvisScreen.SCRIPTS) },
                         onClearTranslationCache = { viewModel.clearTranslationCache() },
@@ -364,7 +436,11 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         missions = missions,
                         isPersian = isPersian,
                         onToggleTask = { missionId, taskId, completed -> viewModel.toggleMissionTask(missionId, taskId, completed) },
-                        onAddMission = { mission -> coroutineScope.launch { viewModel.repository.addMission(mission) } }
+                        onAddMission = { mission -> coroutineScope.launch { viewModel.repository.addMission(mission) } },
+                        agentBusy = missionAgentBusy,
+                        agentSteps = missionAgentSteps,
+                        agentResult = missionAgentResult,
+                        onRunAgent = { viewModel.runMissionAgent(it) }
                     )
 
                     SayvisScreen.UIC -> UicScreen(
@@ -375,7 +451,8 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         onDeleteAttribute = { viewModel.deleteUicAttribute(it) },
                         onAddAttribute = { category, title, key, value ->
                             viewModel.addCustomUicAttribute(category, title, key, value)
-                        }
+                        },
+                        onQuickNote = { viewModel.addQuickNote(it) }
                     )
 
                     SayvisScreen.AWARE -> {
@@ -390,7 +467,12 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                             persianDigits = settings.localization.persianDigits,
                             onApproveOpportunity = { viewModel.approveOpportunity(it) },
                             onDismissOpportunity = { viewModel.dismissOpportunity(it) },
-                            onRunScan = { viewModel.runAwareScan() }
+                            onRunScan = { viewModel.runAwareScan() },
+                            sportsSuggestions = sportsSuggestions,
+                            tasteSearchCount = recentSearchCount,
+                            onImportTaste = { blob ->
+                                importedNote = viewModel.importSearchTaste(blob).toString()
+                            }
                         )
                     }
 
@@ -447,7 +529,10 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         onRefresh = { viewModel.refreshGateway() },
                         onExecutionModeChange = { viewModel.changeExecutionMode(it) },
                         onPlaceOrder = { viewModel.placeOrder(it) },
-                        onClosePosition = { viewModel.closePosition(it) }
+                        onClosePosition = { viewModel.closePosition(it) },
+                        googleEmail = settings.google.email,
+                        tvAutoLogin = settings.tradingViewAutoLogin,
+                        onTvAutoLoginChange = { viewModel.setTradingViewAutoLogin(it) }
                     )
 
                     SayvisScreen.SCRIPTS -> ScriptsScreen(
@@ -460,7 +545,35 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         onSave = { viewModel.saveScript(it) },
                         onDelete = { viewModel.deleteScript(it) },
                         onToggleEnabled = { id, enabled -> viewModel.toggleScript(id, enabled) },
-                        onAskAssistant = { viewModel.askAssistantToScript(it) }
+                        onAskAssistant = { viewModel.askAssistantToScript(it) },
+                        gitHits = gitHits,
+                        gitBusy = gitBusy,
+                        gitMessage = gitMessage,
+                        integrations = integrations,
+                        onGitScan = { viewModel.scanGithub(it) },
+                        onIntegrate = { viewModel.stageIntegrations(it) },
+                        onRemoveIntegration = { viewModel.removeIntegration(it) }
+                    )
+
+                    SayvisScreen.AVATAR -> AvatarListenScreen(
+                        isPersian = isPersian,
+                        persianDigits = settings.localization.persianDigits
+                    )
+
+                    SayvisScreen.AGENT -> AgentScreen(viewModel = viewModel)
+                    SayvisScreen.MIRROR -> DigitalMirrorScreen()
+                    SayvisScreen.MARKETS -> MarketsScreen(viewModel = viewModel)
+
+                    SayvisScreen.ROBOT -> RobotScreen(
+                        avatarState = avatarState,
+                        listenLevel = listenLevel,
+                        connectivity = connectivity,
+                        isPersian = isPersian,
+                        onRefreshConnectivity = { viewModel.refreshConnectivity() },
+                        onAskAssistant = { message ->
+                            viewModel.navigateTo(SayvisScreen.ASSISTANT)
+                            viewModel.sendMessage(message)
+                        }
                     )
                 }
             }

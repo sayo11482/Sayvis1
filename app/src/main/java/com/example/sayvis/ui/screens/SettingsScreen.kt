@@ -1,5 +1,6 @@
 package com.example.sayvis.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
@@ -28,21 +30,31 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import com.example.sayvis.ai.GoogleLinkManager
 import com.example.sayvis.i18n.LocalStrings
 import com.example.sayvis.i18n.PersianFormat
 import com.example.sayvis.settings.AiProviderKind
 import com.example.sayvis.settings.AppLanguage
+import com.example.sayvis.settings.AiVisualStyle
 import com.example.sayvis.settings.AppSettings
 import com.example.sayvis.settings.AppearanceMode
 import com.example.sayvis.settings.ProviderProbe
@@ -57,15 +69,17 @@ import com.example.sayvis.ui.components.SayvisField
 import com.example.sayvis.ui.components.SayvisOptionRow
 import com.example.sayvis.ui.components.SayvisSectionHeader
 import com.example.sayvis.ui.components.SayvisStatusPill
+import com.example.sayvis.ui.components.AiStyleCanvas
 import com.example.sayvis.ui.components.SayvisToggleRow
+import com.example.sayvis.ui.theme.SayvisCyan
 import com.example.sayvis.ui.components.pnlColor
 import com.example.sayvis.ui.theme.SayvisAmberWarning
-import com.example.sayvis.ui.theme.SayvisCyan
 import com.example.sayvis.ui.theme.SayvisGold
 import com.example.sayvis.ui.theme.SayvisGreenSuccess
 import com.example.sayvis.ui.theme.SayvisRedAlert
 import com.example.sayvis.ui.theme.SayvisSilver
 import com.example.sayvis.ui.theme.SayvisSilverMuted
+import kotlinx.coroutines.launch
 
 /**
  * The single place where every owner-editable control lives.
@@ -86,6 +100,10 @@ fun SettingsScreen(
     translationCacheSize: Int,
     appVersion: String,
     onTestConnection: () -> Unit,
+    onGoogleSignIn: () -> Unit,
+    onGoogleSignOut: () -> Unit,
+    onSetGoogleRequireSignIn: (Boolean) -> Unit,
+    onOpenConnect: () -> Unit,
     onOpenGateway: () -> Unit,
     onOpenScripts: () -> Unit,
     onClearTranslationCache: () -> Unit,
@@ -95,6 +113,8 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val s = LocalStrings.current
+    val context = LocalContext.current
+    val listenLevel by com.example.sayvis.voice.ListenBus.level.collectAsState()
     var showResetDialog by remember { mutableStateOf(false) }
     var revealKey by remember { mutableStateOf(false) }
     var maxTokensText by remember(settings.ai.maxOutputTokens) { mutableStateOf(settings.ai.maxOutputTokens.toString()) }
@@ -181,6 +201,114 @@ fun SettingsScreen(
             )
         }
 
+        // ================================================== DEVICE PERMISSIONS
+        SayvisSectionHeader(title = s.sectionPermissions, icon = Icons.Default.Security)
+
+        SayvisCard {
+            val appContext = androidx.compose.ui.platform.LocalContext.current
+            var gateState by remember { mutableStateOf(0) }
+            val cameraOk = remember(gateState) { com.example.sayvis.ui.components.checkPermission(appContext, android.Manifest.permission.CAMERA) }
+            val locationOk = remember(gateState) {
+                com.example.sayvis.ui.components.checkPermission(appContext, android.Manifest.permission.ACCESS_FINE_LOCATION) ||
+                    com.example.sayvis.ui.components.checkPermission(appContext, android.Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
+            val galleryOk = remember(gateState) { com.example.sayvis.ui.components.checkPermission(appContext, com.example.sayvis.ui.components.galleryPermission()) }
+            val contactsOk = remember(gateState) { com.example.sayvis.ui.components.checkPermission(appContext, android.Manifest.permission.READ_CONTACTS) }
+            val micOk = remember(gateState) { com.example.sayvis.ui.components.checkPermission(appContext, android.Manifest.permission.RECORD_AUDIO) }
+            val notifOk = remember(gateState) { com.example.sayvis.voice.AvatarListenController.hasNotificationPermission(appContext) }
+
+            val requestLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+            ) { gateState++ }
+
+            PermissionStatusRow(s.permMic, micOk, s) { requestLauncher.launch(arrayOf(android.Manifest.permission.RECORD_AUDIO)) }
+            PermissionStatusRow(s.permCamera, cameraOk, s) { requestLauncher.launch(arrayOf(android.Manifest.permission.CAMERA)) }
+            PermissionStatusRow(s.permLocation, locationOk, s) {
+                requestLauncher.launch(arrayOf(
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                ))
+            }
+            PermissionStatusRow(s.permGallery, galleryOk, s) { requestLauncher.launch(arrayOf(com.example.sayvis.ui.components.galleryPermission())) }
+            PermissionStatusRow(s.permContacts, contactsOk, s) { requestLauncher.launch(arrayOf(android.Manifest.permission.READ_CONTACTS)) }
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                PermissionStatusRow(s.permNotif, notifOk, s) { requestLauncher.launch(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS)) }
+            }
+            PermissionStatusRow(s.permOverlay, com.example.sayvis.voice.AvatarListenController.hasOverlayPermission(appContext), s) {
+                appContext.startActivity(com.example.sayvis.voice.AvatarListenController.overlaySettingsIntent(appContext))
+            }
+        }
+
+        // ==================================================== AI VISUAL STYLE
+        SayvisSectionHeader(
+            title = s.sectionVisual,
+            subtitle = s.visualSubtitle,
+            icon = Icons.Default.AutoAwesome
+        )
+
+        SayvisCard {
+            // Live multidimensional preview of the selected style (voice-reactive).
+            AiStyleCanvas(
+                style = settings.visualStyle,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(150.dp)
+                    .testTag("ai_style_preview"),
+                level = listenLevel
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // The four selectable views.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AiVisualStyle.entries.forEach { style ->
+                    val selected = style == settings.visualStyle
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                            .clickable {
+                                onSettingsChange(settings.copy(visualStyle = style))
+                            }
+                            .background(
+                                if (selected) SayvisCyan.copy(alpha = 0.10f)
+                                else com.example.sayvis.ui.theme.SayvisSurface.copy(alpha = 0.6f)
+                            )
+                            .padding(vertical = 8.dp)
+                            .testTag("ai_style_" + style.name.lowercase()),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        AiStyleCanvas(
+                            style = style,
+                            modifier = Modifier.size(56.dp),
+                            animate = true,
+                            level = listenLevel
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = style.label(isPersian),
+                            fontSize = 9.5.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selected) SayvisCyan else SayvisSilverMuted,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+
+            SayvisDivider()
+
+            SayvisToggleRow(
+                label = s.roboticSound,
+                hint = s.roboticSoundHint,
+                checked = settings.roboticVoiceReplies,
+                onCheckedChange = { onSettingsChange(settings.copy(roboticVoiceReplies = it)) }
+            )
+        }
+
         // ================================================================= AI
         SayvisSectionHeader(
             title = s.sectionAi,
@@ -240,8 +368,25 @@ fun SettingsScreen(
                         label = s.model,
                         value = settings.ai.geminiModel,
                         onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(geminiModel = it.trim()))) },
-                        hint = "gemini-2.5-flash / gemini-2.5-pro",
+                        hint = "gemini-3.6-flash / gemini-flash-latest",
                         monospace = true
+                    )
+
+                    // Sign in with Google → AI Studio → automatic key capture,
+                    // live verification and vault storage.
+                    GoogleAccountLinkCard(
+                        activeKey = settings.ai.geminiApiKey,
+                        isPersian = isPersian,
+                        onKeyLinked = { linked ->
+                            onSettingsChange(
+                                settings.copy(
+                                    ai = settings.ai.copy(
+                                        geminiApiKey = linked,
+                                        provider = AiProviderKind.GEMINI
+                                    )
+                                )
+                            )
+                        }
                     )
                 }
 
@@ -279,6 +424,44 @@ fun SettingsScreen(
                         value = settings.ai.groqModel,
                         onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(groqModel = it.trim()))) },
                         hint = "llama-3.3-70b-versatile",
+                        monospace = true
+                    )
+                }
+
+                AiProviderKind.OPENAI -> {
+                    SecretField(
+                        label = s.apiKey,
+                        hint = "sk-…",
+                        value = settings.ai.openAiApiKey,
+                        reveal = revealKey,
+                        onRevealChange = { revealKey = it },
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(openAiApiKey = it.trim()))) },
+                        isPersian = isPersian
+                    )
+                    SayvisField(
+                        label = s.model,
+                        value = settings.ai.openAiModel,
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(openAiModel = it.trim()))) },
+                        hint = "gpt-4o-mini / gpt-4o",
+                        monospace = true
+                    )
+                }
+
+                AiProviderKind.XAI -> {
+                    SecretField(
+                        label = s.apiKey,
+                        hint = "xai-…",
+                        value = settings.ai.xaiApiKey,
+                        reveal = revealKey,
+                        onRevealChange = { revealKey = it },
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(xaiApiKey = it.trim()))) },
+                        isPersian = isPersian
+                    )
+                    SayvisField(
+                        label = s.model,
+                        value = settings.ai.xaiModel,
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(xaiModel = it.trim()))) },
+                        hint = "grok-3-mini / grok-4",
                         monospace = true
                     )
                 }
@@ -443,6 +626,95 @@ fun SettingsScreen(
         }
 
         // ============================================================ TRADING
+        // ======================================================= LINKED ACCOUNTS
+        SayvisSectionHeader(title = s.sectionLinked, icon = Icons.Default.Link)
+        SayvisCard {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = s.linkedHint, fontSize = 11.sp, color = SayvisSilverMuted)
+                SayvisField(
+                    label = s.linkedInstagram,
+                    value = settings.linked.instagramHandle,
+                    onValueChange = { onSettingsChange(settings.copy(linked = settings.linked.copy(instagramHandle = it.removePrefix("@").trim()))) },
+                    hint = "username"
+                )
+                SecretField(
+                    label = s.linkedSites,
+                    hint = "[{\"site\":\"…\",\"user\":\"…\",\"token\":\"…\"}]",
+                    value = settings.linked.linkedSites,
+                    reveal = revealKey,
+                    onRevealChange = { revealKey = it },
+                    onValueChange = { onSettingsChange(settings.copy(linked = settings.linked.copy(linkedSites = it.trim()))) },
+                    isPersian = isPersian
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // ======================================================= GOOGLE ACCOUNT
+        SayvisSectionHeader(title = s.googleSectionTitle, icon = Icons.Default.Link)
+        SayvisCard {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = s.googleSectionHint, fontSize = 11.5.sp, color = SayvisSilverMuted)
+                SayvisButton(
+                    label = s.connectHubTitle,
+                    onClick = onOpenConnect,
+                    tone = ButtonTone.PRIMARY,
+                    modifier = Modifier.fillMaxWidth().testTag("settings_open_connect")
+                )
+                SayvisField(
+                    label = s.googleClientId,
+                    value = settings.google.clientId,
+                    onValueChange = { onSettingsChange(settings.copy(google = settings.google.copy(clientId = it.trim()))) },
+                    hint = "1234…apps.googleusercontent.com",
+                    monospace = true
+                )
+                Text(text = s.googleHowTo, fontSize = 10.5.sp, color = SayvisSilverMuted)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SayvisButton(
+                        label = s.googleOpenConsole,
+                        onClick = {
+                            runCatching {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.cloud.google.com/apis/credentials")))
+                            }
+                        },
+                        tone = ButtonTone.NEUTRAL,
+                        modifier = Modifier.weight(1f).testTag("google_open_console")
+                    )
+                    SayvisButton(
+                        label = s.googleSignIn,
+                        onClick = onGoogleSignIn,
+                        tone = ButtonTone.PRIMARY,
+                        modifier = Modifier.weight(1f).testTag("google_account_signin")
+                    )
+                }
+                if (settings.google.signedIn) {
+                    Text(
+                        text = "✅ " + settings.google.displayName.orEmpty().ifBlank { settings.google.email } +
+                            "  <" + settings.google.email + ">",
+                        fontSize = 11.5.sp,
+                        color = SayvisGreenSuccess,
+                        modifier = Modifier.testTag("google_account_status")
+                    )
+                    SayvisButton(
+                        label = s.googleSignOut,
+                        onClick = onGoogleSignOut,
+                        tone = ButtonTone.DANGER,
+                        modifier = Modifier.testTag("google_account_signout")
+                    )
+                }
+                SayvisToggleRow(
+                    label = s.googleLockToggle,
+                    hint = null,
+                    checked = settings.google.requireSignInAtLaunch,
+                    onCheckedChange = { onSetGoogleRequireSignIn(it) },
+                    enabled = settings.google.signedIn
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         SayvisSectionHeader(title = s.sectionTrading, icon = Icons.Default.SwapHoriz)
 
         SayvisCard {
@@ -630,6 +902,111 @@ fun SettingsScreen(
     }
 }
 
+
+/**
+ * "Sign in with Google" → Gemini link card.
+ *
+ * Google has no in-app OAuth for the Gemini API; AI Studio (which works with
+ * any personal Google account) is the official Google-login surface for keys.
+ * This card opens AI Studio, then — once the owner copied the issued key —
+ * picks it from the clipboard, verifies it live against Google and stores it
+ * in the Keystore-backed vault, switching the brain to Gemini. For zero-typing
+ * linking, the text-selection menu / share sheet route lands in
+ * [com.example.sayvis.ui.GoogleLinkActivity].
+ */
+@Composable
+private fun GoogleAccountLinkCard(
+    activeKey: String,
+    isPersian: Boolean,
+    onKeyLinked: (String) -> Unit
+) {
+    val s = LocalStrings.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<Pair<GoogleLinkManager.CheckStatus, String>?>(null) }
+
+    SayvisDivider()
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Default.Link, contentDescription = null, tint = SayvisCyan, modifier = Modifier.size(16.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = s.googleLinkTitle, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = SayvisSilver)
+    }
+    Text(text = s.googleLinkHow, fontSize = 11.5.sp, color = SayvisSilverMuted)
+    Spacer(modifier = Modifier.height(8.dp))
+
+    if (activeKey.isNotBlank()) {
+        Text(
+            text = s.googleLinkActiveKey + ": " + GoogleLinkManager.redact(activeKey) +
+                "  (" + kindLabelOf(s, activeKey) + ")",
+            fontSize = 11.sp,
+            color = SayvisGreenSuccess,
+            modifier = Modifier.testTag("google_link_active_key")
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        SayvisButton(
+            label = s.googleLinkSignIn,
+            onClick = {
+                runCatching {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GoogleLinkManager.STUDIO_KEY_URL)))
+                }
+            },
+            tone = ButtonTone.PRIMARY,
+            modifier = Modifier.weight(1f).testTag("google_link_signin")
+        )
+        SayvisButton(
+            label = if (busy) s.googleLinkChecking else s.googleLinkFromClipboard,
+            onClick = {
+                if (busy) return@SayvisButton
+                val clip = (context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                    ?.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+                val key = GoogleLinkManager.extractKeyFromText(clip)
+                if (key == null) {
+                    status = GoogleLinkManager.CheckStatus.INVALID to s.googleLinkNoKey
+                    return@SayvisButton
+                }
+                busy = true
+                scope.launch {
+                    val check = GoogleLinkManager.validateKey(key)
+                    if (check.keyUsable || check.status == GoogleLinkManager.CheckStatus.NETWORK) {
+                        onKeyLinked(key)
+                    }
+                    status = check.status to (if (isPersian) check.messageFa else check.messageEn)
+                    busy = false
+                }
+            },
+            busy = busy,
+            tone = ButtonTone.SUCCESS,
+            modifier = Modifier.weight(1f).testTag("google_link_clipboard")
+        )
+    }
+    Text(text = s.googleLinkSelectionHint, fontSize = 10.5.sp, color = SayvisSilverMuted)
+    status?.let { (st, message) ->
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = message,
+            fontSize = 11.sp,
+            color = when (st) {
+                GoogleLinkManager.CheckStatus.VALID -> SayvisGreenSuccess
+                GoogleLinkManager.CheckStatus.INVALID -> SayvisRedAlert
+                else -> SayvisAmberWarning
+            },
+            modifier = Modifier.testTag("google_link_status")
+        )
+    }
+    Spacer(modifier = Modifier.height(10.dp))
+}
+
+private fun kindLabelOf(s: com.example.sayvis.i18n.SayvisStrings, key: String): String =
+    when (GoogleLinkManager.classify(key)) {
+        GoogleLinkManager.KeyKind.AUTH_AQ -> s.googleLinkKindAuth
+        GoogleLinkManager.KeyKind.STANDARD_AIZA -> s.googleLinkKindStandard
+        GoogleLinkManager.KeyKind.UNKNOWN -> s.googleLinkKindUnknown
+    }
+
 @Composable
 private fun SecretField(
     label: String,
@@ -677,4 +1054,27 @@ private fun gatewaySummary(state: MtGatewayState, settings: AppSettings, isPersi
     val mode = profile.executionMode.label(isPersian)
     val server = profile.serverAddress.ifBlank { if (isPersian) "سرور تنظیم‌نشده" else "no server set" }
     return "$terminal · $server · $mode"
+}
+
+
+@Composable
+private fun PermissionStatusRow(
+    label: String,
+    granted: Boolean,
+    s: com.example.sayvis.i18n.SayvisStrings,
+    onGrant: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, fontSize = 12.sp, color = SayvisSilver, modifier = Modifier.weight(1f))
+        if (granted) {
+            SayvisStatusPill(text = s.avatarPermGranted, color = SayvisGreenSuccess)
+        } else {
+            SayvisButton(label = s.avatarPermGrant, onClick = onGrant, tone = ButtonTone.GOLD)
+        }
+    }
 }

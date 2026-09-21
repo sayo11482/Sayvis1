@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -62,6 +63,7 @@ import com.example.sayvis.ui.theme.SayvisCyan
 import com.example.sayvis.ui.theme.SayvisGold
 import com.example.sayvis.ui.theme.SayvisGreenSuccess
 import com.example.sayvis.ui.theme.SayvisRedAlert
+import com.example.sayvis.ui.theme.SayvisSilver
 import com.example.sayvis.ui.theme.SayvisSilverMuted
 import com.example.sayvis.ui.theme.SayvisSurface
 import com.example.sayvis.ui.theme.SayvisSurfaceVariant
@@ -73,6 +75,10 @@ fun MissionsScreen(
     isPersian: Boolean,
     onToggleTask: (String, String, Boolean) -> Unit,
     onAddMission: (Mission) -> Unit,
+    agentBusy: Boolean = false,
+    agentSteps: List<String> = emptyList(),
+    agentResult: String? = null,
+    onRunAgent: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -98,6 +104,80 @@ fun MissionsScreen(
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(8.dp))
+
+            // ===== v5.3.0: SOLUTION-SEEKING AGENT (ایجنت راهکاریاب) =====
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(SayvisSurface)
+                    .padding(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Flag, contentDescription = null, tint = SayvisGold, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(7.dp))
+                    Text(
+                        text = if (isPersian) "ایجنت اجراگر — دستور بده، خودش انجام می‌دهد و خودش تیک می‌زند"
+                        else "Executor agent — command it; it works and auto-ticks",
+                        fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SayvisSilver,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                var agentGoal by remember { mutableStateOf("") }
+                OutlinedTextField(
+                    value = agentGoal,
+                    onValueChange = { agentGoal = it },
+                    placeholder = { Text(if (isPersian) "هدف را بده: «برای X بهترین راهکار را پیدا کن و انجامش بده»" else "Give a goal: \"find the best way to do X and do it\"", fontSize = 11.sp) },
+                    modifier = Modifier.fillMaxWidth().testTag("mission_agent_input"),
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = SayvisSilver),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                // Example commands (one tap fills the box) — including the owner's own ask.
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                    listOf(
+                        if (isPersian) "۵ موزیک ملایم پرمخاطب را پیدا و دانلود کن" else "find & download 5 top soft tracks",
+                        if (isPersian) "۳ مقالهٔ برتر دربارهٔ ترید طلا را پیدا کن" else "find 3 top gold-trading articles"
+                    ).forEach { example ->
+                        Text(
+                            text = "⚡ " + example,
+                            fontSize = 9.5.sp,
+                            color = SayvisGold,
+                            maxLines = 1,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(SayvisSurfaceVariant)
+                                .clickable { agentGoal = example }
+                                .padding(horizontal = 8.dp, vertical = 5.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        onClick = { onRunAgent(agentGoal) },
+                        enabled = !agentBusy && agentGoal.isNotBlank(),
+                        modifier = Modifier.testTag("mission_agent_run")
+                    ) {
+                        Text(if (isPersian) "اجرا توسط ایجنت" else "Run agent", fontSize = 11.sp)
+                    }
+                    if (agentBusy) {
+                        Spacer(modifier = Modifier.width(10.dp))
+                        CircularProgressIndicator(modifier = Modifier.size(14.dp), color = SayvisGold, strokeWidth = 2.dp)
+                    }
+                }
+                if (agentSteps.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    agentSteps.take(5).forEach { step ->
+                        Text("▸ $step", fontSize = 10.sp, color = SayvisSilverMuted)
+                    }
+                }
+                agentResult?.let { res ->
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(res, fontSize = 11.sp, color = SayvisSilver, modifier = Modifier.testTag("mission_agent_result"))
+                }
+            }
 
             // Header
             Row(

@@ -17,8 +17,8 @@ android {
     applicationId = "com.example"
     minSdk = 24
     targetSdk = 36
-    versionCode = 2
-    versionName = "2.0.0"
+    versionCode = 21
+    versionName = "5.3.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -80,10 +80,14 @@ dependencies {
   implementation(platform(libs.firebase.bom))
   // implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
-  // implementation(libs.androidx.camera.camera2)
-  // implementation(libs.androidx.camera.core)
-  // implementation(libs.androidx.camera.lifecycle)
-  // implementation(libs.androidx.camera.view)
+  implementation(libs.androidx.camera.camera2)
+  implementation(libs.androidx.camera.core)
+  implementation(libs.androidx.camera.lifecycle)
+  implementation(libs.androidx.camera.view)
+  // On-device face landmark detection for the Digital Mirror (no cloud).
+  implementation(libs.mlkit.face)
+  implementation(libs.mlkit.barcode)
+  implementation(libs.zxing.core)
   implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
   implementation(libs.androidx.compose.material3)

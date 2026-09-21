@@ -1,6 +1,7 @@
 package com.example.sayvis.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,15 +22,21 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +66,9 @@ import com.example.sayvis.ui.theme.SayvisGreenSuccess
 import com.example.sayvis.ui.theme.SayvisRedAlert
 import com.example.sayvis.ui.theme.SayvisSilver
 import com.example.sayvis.ui.theme.SayvisSilverMuted
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.example.sayvis.ui.theme.SayvisSurface
 
 /**
  * Script editor + runner for the SAYVIS automation language.
@@ -79,6 +89,13 @@ fun ScriptsScreen(
     onDelete: (String) -> Unit,
     onToggleEnabled: (String, Boolean) -> Unit,
     onAskAssistant: (String) -> Unit,
+    gitHits: List<com.example.sayvis.scripts.GithubIntegrator.RepoHit> = emptyList(),
+    gitBusy: Boolean = false,
+    gitMessage: String = "",
+    integrations: List<com.example.sayvis.scripts.IntegrationStore.Entry> = emptyList(),
+    onGitScan: (String) -> Unit = {},
+    onIntegrate: (List<com.example.sayvis.scripts.GithubIntegrator.RepoHit>) -> Unit = {},
+    onRemoveIntegration: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val s = LocalStrings.current
@@ -106,6 +123,121 @@ fun ScriptsScreen(
                 }
                 IconButton(onClick = { editing = newDraftScript() }, modifier = Modifier.testTag("script_new_button")) {
                     Icon(Icons.Default.Add, contentDescription = s.newScript, tint = SayvisCyan)
+                }
+            }
+        }
+
+        // ===== v5.3.0: GITHUB INTEGRATOR — identify, select, merge =====
+        item {
+            val gitQuery = remember { mutableStateOf("") }
+            val selectedHits = remember { mutableStateListOf<com.example.sayvis.scripts.GithubIntegrator.RepoHit>() }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(SayvisSurface)
+                    .padding(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Search, contentDescription = null, tint = SayvisGold, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isPersian) "ادغام‌گر گیت‌هاب — شناسایی، انتخاب، ادغام با سایویس"
+                        else "GitHub integrator — identify, select, merge into SAYVIS",
+                        fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SayvisSilver
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = gitQuery.value,
+                    onValueChange = { gitQuery.value = it },
+                    placeholder = { Text(if (isPersian) "چه چیز خاصی؟ مثلاً: kotlin trading engine" else "What's special? e.g.: kotlin trading engine", fontSize = 10.5.sp) },
+                    modifier = Modifier.fillMaxWidth().testTag("git_search_input"),
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.5.sp, color = SayvisSilver),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        onClick = { onGitScan(gitQuery.value) },
+                        enabled = !gitBusy && gitQuery.value.isNotBlank(),
+                        modifier = Modifier.testTag("git_scan_button")
+                    ) {
+                        Text(if (gitBusy) "…" else if (isPersian) "اسکن گیت‌هاب" else "Scan GitHub", fontSize = 11.sp)
+                    }
+                    if (selectedHits.isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = { onIntegrate(selectedHits.toList()); selectedHits.clear() },
+                            modifier = Modifier.testTag("git_integrate_button")
+                        ) {
+                            Text(
+                                if (isPersian) "ادغام ${'$'}{selectedHits.size} مورد با سایویس"
+                                else "Merge ${'$'}{selectedHits.size} into SAYVIS",
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+                if (gitMessage.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(gitMessage, fontSize = 10.5.sp, color = SayvisSilverMuted, modifier = Modifier.testTag("git_message"))
+                }
+                gitHits.forEach { hit ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = hit in selectedHits,
+                            onCheckedChange = { on -> if (on) selectedHits.add(hit) else selectedHits.remove(hit) },
+                            modifier = Modifier.testTag("git_hit_chk_" + hit.repo.substringAfter('/'))
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                hit.repo + (if (hit.special) " ⭐" else ""),
+                                fontSize = 11.5.sp, fontWeight = FontWeight.Bold,
+                                color = if (hit.special) SayvisGold else SayvisSilver
+                            )
+                            Text(
+                                "★" + hit.stars + " · " + hit.language.ifBlank { "?" } + " · " + hit.license.ifBlank { "?" } + " · score " + hit.score,
+                                fontSize = 9.5.sp, color = SayvisSilverMuted
+                            )
+                            if (hit.description.isNotBlank()) {
+                                Text(hit.description, fontSize = 9.5.sp, color = SayvisSilverMuted, maxLines = 2)
+                            }
+                        }
+                    }
+                }
+                if (integrations.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        if (isPersian) "صف ادغام سایویس (" + integrations.size + " مورد staged)" else "SAYVIS integration queue (" + integrations.size + " staged)",
+                        fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SayvisGold
+                    )
+                    integrations.take(5).forEach { e ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(e.repo, fontSize = 10.5.sp, color = SayvisSilver)
+                                if (e.topFiles.isNotEmpty()) {
+                                    Text(e.topFiles.take(4).joinToString("، "), fontSize = 9.sp, color = SayvisSilverMuted, maxLines = 1)
+                                }
+                            }
+                            Text(
+                                if (isPersian) "حذف" else "Remove",
+                                fontSize = 10.sp, color = SayvisRedAlert,
+                                modifier = Modifier
+                                    .clickable { onRemoveIntegration(e.id) }
+                                    .padding(6.dp)
+                            )
+                        }
+                    }
+                    if (integrations.size > 5) {
+                        Text("+" + (integrations.size - 5) + " …", fontSize = 9.5.sp, color = SayvisSilverMuted)
+                    }
                 }
             }
         }

@@ -10,6 +10,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import com.example.sayvis.net.SayvisNet
 
 /**
  * Google Gemini provider.
@@ -28,17 +29,15 @@ class GeminiProvider(
     override fun isConfigured(settings: AiSettings): Boolean = resolveKey(settings).isNotBlank()
 
     private fun resolveKey(settings: AiSettings): String {
-        val runtime = settings.geminiApiKey.trim()
+        // Strip every whitespace character: pasted keys often arrive with line breaks.
+        val runtime = settings.geminiApiKey.filter { !it.isWhitespace() }
         if (runtime.isNotBlank() && runtime != PLACEHOLDER) return runtime
-        val packaged = buildConfigKeyProvider().trim()
+        val packaged = buildConfigKeyProvider().filter { !it.isWhitespace() }
         return if (packaged.isNotBlank() && packaged != PLACEHOLDER) packaged else ""
     }
 
     private fun clientFor(settings: AiSettings): OkHttpClient =
-        OkHttpClient.Builder()
-            .connectTimeout(settings.timeoutSeconds.toLong(), TimeUnit.SECONDS)
-            .readTimeout((settings.timeoutSeconds + 10L), TimeUnit.SECONDS)
-            .build()
+        SayvisNet.client(settings.timeoutSeconds, settings.timeoutSeconds + 10)
 
     override suspend fun generateResponse(
         context: AiRequestContext,
@@ -46,11 +45,11 @@ class GeminiProvider(
     ): AIResponse = withContext(Dispatchers.IO) {
         val start = System.currentTimeMillis()
         val apiKey = resolveKey(settings)
-        val model = settings.geminiModel.ifBlank { DEFAULT_MODEL }
+        val requested = settings.geminiModel.ifBlank { DEFAULT_MODEL }
 
         if (apiKey.isBlank()) {
             return@withContext failure(
-                model,
+                requested,
                 start,
                 "Gemini API key is not configured. Open Settings → AI & API and paste your key."
             )
@@ -75,6 +74,30 @@ class GeminiProvider(
             }
         )
 
+        // v5.0.1: Google retires model aliases over time (gemini-2.5-flash
+        // became unavailable to NEW users mid-2026). Instead of dying with a
+        // 404, walk the fallback chain and answer with the first live model.
+        var last: AIResponse? = null
+        for (model in modelFallbackChain(requested)) {
+            val response = runCatching { callGemini(model, apiKey, contents, systemInstruction, context, settings, start) }
+                .getOrElse { e -> failure(model, start, e.message ?: "Unknown network error") }
+            if (response.isSuccess) return@withContext response
+            last = response
+            if (!isModelRetiredError(response.errorMessage.orEmpty())) return@withContext response
+        }
+        last ?: failure(requested, start, "No Gemini model answered.")
+    }
+
+    /** One HTTP round-trip against a single Gemini model. */
+    private suspend fun callGemini(
+        model: String,
+        apiKey: String,
+        contents: JSONArray,
+        systemInstruction: String,
+        context: AiRequestContext,
+        settings: AiSettings,
+        start: Long
+    ): AIResponse = withContext(Dispatchers.IO) {
         val body = JSONObject().apply {
             put("contents", contents)
             put("systemInstruction", JSONObject().apply {
@@ -84,33 +107,68 @@ class GeminiProvider(
                 "generationConfig",
                 JSONObject().apply {
                     put("temperature", context.temperature)
-                    put("maxOutputTokens", context.maxOutputTokens)
+                    put("maxOutputTokens", context.maxOutputTokens.coerceAtLeast(128))
+
+                    // Gemini 2.5 Flash thinks by default and thinking tokens eat the
+                    // output budget, which makes small-budget requests return EMPTY
+                    // answers. Thinking can only be disabled on the stable 2.5
+                    // Flash/Flash-Lite snapshots; 2.5 Pro needs a floor, and 3.x /
+                    // -latest aliases are left untouched because they reject the field.
+                    when (model.lowercase(java.util.Locale.ROOT)) {
+                        "gemini-2.5-flash", "gemini-2.5-flash-lite" ->
+                            put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
+                        "gemini-2.5-pro" ->
+                            put("thinkingConfig", JSONObject().put("thinkingBudget", 128))
+                    }
                 }
             )
         }
 
         runCatching {
+            // The API key goes in the x-goog-api-key header (recommended over ?key=,
+            // and immune to URL-encoding problems with pasted keys).
             val request = Request.Builder()
-                .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey")
+                .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent")
+                .header("x-goog-api-key", apiKey)
                 .post(body.toString().toRequestBody(JSON_MEDIA_TYPE))
                 .build()
 
             clientFor(settings).newCall(request).execute().use { response ->
                 val payload = response.body?.string() ?: ""
                 if (!response.isSuccessful) {
-                    return@withContext failure(model, start, "HTTP ${response.code}: ${summarise(payload)}")
+                    var reason = "HTTP ${response.code}: ${summarise(payload)}"
+                    if (response.code == 403 && payload.contains("location", ignoreCase = true)) {
+                        reason += " — سرویس جمینای از موقعیت مکانی فعلی (تحریم جغرافیایی گوگل) در دسترس نیست؛ VPN لازم است. / " +
+                            "Gemini blocks this region (HTTP 403). A VPN is required, or use the local core + web search."
+                    }
+                    return@use failure(model, start, reason)
                 }
-                val text = JSONObject(payload)
+                val candidate = JSONObject(payload)
                     .optJSONArray("candidates")
                     ?.optJSONObject(0)
+                val text = candidate
                     ?.optJSONObject("content")
                     ?.optJSONArray("parts")
-                    ?.let { parts -> buildString { for (i in 0 until parts.length()) append(parts.optJSONObject(i)?.optString("text") ?: "") } }
+                    ?.let { parts ->
+                        buildString {
+                            for (i in 0 until parts.length()) {
+                                val part = parts.optJSONObject(i) ?: continue
+                                // "thought" parts are internal reasoning, not the answer.
+                                if (!part.optBoolean("thought", false)) append(part.optString("text"))
+                            }
+                        }
+                    }
                     ?.trim()
                     .orEmpty()
 
                 if (text.isEmpty()) {
-                    failure(model, start, "The model returned an empty answer (it may have been blocked by a safety filter).")
+                    val finishReason = candidate?.optString("finishReason").orEmpty().ifBlank { "UNKNOWN" }
+                    failure(
+                        model, start,
+                        "The model returned no visible text (finishReason=$finishReason). " +
+                            "If this keeps happening, raise 'Maximum response length' in Settings — " +
+                            "thinking models can spend the whole token budget before answering."
+                    )
                 } else {
                     AIResponse(
                         text = text,
@@ -132,15 +190,37 @@ class GeminiProvider(
             return@withContext ProbeOutcome(false, 0, "no-key", "کلید API وارد نشده است", "No API key entered")
         }
         val response = generateResponse(
-            AiRequestContext(prompt = "ping", languageFa = false, maxOutputTokens = 8),
+            AiRequestContext(prompt = "Reply with the single word: OK", languageFa = false, maxOutputTokens = 512),
             settings
         )
+        if (response.isSuccess) {
+            return@withContext ProbeOutcome(
+                true,
+                System.currentTimeMillis() - start,
+                response.model,
+                "اتصال برقرار است",
+                "Connection successful"
+            )
+        }
+
+        // Distinguish "bad key / no network" from "key fine, generation hiccup".
+        val keyReachable = runCatching {
+            val request = Request.Builder()
+                .url("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1")
+                .header("x-goog-api-key", apiKey)
+                .get()
+                .build()
+            clientFor(settings).newCall(request).execute().use { it.isSuccessful }
+        }.getOrDefault(false)
+
+        val faHint = if (keyReachable) "کلید معتبر است؛ فقط تولید پاسخ ناموفق بود: " else ""
+        val enHint = if (keyReachable) "The key is VALID; only generation failed: " else ""
         ProbeOutcome(
-            response.isSuccess,
+            false,
             System.currentTimeMillis() - start,
             response.model,
-            if (response.isSuccess) "اتصال برقرار است" else (response.errorMessage ?: "خطا"),
-            if (response.isSuccess) "Connection successful" else (response.errorMessage ?: "Error")
+            faHint + (response.errorMessage ?: "خطا"),
+            enHint + (response.errorMessage ?: "Error")
         )
     }
 
@@ -158,7 +238,37 @@ class GeminiProvider(
     }.getOrElse { body.take(220) }
 
     companion object {
-        const val DEFAULT_MODEL = "gemini-2.5-flash"
+        const val DEFAULT_MODEL = "gemini-3.6-flash"
+        private const val QUOTE: String = "\""
+
+        /** Models tried (in order) when the requested one is retired. */
+        val FALLBACK_MODELS: List<String> = listOf(
+            "gemini-3.6-flash",
+            "gemini-flash-latest",
+            "gemini-2.0-flash"
+        )
+
+        /** Pure: requested model first, then the live fallbacks (no duplicates). */
+        fun modelFallbackChain(requested: String): List<String> {
+            val head = requested.trim().ifBlank { DEFAULT_MODEL }
+            val chain = ArrayList<String>()
+            chain.add(head)
+            for (candidate in FALLBACK_MODELS) {
+                if (!chain.contains(candidate)) chain.add(candidate)
+            }
+            return chain
+        }
+
+        /** Pure: does this provider error mean "try another model"? */
+        fun isModelRetiredError(message: String): Boolean {
+            val m = message.lowercase(java.util.Locale.ROOT)
+            return m.contains("no longer available") ||
+                m.contains("is not found") ||
+                m.contains("not found for api version") ||
+                m.contains("models/gemini") && m.contains("404") ||
+                m.contains(QUOTE + "code" + QUOTE + ":404") ||
+                m.contains("http 404") && m.contains("models/")
+        }
         private const val PLACEHOLDER = "MY_GEMINI_API_KEY"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 

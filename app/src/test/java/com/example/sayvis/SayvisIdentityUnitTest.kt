@@ -45,7 +45,8 @@ class SayvisIdentityUnitTest {
         val proof = DevicePairing.expectedProof(offer, fp)
         assertTrue(DevicePairing.verifyResponse(offer, fp, proof, now = 2_000L))
         assertTrue(DevicePairing.verifyResponse(offer, "55abc3199ef201774b", proof.lowercase(), now = 2_000L))
-        assertFalse(DevicePairing.verifyResponse(offer, fp, proof.dropLast(1) + "0", now = 2_000L))
+        val tampered = proof.dropLast(1) + if (proof.last() == '0') '1' else '0'
+        assertFalse(DevicePairing.verifyResponse(offer, fp, tampered, now = 2_000L))
         assertFalse(DevicePairing.verifyResponse(offer, "SHA256:00", proof, now = 2_000L))
     }
 

@@ -3,6 +3,7 @@ package com.example.sayvis.ui.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,15 +21,18 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -72,6 +76,11 @@ import com.example.sayvis.ui.theme.SayvisGreenSuccess
 import com.example.sayvis.ui.theme.SayvisRedAlert
 import com.example.sayvis.ui.theme.SayvisSilver
 import com.example.sayvis.ui.theme.SayvisSilverMuted
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import com.example.sayvis.ui.theme.SayvisSurface
+import com.example.sayvis.ui.theme.SayvisSurfaceVariant
 
 /**
  * MetaTrader 4/5 connection panel.
@@ -98,7 +107,10 @@ fun TradingGatewayScreen(
     onExecutionModeChange: (TradingExecutionMode) -> Unit,
     onPlaceOrder: (MtOrderRequest) -> Unit,
     onClosePosition: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    googleEmail: String? = null,
+    tvAutoLogin: Boolean = false,
+    onTvAutoLoginChange: (Boolean) -> Unit = {}
 ) {
     val s = LocalStrings.current
 
@@ -149,6 +161,93 @@ fun TradingGatewayScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = banner.third, fontSize = 11.5.sp, color = banner.second)
                 }
+            }
+        }
+
+        // ===== v5.3.1: LIVE TradingView chart — with Google auto-login =====
+        item {
+            var tvInput by remember { mutableStateOf("OANDA:XAUUSD") }
+            var tvSymbol by remember { mutableStateOf("OANDA:XAUUSD") }
+            val googleSignedIn = !googleEmail.isNullOrBlank()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(SayvisSurface)
+                    .padding(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.ShowChart, contentDescription = null, tint = SayvisGold, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = s.tvTitle + " — " + tvSymbol,
+                            fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SayvisSilver
+                        )
+                        Text(
+                            text = if (tvAutoLogin && googleSignedIn) s.tvAutoLoginOn else if (googleSignedIn) s.tvAutoLoginOff else s.tvNeedGoogle,
+                            fontSize = 9.5.sp, color = if (tvAutoLogin && googleSignedIn) SayvisCyan else SayvisSilverMuted
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = tvInput,
+                        onValueChange = { tvInput = it.uppercase() },
+                        placeholder = { Text("NASDAQ:AAPL · BINANCE:BTCUSDT · OANDA:XAUUSD", fontSize = 10.sp) },
+                        modifier = Modifier.weight(1f).testTag("tv_symbol_input"),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.5.sp, color = SayvisSilver),
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = { tvSymbol = tvInput.trim() }, modifier = Modifier.testTag("tv_symbol_apply")) {
+                        Text(if (isPersian) "نمایش" else "Show", fontSize = 11.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("OANDA:XAUUSD", "OANDA:EURUSD", "BITSTAMP:BTCUSD", "FX_IDC:USDIRR").forEach { preset ->
+                        Text(
+                            text = preset.substringAfter(':'),
+                            fontSize = 10.sp,
+                            color = SayvisSilverMuted,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(SayvisSurfaceVariant)
+                                .clickable { tvInput = preset; tvSymbol = preset }
+                                .padding(horizontal = 8.dp, vertical = 5.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(modifier = Modifier.testTag("tv_chart")) {
+                    com.example.sayvis.ui.components.TradingViewChart(
+                        tvSymbol = tvSymbol,
+                        height = 330.dp,
+                        googleEmail = googleEmail,
+                        autoLogin = tvAutoLogin && googleSignedIn
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                SayvisToggleRow(
+                    label = s.tvAutoLogin,
+                    hint = s.tvGoogleBanner,
+                    checked = tvAutoLogin,
+                    onCheckedChange = { onTvAutoLoginChange(it) },
+                    modifier = Modifier.testTag("tv_gateway_autologin")
+                )
+                if (tvAutoLogin && !googleSignedIn) {
+                    Text(text = s.tvNeedGoogle, fontSize = 10.sp, color = SayvisAmberWarning)
+                } else if (tvAutoLogin && googleSignedIn) {
+                    Text(text = s.tvAutoLoginOn + " (" + (googleEmail ?: "") + ")", fontSize = 10.sp, color = SayvisGreenSuccess)
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (isPersian) "چارت با حساب گوگل شما خودکار لاگین می‌شود؛ واچ‌لیست و اندیکاتورها ذخیره می‌مانند."
+                    else "Chart auto-logs with your Google; watchlist & indicators stay saved.",
+                    fontSize = 9.5.sp, color = SayvisSilverMuted
+                )
             }
         }
 

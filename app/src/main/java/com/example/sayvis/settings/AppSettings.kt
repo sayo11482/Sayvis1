@@ -23,7 +23,9 @@ enum class AiProviderKind(val labelFa: String, val labelEn: String, val isLocal:
     GEMINI("گوگل جمینای", "Google Gemini", false),
     OPENROUTER("اوپن‌روتر (چندمدلی)", "OpenRouter (multi-model)", false),
     GROQ("گروک (پاسخ سریع)", "Groq (fast LPU)", false),
-    CUSTOM("سرویس دلخواه سازگار با OpenAI", "Custom OpenAI-compatible", false);
+    CUSTOM("سرویس دلخواه سازگار با OpenAI", "Custom OpenAI-compatible", false),
+    OPENAI("چت‌جی‌پی‌تی (OpenAI)", "ChatGPT (OpenAI)", false),
+    XAI("گراک (xAI)", "Grok (xAI)", false);
 
     fun label(isPersian: Boolean): String = if (isPersian) labelFa else labelEn
 }
@@ -35,6 +37,25 @@ enum class AppearanceMode(val labelFa: String, val labelEn: String) {
     COMPACT("فشرده", "Compact");
 
     fun label(isPersian: Boolean): String = if (isPersian) labelFa else labelEn
+}
+
+/**
+ * The four professional multidimensional looks for the AI avatar: geometric
+ * wireframes, stereologic cross-sections, binary 0/1 code rain and hologram.
+ */
+enum class AiVisualStyle(val labelFa: String, val labelEn: String) {
+    GEOMETRIC("ژئومتریک", "Geometric"),
+    STEREOLOGY("استرولوژی", "Stereology"),
+    BINARY("دودویی ۰/۱", "Binary 0/1"),
+    HOLOGRAM("هولوگرام", "Hologram");
+
+    fun label(isPersian: Boolean): String = if (isPersian) labelFa else labelEn
+
+    companion object {
+        /** Lenient parser used by the settings store (unknown -> default). */
+        fun fromNameOrDefault(raw: String?): AiVisualStyle =
+            entries.firstOrNull { it.name.equals(raw, ignoreCase = true) } ?: GEOMETRIC
+    }
 }
 
 /** MetaTrader terminal generation. */
@@ -104,11 +125,15 @@ data class MtGatewayProfile(
 data class AiSettings(
     val provider: AiProviderKind = AiProviderKind.LOCAL,
     val geminiApiKey: String = "",
-    val geminiModel: String = "gemini-2.5-flash",
+    val geminiModel: String = "gemini-3.6-flash",
     val openRouterApiKey: String = "",
     val openRouterModel: String = "anthropic/claude-3.5-sonnet",
     val groqApiKey: String = "",
     val groqModel: String = "llama-3.3-70b-versatile",
+    val openAiApiKey: String = "",
+    val openAiModel: String = "gpt-4o-mini",
+    val xaiApiKey: String = "",
+    val xaiModel: String = "grok-3-mini",
     val customBaseUrl: String = "",
     val customApiKey: String = "",
     val customModel: String = "",
@@ -117,7 +142,15 @@ data class AiSettings(
     val maxOutputTokens: Int = 2048,
     val timeoutSeconds: Int = 25,
     /** Automatically answer in Persian when the UI language is Persian. */
-    val forceResponseLanguage: Boolean = true
+    val forceResponseLanguage: Boolean = true,
+    /**
+     * v5.3.0 — «یک‌بار متصل شد، برای همیشه به حافظه سپرده شد»: the first
+     * successful cloud-AI round-trip stamps this flag so every later launch
+     * reconnects silently (no re-prompt, no re-verification ceremony).
+     */
+    val aiLinkedOnce: Boolean = false,
+    val aiLinkedAt: Long = 0,
+    val aiLinkedModel: String = ""
 ) {
     /** True when the selected provider has everything it needs to actually run. */
     fun isProviderConfigured(): Boolean = when (provider) {
@@ -125,6 +158,8 @@ data class AiSettings(
         AiProviderKind.GEMINI -> geminiApiKey.isNotBlank()
         AiProviderKind.OPENROUTER -> openRouterApiKey.isNotBlank()
         AiProviderKind.GROQ -> groqApiKey.isNotBlank()
+        AiProviderKind.OPENAI -> openAiApiKey.isNotBlank()
+        AiProviderKind.XAI -> xaiApiKey.isNotBlank()
         AiProviderKind.CUSTOM -> customBaseUrl.isNotBlank() && customModel.isNotBlank()
     }
 
@@ -133,9 +168,38 @@ data class AiSettings(
         AiProviderKind.GEMINI -> geminiModel
         AiProviderKind.OPENROUTER -> openRouterModel
         AiProviderKind.GROQ -> groqModel
+        AiProviderKind.OPENAI -> openAiModel
+        AiProviderKind.XAI -> xaiModel
         AiProviderKind.CUSTOM -> customModel
     }
 }
+
+/** Google account identity used for in-app sign-in and Google capabilities. */
+data class GoogleAccountSettings(
+    /** OAuth client ID from Google Cloud Console (public — not a secret). */
+    val clientId: String = "",
+    val email: String = "",
+    val displayName: String = "",
+    val pictureUrl: String = "",
+    val signedInAtEpochMs: Long = 0L,
+    val grantedScopes: String = "",
+    /** When on (and OAuth configured), launch shows the Google sign-in gate. */
+    val requireSignInAtLaunch: Boolean = false
+) {
+    val signedIn: Boolean get() = email.isNotBlank()
+}
+
+/**
+ * Owner-linked non-Google accounts. Instagram has no official posting API for
+ * personal accounts, so SAYVIS stores the handle (for AI content targeting)
+ * plus owner-pasted session tokens for read-only/assisted automation — honest
+ * assisted mode instead of fake "full control".
+ */
+data class LinkedAccountSettings(
+    val instagramHandle: String = "",
+    /** Vault-backed JSON: [{"site":"…","user":"…","token":"…"}] */
+    val linkedSites: String = ""
+)
 
 /** Localisation & rendering preferences. */
 data class LocalizationSettings(
@@ -163,8 +227,29 @@ data class AppSettings(
     val runAutomationScripts: Boolean = true,
     val hapticFeedback: Boolean = true,
     val compactBottomNav: Boolean = true,
+    /** Which of the four multidimensional AI views the avatar renders. */
+    val visualStyle: AiVisualStyle = AiVisualStyle.GEOMETRIC,
+    /** Play the robotic chirp when SAYVIS answers a voice-originated message. */
+    val roboticVoiceReplies: Boolean = true,
     val onboardingCompleted: Boolean = false,
-    val settingsSchemaVersion: Int = 3
+    val google: GoogleAccountSettings = GoogleAccountSettings(),
+    /** Persisted adoption backlog produced by the self-evolution agent. */
+    val evolutionBacklog: String = "",
+    /** LIT auto-trading: execute plans through the safety-gated gateway. */
+    val tradeAutomationEnabled: Boolean = false,
+    /** GitHub-evolution tuning JSON for the LIT engine (provenance inside). */
+    val tradeTuningJson: String = "",
+    /** Assistant brain selector: AUTO or an AiProviderKind name (v5.0.0). */
+    val assistantBrain: String = "AUTO",
+    /** Recent search queries (capped 100) feeding the taste engine (v5.0.0). */
+    val searchTasteJson: String = "",
+    /** Manager-agent business directory entries JSON (v5.0.0). */
+    val bizDirectoryJson: String = "",
+    /** Owner-linked non-Google accounts (Instagram handle + pasted sessions). */
+    val linked: LinkedAccountSettings = LinkedAccountSettings(),
+    /** TradingView — auto-login the chart with the linked Google account (v5.3.1). */
+    val tradingViewAutoLogin: Boolean = false,
+    val settingsSchemaVersion: Int = 4
 ) {
     /** Convenience: is the active language Persian? */
     fun isPersian(deviceLanguagePersian: Boolean = false): Boolean = when (localization.language) {
