@@ -4,7 +4,7 @@ import kotlin.math.abs
 import kotlin.math.pow
 
 /**
- * The offline command-analysis layer of the SAYVIS assistant.
+ * The command-analysis layer of the SAYVIS assistant (SAYVIS has no offline mode — always online).
  *
  * Every chat turn is parsed here BEFORE any language model is consulted. When the
  * owner asks for something concrete ("یک مأموریت بساز…", "یادت باشه که…", "حساب کن…",
@@ -45,7 +45,7 @@ sealed class AssistantCommand {
     /** Engage / disengage the emergency lock — always goes through owner consent. */
     data class ToggleEmergencyLock(val engage: Boolean) : AssistantCommand()
 
-    /** Turn forced-offline mode on / off — always goes through owner consent. */
+    /** SAYVIS has NO offline mode — this is deprecated; SAYVIS is always online via Sovereign Core + cloud failover. Kept for binary compat. */
     data class ToggleOffline(val enable: Boolean) : AssistantCommand()
 
     /**
@@ -210,15 +210,7 @@ object AssistantCommandEngine {
             // mention without a switch -> not a command
         }
 
-        // ---- offline mode
-        if (containsAny(text, listOf("حالت افلاین", "حالت آفلاین", "offline mode", "force offline"))) {
-            if (containsAny(text, listOf("خاموش", "غیرفعال", "قطع", "بردار", "غیر فعال", "disengage", "deactivate", "turn off", "disable", "exit"))) {
-                return AssistantCommand.ToggleOffline(enable = false)
-            }
-            if (containsAny(text, listOf("روشن", "فعال", "بزن", "برو", "activate", "enable", "turn on", "enter", "go"))) {
-                return AssistantCommand.ToggleOffline(enable = true)
-            }
-        }
+        // SAYVIS has NO offline mode — intentionally not parsed; offline requests flow to the AI.
 
         // ---- remember / recall (before missions: "یادت باشه" is not a mission)
         if (containsAny(text, listOf("یادت باشه", "یادت باشد", "یادت باش", "به خاطر بسپار", "یادداشت کن",

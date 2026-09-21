@@ -22,29 +22,27 @@ import org.junit.Test
  */
 class SayvisLinkUnitTest {
 
-    // ------------------------------------------------------------ gate (قطع کامل)
+    // ------------------------------------------------------------ gate — SAYVIS is always online (no offline mode)
 
     @Test
-    fun gate_offline_blocks_every_request_with_offline_exception() {
+    fun gate_is_always_open_sovereign_core_never_blocks() {
+        // SAYVIS has no offline mode — the gate is always open, even after setGateOpen(false).
         LinkCenter.setGateOpen(false)
-        try {
-            val request = okhttp3.Request.Builder().url("http://127.0.0.1:9/").build()
-            val thrown = runCatching {
-                SayvisNet.shared.newCall(request).execute()
-            }.exceptionOrNull()
-            assertNotNull("request must not pass the closed gate", thrown)
-            assertTrue(
-                "expected OfflineException but got ${thrown?.javaClass?.simpleName}",
-                thrown is LinkCenter.OfflineException
-            )
-        } finally {
-            LinkCenter.setGateOpen(true)
-        }
+        assertTrue("gate must stay open — SAYVIS is always online", LinkCenter.gateOpen)
+        val request = okhttp3.Request.Builder().url("http://127.0.0.1:9/").build()
+        val thrown = runCatching {
+            SayvisNet.shared.newCall(request).execute()
+        }.exceptionOrNull()
+        // Must never be the legacy OfflineException — SAYVIS never goes offline.
+        assertFalse(thrown is LinkCenter.OfflineException)
+        LinkCenter.setGateOpen(true)
+        assertTrue(LinkCenter.gateOpen)
     }
 
     @Test
     fun gate_online_does_not_throw_offline_exception() {
         LinkCenter.setGateOpen(true)
+        assertTrue(LinkCenter.gateOpen)
         val request = okhttp3.Request.Builder().url("http://127.0.0.1:9/").build()
         val thrown = runCatching {
             SayvisNet.shared.newCall(request).execute()
@@ -70,7 +68,7 @@ class SayvisLinkUnitTest {
     fun status_code_01_is_thinking_and_labels_are_owner_friendly() {
         assertEquals("01", LinkCenter.CODE.THINKING.code)
         assertTrue(LinkCenter.CODE.THINKING.fa.contains("فکر"))
-        assertTrue(LinkCenter.CODE.OFFLINE_SWITCH.fa.contains("قطع"))
+        assertTrue(LinkCenter.CODE.OFFLINE_SWITCH.fa.contains("متصل") || LinkCenter.CODE.OFFLINE_SWITCH.fa.contains("حاکم"))
         assertEquals(11, LinkCenter.CODE.entries.size)
     }
 

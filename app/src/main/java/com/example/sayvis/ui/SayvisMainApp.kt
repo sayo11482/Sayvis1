@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -106,7 +105,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
     val isPersian by viewModel.isPersian.collectAsState()
     val currentScreen by viewModel.currentScreen.collectAsState()
     val emergencyLockActive by viewModel.emergencyLockActive.collectAsState()
-    val forceOfflineMode by viewModel.forceOfflineMode.collectAsState()
+    // SAYVIS is always online — no offline toggle (Sovereign Core always connected)
     val avatarState by viewModel.avatarState.collectAsState()
     val contextSnapshot by viewModel.contextSnapshot.collectAsState()
     val ownerAccount by viewModel.ownerAccount.collectAsState()
@@ -212,20 +211,15 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         }
                     },
                     actions = {
-                        // Offline mode toggle
-                        IconButton(
-                            onClick = { viewModel.toggleOfflineMode() },
+                        // SAYVIS Sovereign Core — always online (no offline mode exists)
+                        Icon(
+                            imageVector = Icons.Default.Wifi,
+                            contentDescription = if (isPersian) "همیشه متصل — هستهٔ حاکم فعال" else "Always online — Sovereign Core active",
+                            tint = SayvisGreenSuccess,
                             modifier = Modifier
-                                .size(36.dp)
-                                .testTag("toggle_offline_button")
-                        ) {
-                            Icon(
-                                imageVector = if (forceOfflineMode) Icons.Default.WifiOff else Icons.Default.Wifi,
-                                contentDescription = strings.offlineMode,
-                                tint = if (forceOfflineMode) SayvisAmberWarning else SayvisGreenSuccess,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                                .size(18.dp)
+                                .testTag("always_online_indicator")
+                        )
 
                         Spacer(modifier = Modifier.width(2.dp))
 
@@ -359,7 +353,7 @@ fun SayvisMainApp(viewModel: SayvisViewModel) {
                         onDismissOpportunity = { viewModel.dismissOpportunity(it) },
                         onToggleEmergencyLock = { viewModel.toggleEmergencyLock() },
                         marketSnapshot = marketSnapshot,
-                        online = !forceOfflineMode,
+                        online = true, // SAYVIS always online
                         onToggleOnline = { viewModel.toggleOfflineMode() },
                         speedText = speedText,
                         statusChipText = statusChipText,

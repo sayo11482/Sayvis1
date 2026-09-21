@@ -13,7 +13,7 @@ import com.example.sayvis.net.SayvisNet
 /**
  * Keyless, on-device web search used by the assistant to ground answers in fresh
  * sources — deliberately usable even when the cloud AI is unreachable (quota,
- * regional block) and even in forced-offline mode, because fetching public pages
+ * regional block) (SAYVIS is always online via Sovereign Core), because fetching public pages
  * is read-only and never sends personal data.
  *
  * Backends, tried in parallel so one blocked/limiting backend never kills the

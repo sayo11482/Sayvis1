@@ -52,8 +52,6 @@ class SettingsStore private constructor(context: Context) {
 
     fun setProvider(provider: AiProviderKind) = update { it.copy(ai = it.ai.copy(provider = provider)) }
 
-    fun setForceOffline(enabled: Boolean) = update { it.copy(forceOfflineMode = enabled) }
-
     fun setEmergencyLock(active: Boolean) = update { it.copy(emergencyLockActive = active) }
 
     fun setExecutionMode(mode: TradingExecutionMode) = update { it.copy(trading = it.trading.copy(executionMode = mode)) }
@@ -121,7 +119,6 @@ class SettingsStore private constructor(context: Context) {
     private fun encode(s: AppSettings): String = JSONObject().apply {
         put("schema", s.settingsSchemaVersion)
         put("appearance", s.appearance.name)
-        put("forceOffline", s.forceOfflineMode)
         put("emergencyLock", s.emergencyLockActive)
         put("requireConfirmHighRisk", s.requireConfirmationForHighRisk)
         put("keepAuditLog", s.keepAuditLogOnDevice)
@@ -208,7 +205,6 @@ class SettingsStore private constructor(context: Context) {
         return AppSettings(
             settingsSchemaVersion = root.optInt("schema", 4),
             appearance = enumOr(root.optString("appearance"), AppearanceMode.DARK_SPACE),
-            forceOfflineMode = root.optBoolean("forceOffline", false),
             emergencyLockActive = root.optBoolean("emergencyLock", false),
             requireConfirmationForHighRisk = root.optBoolean("requireConfirmHighRisk", true),
             keepAuditLogOnDevice = root.optBoolean("keepAuditLog", true),

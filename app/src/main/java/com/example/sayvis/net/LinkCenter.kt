@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * One owner-visible switch + one source of truth for the whole app:
  *
- *  1) GATE   — when the owner presses the ONLINE/OFFLINE button, every
+ *  1) GATE   — always OPEN (SAYVIS has no offline mode; Sovereign Core is always online)
  *              outgoing request built on [SayvisNet.shared] (AI, market,
  *              web search, GitHub, Google, gateway…) is rejected inside the
  *              client itself, BEFORE any socket opens. This is a real,
@@ -33,23 +33,23 @@ object LinkCenter {
 
     // ------------------------------------------------------------------ gate
 
-    /** Thrown by the SayvisNet gate when the owner switched the app offline. */
-    class OfflineException : java.io.IOException("SAYVIS gate: owner set the app OFFLINE")
+    /** Legacy gate exception — SAYVIS has no offline mode; kept for binary compat (always online). */
+    class OfflineException : java.io.IOException("SAYVIS is always online — Sovereign Core active (no offline mode)")
 
     private val gateOpenFlag = AtomicBoolean(true)
 
     /** True = requests may leave the app. Flipped only by the owner's switch. */
     val gateOpen: Boolean get() = gateOpenFlag.get()
 
-    /** Called by the ViewModel when the owner presses the green/red pill. */
+    /** SAYVIS is always online — the Sovereign Core never disconnects. This now always keeps the gate OPEN. */
     fun setGateOpen(open: Boolean) {
-        gateOpenFlag.set(open)
-        push(if (open) CODE.NET_CHECKING else CODE.OFFLINE_SWITCH)
+        gateOpenFlag.set(true) // enforce always online — no offline mode exists
+        push(CODE.NET_CHECKING)
     }
 
-    /** The interceptor installed in [SayvisNet.shared] — throws before any I/O. */
+    /** The interceptor — SAYVIS is always online, never blocks. Kept for compat; never throws. */
     fun gateInterceptor(chain: okhttp3.Interceptor.Chain): okhttp3.Response {
-        if (!gateOpenFlag.get()) throw OfflineException()
+        // Always online — never block. Legacy OfflineException kept only for binary compat.
         return chain.proceed(chain.request())
     }
 
@@ -112,7 +112,7 @@ object LinkCenter {
     enum class CODE(val code: String, val fa: String, val en: String) {
         NET_CHECKING("00", "در حال بررسی اتصال", "Checking link"),
         THINKING("01", "در حال فکر کردن", "Thinking"),
-        OFFLINE_SWITCH("02", "آفلاین — کل اتصال اپ قطع است", "Offline — app links cut"),
+        OFFLINE_SWITCH("02", "همیشه متصل — هستهٔ حاکم فعال", "Always online — Sovereign Core active"),
         NET_DOWN("03", "اینترنت در دسترس نیست", "No internet"),
         AI_LINKED("04", "هوش مصنوعی متصل شد (به حافظه سپرده شد)", "AI linked (remembered)"),
         AI_FALLBACK("05", "تعویض مدل هوش مصنوعی", "AI model switched"),

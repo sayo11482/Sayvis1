@@ -5,14 +5,12 @@ import com.example.sayvis.settings.AiProviderKind
 import com.example.sayvis.settings.AiSettings
 
 /**
- * Routes every inference request to the provider the owner selected in Settings, and
- * always keeps a working offline answer available as a fallback.
- *
- * Order of operations for a normal query:
- *  1. Emergency lock engaged -> local provider only, prefixed with a lock notice.
- *  2. Forced offline mode, or no network provider configured -> local provider.
- *  3. Selected network provider -> on any failure, degrade to the local provider and
- *     surface the real error so the owner can see *why* it fell back.
+ * Routes every inference request to the selected provider, always online.
+ * There is NO offline mode in SAYVIS — the Sovereign Core is the flawless,
+ * always-connected fallback. Order:
+ *  1. Emergency lock → Sovereign Core with lock notice.
+ *  2. Cloud provider configured → try it, on failure auto-failover through all configured clouds.
+ *  3. No cloud key / all clouds failed → Sovereign Core (never offline, always answers).
  */
 class AIOrchestrator(
     private val geminiProvider: GeminiProvider = GeminiProvider(),
@@ -27,9 +25,9 @@ class AIOrchestrator(
     /** Which provider is *selected* (not necessarily reachable). */
     fun selectedProvider(settings: AiSettings): ProviderType = ProviderType.from(settings.provider)
 
-    /** True when the app can currently reach a network model. */
-    fun isCloudReady(settings: AiSettings, forceOffline: Boolean): Boolean =
-        !forceOffline && settings.provider != AiProviderKind.LOCAL && settings.isProviderConfigured()
+    /** True when the app can currently reach a network model — SAYVIS is always online. */
+    fun isCloudReady(settings: AiSettings): Boolean =
+        settings.provider != AiProviderKind.LOCAL && settings.isProviderConfigured()
 
     private fun networkProviderFor(kind: AiProviderKind): AIProvider? = when (kind) {
         AiProviderKind.GEMINI -> geminiProvider
@@ -42,8 +40,8 @@ class AIOrchestrator(
     }
 
     /**
-     * Main entry point. [forceOffline] overrides the settings so the top-bar toggle and
-     * the emergency lock keep working even when a cloud provider is configured.
+     * Main entry point — SAYVIS is always online. No offline mode exists.
+     * The Sovereign Core is the flawless fallback when no cloud key is set.
      */
     suspend fun querySAYVIS(
         prompt: String,
@@ -51,7 +49,6 @@ class AIOrchestrator(
         systemContext: String,
         languageFa: Boolean,
         emergencyLockActive: Boolean,
-        forceOffline: Boolean = false,
         settings: AiSettings = AiSettings(),
         history: List<ChatTurn> = emptyList(),
         taskInstruction: String? = null
@@ -78,8 +75,8 @@ class AIOrchestrator(
             return base.copy(text = "$notice\n\n${base.text}")
         }
 
-        val effectiveOffline = forceOffline || settings.provider == AiProviderKind.LOCAL
-        if (!effectiveOffline) {
+        val isSovereignCore = settings.provider == AiProviderKind.LOCAL
+        if (!isSovereignCore) {
             val provider = networkProviderFor(settings.provider)
             if (provider != null && provider.isConfigured(settings)) {
                 val response = runCatching { provider.generateResponse(context, settings) }
@@ -114,13 +111,13 @@ class AIOrchestrator(
 
                 val fallback = localProvider.generateResponse(context, settings)
                 val warn = if (languageFa) {
-                    "⚠️ پاسخ از هستهٔ محلی آفلاین تولید شد؛ هیچ سرویس ابری پاسخ نداد.\n" +
+                    "⚡ موتورِ حاکمِ سایویس فعال شد — هیچ کلیدِ ابری تنظیم نشده بود، اما هستهٔ حاکمِ بی‌نقص پاسخ را تولید کرد.\n" +
                         tried.joinToString("\n") { "• $it" } + "\n" +
-                        "راهنما: وضعیت شبکه را بررسی کنید (🟠 یعنی VPN لازم است) یا در تنظیمات کلید یکی از سرویس‌ها را وصل کنید."
+                        "برایِ قدرتِ بیشتر، یک کلیدِ Gemini/Groq/OpenRouter را در تنظیمات وصل کنید — هستهٔ حاکم همیشه روشن می‌ماند."
                 } else {
-                    "⚠️ Answered by the offline local core; no cloud service responded.\n" +
+                    "⚡ SAYVIS Sovereign Core active — no cloud key was configured, but the flawless core generated the answer.\n" +
                         tried.joinToString("\n") { "• $it" } + "\n" +
-                        "Hint: check connectivity (🟠 means a VPN is needed) or connect at least one provider key in Settings."
+                        "For extra power, connect a Gemini/Groq/OpenRouter key in Settings — the Sovereign Core stays always on."
                 }
                 return fallback.copy(text = warn + "\n" + fallback.text, errorMessage = tried.firstOrNull() ?: reason)
             }
@@ -155,8 +152,8 @@ class AIOrchestrator(
             success = true,
             latencyMs = 0,
             model = "sayvis-local-core",
-            messageFa = "هستهٔ محلی همیشه در دسترس است (بدون نیاز به اینترنت)",
-            messageEn = "The local core is always available (no internet required)"
+            messageFa = "هستهٔ حاکمِ همیشه‌متصل فعال است — همیشه پاسخ می‌دهد",
+            messageEn = "SAYVIS Sovereign Core is always connected — always answers"
         )
     }
 

@@ -331,8 +331,8 @@ class SayvisStrings(val fa: Boolean) {
     val apiStatusReady get() = t("آمادهٔ ارسال درخواست", "Ready to send requests")
     val apiStatusNeedsKey get() = t("نیاز به کلید API دارد", "Needs an API key")
     val getApiKeyGuide get() = t("راهنمای دریافت کلید", "How to get a key")
-    val offlineMode get() = t("حالت آفلاین اجباری", "Force offline mode")
-    val offlineModeHint get() = t("هیچ درخواستی به اینترنت فرستاده نمی‌شود", "No request will ever reach the internet")
+    val offlineMode get() = t("همیشه متصل — هستهٔ حاکم", "Always Online — Sovereign Core")
+    val offlineModeHint get() = t("سایویس حالت آفلاین ندارد؛ همیشه متصل است", "SAYVIS has no offline mode — always connected")
 
     // --------------------------------------------------------------- trading UI
     val gatewayTitle get() = t("درگاه ترمینال ترید", "Trading Terminal Gateway")

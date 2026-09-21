@@ -243,10 +243,6 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         .map { it.emergencyLockActive }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    val forceOfflineMode: StateFlow<Boolean> = settings
-        .map { it.forceOfflineMode }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
-
     fun updateSettings(mutator: (AppSettings) -> AppSettings) {
         settingsStore.update(mutator)
     }
@@ -260,24 +256,24 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setLanguage(language: AppLanguage) = settingsStore.setLanguage(language)
 
+    /** SAYVIS has no offline mode — always online. This kept for binary compat, now just refreshes the link. */
     fun toggleOfflineMode() {
-        val next = !settingsStore.current().forceOfflineMode
-        settingsStore.update { it.copy(forceOfflineMode = next) }
-        LinkCenter.setGateOpen(!next)
-        if (next) {
-            LinkCenter.push(LinkCenter.CODE.OFFLINE_SWITCH)
-        } else {
-            viewModelScope.launch {
-                LinkCenter.measureSpeed()
-                val probe = runCatching { connectivityProbe.probe() }.getOrNull()
-                when (probe?.state) {
-                    ConnectivityProbe.NetState.ONLINE -> LinkCenter.push(LinkCenter.CODE.AI_LINKED, "link-ok")
-                    ConnectivityProbe.NetState.ONLINE_NO_GOOGLE -> LinkCenter.push(LinkCenter.CODE.NET_NO_GOOGLE)
-                    else -> LinkCenter.push(LinkCenter.CODE.NET_DOWN)
-                }
+        viewModelScope.launch {
+            LinkCenter.setGateOpen(true)
+            LinkCenter.measureSpeed()
+            val probe = runCatching { connectivityProbe.probe() }.getOrNull()
+            when (probe?.state) {
+                ConnectivityProbe.NetState.ONLINE -> LinkCenter.push(LinkCenter.CODE.AI_LINKED, "link-ok")
+                ConnectivityProbe.NetState.ONLINE_NO_GOOGLE -> LinkCenter.push(LinkCenter.CODE.NET_NO_GOOGLE)
+                else -> LinkCenter.push(LinkCenter.CODE.NET_DOWN)
             }
         }
         updateAvatarState()
+    }
+
+    /** Explicit no-op for legacy calls — always online. */
+    fun ensureAlwaysOnline() {
+        LinkCenter.setGateOpen(true)
     }
 
     // ---------------------------------------------- v5.3.0: LINK CENTER (مرکز اتصال)
@@ -304,8 +300,8 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         .stateIn(viewModelScope, SharingStarted.Eagerly, "" to "0")
 
     init {
-        // Gate mirrors the persisted owner switch from the very first frame.
-        LinkCenter.setGateOpen(!settingsStore.current().forceOfflineMode)
+        // SAYVIS is always online — no offline mode exists.
+        LinkCenter.setGateOpen(true)
         // «یک‌بار متصل شد → به حافظه سپرده شد»: remember the first AI link.
         if (settingsStore.current().ai.aiLinkedOnce) {
             LinkCenter.push(
@@ -330,8 +326,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 delay(5_000)
                 LinkCenter.tick()
                 beat += 1
-                val online = !settingsStore.current().forceOfflineMode
-                if (!online) continue
+                val online = true
                 if (beat % 6 == 0 && !_marketBusy.value) {
                     val screen = _currentScreen.value
                     if (screen == SayvisScreen.HOME || screen == SayvisScreen.MARKETS || screen == SayvisScreen.TRADING) {
@@ -415,9 +410,9 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val _isProbing = MutableStateFlow(false)
     val isProbing: StateFlow<Boolean> = _isProbing.asStateFlow()
 
-    /** True when the selected provider can actually serve requests right now. */
-    val aiReady: StateFlow<Boolean> = combine(settings, forceOfflineMode) { current, offline ->
-        aiOrchestrator.isCloudReady(current.ai, offline) || current.ai.provider == AiProviderKind.LOCAL
+    /** True when the selected provider can currently serve — SAYVIS is always online, Sovereign Core always ready. */
+    val aiReady: StateFlow<Boolean> = settings.map { current ->
+        aiOrchestrator.isCloudReady(current.ai) || current.ai.provider == AiProviderKind.LOCAL
     }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     fun testAiConnection() {
@@ -460,7 +455,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         override val autoTranslate: Boolean
             get() {
                 val current = settingsStore.current()
-                return current.localization.autoTranslateFreeText && !current.forceOfflineMode
+                return current.localization.autoTranslateFreeText
             }
 
         override val persianDigits: Boolean get() = settingsStore.current().localization.persianDigits
@@ -471,8 +466,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         override suspend fun online(text: String): String? = translationService.translateOnline(
             text = text,
             orchestrator = aiOrchestrator,
-            settings = settingsStore.current().ai,
-            forceOffline = settingsStore.current().forceOfflineMode
+            settings = settingsStore.current().ai
         )
     }
 
@@ -583,7 +577,6 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             systemContext = sourcesBlock,
             languageFa = persian,
             emergencyLockActive = current.emergencyLockActive,
-            forceOffline = current.forceOfflineMode,
             settings = brainSettings
         )
 
@@ -940,7 +933,6 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                         systemContext = research,
                         languageFa = current.isPersian(SayvisStrings.deviceIsPersian()),
                         emergencyLockActive = current.emergencyLockActive,
-                        forceOffline = current.forceOfflineMode,
                         settings = current.ai
                     )
                     response.text
@@ -1781,7 +1773,6 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                             systemContext = research,
                             languageFa = persian,
                             emergencyLockActive = current.emergencyLockActive,
-                            forceOffline = current.forceOfflineMode,
                             settings = current.ai
                         ).text
                     },
@@ -1839,7 +1830,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
 
             // 2) Web grounding: questions (and explicit "search" commands) fetch fresh
             //    public sources — keyless, read-only — that work even when the cloud
-            //    AI is blocked/unreachable, and even in forced-offline mode.
+            //    AI is blocked/unreachable (SAYVIS is always online — Sovereign Core guarantees an answer).
             val searchDecision = WebSearchService.shouldSearch(normalizedMessage)
             var sources: List<WebSearchService.WebResult> = emptyList()
             var sourcesBlock = ""
@@ -1911,7 +1902,6 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 systemContext = systemContext,
                 languageFa = persian,
                 emergencyLockActive = current.emergencyLockActive,
-                forceOffline = current.forceOfflineMode,
                 settings = brainSettings,
                 history = history
             )
@@ -2202,34 +2192,11 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             }
 
             is AssistantCommand.ToggleOffline -> {
-                val already = forceOfflineMode.value == command.enable
-                if (already) {
-                    assistantReply(
-                        faOrEn(persian,
-                            "حالت آفلاین از قبل " + (if (command.enable) "روشن است." else "خاموش است."),
-                            "Offline mode is already " + (if (command.enable) "on." else "off."))
-                    )
-                } else {
-                    _pendingAction.value = if (command.enable) {
-                        AssistantAction(
-                            kind = AssistantAction.Kind.OFFLINE_ON,
-                            titleFa = "روشن‌کردن حالت آفلاین اجباری", titleEn = "Enable forced offline mode",
-                            detailFa = "هیچ درخواستی به اینترنت فرستاده نمی‌شود.",
-                            detailEn = "No request will ever reach the internet."
-                        )
-                    } else {
-                        AssistantAction(
-                            kind = AssistantAction.Kind.OFFLINE_OFF,
-                            titleFa = "خاموش‌کردن حالت آفلاین", titleEn = "Disable offline mode",
-                            detailFa = "سرویس هوش مصنوعی ابری (در صورت تنظیم) دوباره در دسترس می‌شود.",
-                            detailEn = "The cloud AI provider (if configured) becomes reachable again."
-                        )
-                    }
-                    assistantReply(
-                        faOrEn(persian, "به تأیید شما نیاز دارم — کارت تأیید را در پایین گفتگو ببینید.",
-                            "I need your approval — see the confirmation card at the bottom of the chat.")
-                    )
-                }
+                assistantReply(
+                    faOrEn(persian,
+                        "سایویس حالتِ آفلاین ندارد — همیشه متصل است. هستهٔ حاکمِ همیشه‌متصل و موتورهایِ ابری هر دو فعالند.",
+                        "SAYVIS has no offline mode — it is always connected. Both the Sovereign Core and cloud engines stay active.")
+                )
             }
 
             AssistantCommand.TimeQuery -> {
@@ -2279,7 +2246,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 "• «وضعیت رو گزارش بده» / «مأموریت‌هامو نشون بده»\n" +
                 "• «اسکن کن» → پیشنهادهای هوشمند\n" +
                 "• «باز کن تنظیمات / مأموریت‌ها / درگاه / آواتار …»\n" +
-                "• «قفل اضطراری را فعال کن» و «حالت آفلاین را روشن کن» (با کارت تأیید)\n" +
+                "• «قفل اضطراری را فعال کن» (با کارت تأیید)\n" +
                 "• «ساعت چنده؟»، «تاریخ امروز؟»، «باتری چقدره؟»\n" +
                 "سؤال‌های باز را هم با هستهٔ محلی یا سرویس ابری پاسخ می‌دهم."
         } else {
@@ -2319,17 +2286,11 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 assistantReply(faOrEn(persian, "🔓 قفل اضطراری برداشته شد.", "🔓 Emergency lock disengaged."))
                 audit("OWNER", "security.emergency_lock.disengage", RiskLevel.CRITICAL, "OWNER_CONFIRMED", "SUCCESS", "Approved from chat")
             }
-            AssistantAction.Kind.OFFLINE_ON -> {
-                settingsStore.setForceOffline(true)
-                updateAvatarState()
-                assistantReply(faOrEn(persian, "✈️ حالت آفلاین اجباری روشن شد؛ هیچ داده‌ای به بیرون نمی‌رود.", "✈️ Forced offline mode enabled; nothing leaves the device."))
-                audit("OWNER", "settings.offline_mode.enable", RiskLevel.MEDIUM_RISK, "OWNER_CONFIRMED", "SUCCESS", "Approved from chat")
-            }
+            AssistantAction.Kind.OFFLINE_ON,
             AssistantAction.Kind.OFFLINE_OFF -> {
-                settingsStore.setForceOffline(false)
-                updateAvatarState()
-                assistantReply(faOrEn(persian, "🌐 حالت آفلاین خاموش شد.", "🌐 Offline mode disabled."))
-                audit("OWNER", "settings.offline_mode.disable", RiskLevel.MEDIUM_RISK, "OWNER_CONFIRMED", "SUCCESS", "Approved from chat")
+                // SAYVIS has no offline mode — always online via Sovereign Core.
+                assistantReply(faOrEn(persian, "سایویس حالتِ آفلاین ندارد — همیشه متصل است ✅ هستهٔ حاکم فعال است.", "SAYVIS has no offline mode — always online ✅ Sovereign Core active."))
+                audit("OWNER", "settings.always_online", RiskLevel.LOW_RISK, "OWNER_CONFIRMED", "SUCCESS", "offline request ignored — always online")
             }
         }
     }
@@ -2555,7 +2516,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             activeMissionsCount = missionList.count { it.status == MissionStatus.ACTIVE },
             blockedTasksCount = blockedCount,
             emergencyLockActive = current.emergencyLockActive,
-            isOnline = !current.forceOfflineMode,
+            isOnline = true, // SAYVIS has no offline mode — always online
             batteryPercent = batteryLevel,
             isCharging = batteryCharging,
             focusWindowActive = focusActive,
@@ -3025,7 +2986,6 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         val current = settingsStore.current()
         _avatarState.value = when {
             current.emergencyLockActive -> AvatarState.EMERGENCY_LOCKED
-            current.forceOfflineMode -> AvatarState.OFFLINE
             else -> AvatarState.IDLE
         }
     }
@@ -3103,7 +3063,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             appendLine("language: ${current.localization.language.name}")
             appendLine("ai provider: ${current.ai.provider.name} configured=${current.ai.isProviderConfigured()}")
             appendLine("ai model: ${current.ai.activeModel()}")
-            appendLine("force offline: ${current.forceOfflineMode}")
+            appendLine("always online: SAYVIS has no offline mode — Sovereign Core always connected")
             appendLine("emergency lock: ${current.emergencyLockActive}")
             appendLine("vault hardware backed: ${settingsStore.vault.isHardwareBacked}")
             appendLine("gateway phase: ${gw.phase.name}")

@@ -14,7 +14,7 @@ enum class TranslationSource {
     /** Text was already Persian, or the UI language is English. */
     ORIGINAL,
 
-    /** Matched the built-in offline dictionary — a hand-written, reviewed translation. */
+    /** Matched the built-in local dictionary — a hand-written, reviewed translation (always available). */
     DICTIONARY,
 
     /** Returned from the on-device cache of an earlier AI translation. */
@@ -102,7 +102,7 @@ class TranslationService(context: Context? = null) {
     // ------------------------------------------------------------- tier 1 & 2
 
     /**
-     * Offline resolution. Never touches the network.
+     * Local dictionary resolution. Never touches the network (Sovereign Core always online).
      *
      * @param persianDigits when true, digits inside a dictionary/template translation are
      *        rendered as Persian digits so a translated sentence reads consistently.
@@ -158,12 +158,11 @@ class TranslationService(context: Context? = null) {
     suspend fun translateOnline(
         text: String,
         orchestrator: AIOrchestrator,
-        settings: AiSettings,
-        forceOffline: Boolean
+        settings: AiSettings
     ): String? {
         val trimmed = text.trim()
         if (trimmed.isEmpty() || !needsTranslation(trimmed)) return null
-        if (forceOffline || !settings.isProviderConfigured()) return null
+        if (!settings.isProviderConfigured()) return null // SAYVIS is always online — no forceOffline
         memoryCache[trimmed]?.let { return it }
 
         // Never fire two identical requests at once.
@@ -176,7 +175,6 @@ class TranslationService(context: Context? = null) {
                     systemContext = "",
                     languageFa = true,
                     emergencyLockActive = false,
-                    forceOffline = false,
                     settings = settings,
                     taskInstruction = TRANSLATION_INSTRUCTION
                 )
@@ -201,13 +199,12 @@ class TranslationService(context: Context? = null) {
     suspend fun translateBatch(
         texts: List<String>,
         orchestrator: AIOrchestrator,
-        settings: AiSettings,
-        forceOffline: Boolean
+        settings: AiSettings
     ): Map<String, String> = withContext(Dispatchers.IO) {
         val pending = texts.map { it.trim() }
             .filter { it.isNotEmpty() && needsTranslation(it) && memoryCache[it] == null }
             .distinct()
-        if (pending.isEmpty() || forceOffline || !settings.isProviderConfigured()) {
+        if (pending.isEmpty() || !settings.isProviderConfigured()) { // always online
             return@withContext emptyMap()
         }
         val numbered = pending.mapIndexed { index, value -> "${index + 1}. $value" }.joinToString("\n")
@@ -217,7 +214,6 @@ class TranslationService(context: Context? = null) {
             systemContext = "",
             languageFa = true,
             emergencyLockActive = false,
-            forceOffline = false,
             settings = settings,
             taskInstruction = BATCH_TRANSLATION_INSTRUCTION
         )

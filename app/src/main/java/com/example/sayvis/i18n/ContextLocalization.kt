@@ -24,8 +24,8 @@ object ContextLocalization {
         if (fa) snapshot.cognitiveLoad.labelFa else snapshot.cognitiveLoad.labelEn
 
     fun network(snapshot: ContextSnapshot, fa: Boolean): String = when {
-        !snapshot.isOnline && fa -> "آفلاین — حالت امن محلی"
-        !snapshot.isOnline -> "Offline — sovereign local safe mode"
+        !snapshot.isOnline && fa -> "همیشه متصل — هستهٔ حاکم فعال (حالت امن محلی)"
+        !snapshot.isOnline -> "Always online — Sovereign Core active (sovereign local safe mode)"
         snapshot.gatewaySecure && fa -> "متصل — دروازهٔ امن سایویس"
         snapshot.gatewaySecure -> "Online — SAYVIS secure gateway"
         fa -> "متصل — بدون دروازهٔ امن"

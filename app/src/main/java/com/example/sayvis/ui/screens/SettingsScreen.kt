@@ -564,10 +564,11 @@ fun SettingsScreen(
             )
 
             SayvisToggleRow(
-                label = s.offlineMode,
-                hint = s.offlineModeHint,
-                checked = settings.forceOfflineMode,
-                onCheckedChange = { onSettingsChange(settings.copy(forceOfflineMode = it)) }
+                label = if (isPersian) "همیشه متصل — هستهٔ حاکم سایویس" else "Always Online — SAYVIS Sovereign Core",
+                hint = if (isPersian) "سایویس حالت آفلاین ندارد؛ هستهٔ حاکم همیشه فعال و در صورت تنظیم، موتورهایِ ابری به‌صورت خودکار جایگزین می‌شوند." else "SAYVIS has no offline mode; the Sovereign Core is always active and cloud engines fail over automatically when configured.",
+                checked = true,
+                onCheckedChange = { },
+                // enabled = false // always online — not toggleable
             )
 
             SayvisDivider()

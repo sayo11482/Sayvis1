@@ -224,7 +224,7 @@ fun HomeScreen(
             }
         }
 
-        // ===== LINK CENTER (v5.3.0): online/offline switch + live speed =====
+        // ===== LINK CENTER (v5.3.0): Sovereign Core always-online + live speed =====
         item {
             Column(
                 modifier = Modifier
@@ -254,7 +254,7 @@ fun HomeScreen(
                             Spacer(modifier = Modifier.width(7.dp))
                             Text(
                                 text = if (online) (if (isPersian) "آنلاین — متصل" else "ONLINE — connected")
-                                else (if (isPersian) "آفلاین — کل اتصال قطع" else "OFFLINE — links cut"),
+                                else (if (isPersian) "بررسی اتصال — شبکه در دسترس نیست" else "Checking connection — network unavailable"),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (online) SayvisGreenSuccess else SayvisRedAlert

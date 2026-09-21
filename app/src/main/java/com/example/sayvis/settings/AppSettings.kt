@@ -19,7 +19,7 @@ enum class AppLanguage(val labelFa: String, val labelEn: String) {
 
 /** Selectable AI inference backends. */
 enum class AiProviderKind(val labelFa: String, val labelEn: String, val isLocal: Boolean) {
-    LOCAL("هستهٔ محلی سایویس (آفلاین)", "SAYVIS Local Core (offline)", true),
+    LOCAL("هستهٔ حاکم سایویس (همیشه متصل)", "SAYVIS Sovereign Core (Always Connected)", true),
     GEMINI("گوگل جمینای", "Google Gemini", false),
     OPENROUTER("اوپن‌روتر (چندمدلی)", "OpenRouter (multi-model)", false),
     GROQ("گروک (پاسخ سریع)", "Groq (fast LPU)", false),
@@ -94,7 +94,7 @@ enum class TradingExecutionMode(val labelFa: String, val labelEn: String, val ma
 enum class MtBridgeKind(val labelFa: String, val labelEn: String) {
     METAAPI("MetaApi (سرویس ابری آماده)", "MetaApi (cloud gateway)"),
     SELF_HOSTED("پل شخصی (Expert Advisor + REST/WebSocket)", "Self-hosted EA bridge (REST/WebSocket)"),
-    OFFLINE_SIM("شبیه‌ساز محلی (بدون اتصال)", "Local simulator (no connection)");
+    OFFLINE_SIM("شبیه‌سازِ حاکم (همیشه متصل — بدون بروکر)", "Sovereign simulator (always connected — no broker)");
 
     fun label(isPersian: Boolean): String = if (isPersian) labelFa else labelEn
 }
@@ -220,7 +220,6 @@ data class AppSettings(
     val ai: AiSettings = AiSettings(),
     val trading: MtGatewayProfile = MtGatewayProfile(),
     val appearance: AppearanceMode = AppearanceMode.DARK_SPACE,
-    val forceOfflineMode: Boolean = false,
     val emergencyLockActive: Boolean = false,
     val requireConfirmationForHighRisk: Boolean = true,
     val keepAuditLogOnDevice: Boolean = true,

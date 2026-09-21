@@ -116,9 +116,12 @@ class SayvisCommandEngineUnitTest {
     }
 
     @Test
-    fun `offline toggle parses both ways`() {
-        assertEquals(AssistantCommand.ToggleOffline(true), parse("حالت آفلاین را روشن کن"))
-        assertEquals(AssistantCommand.ToggleOffline(false), parse("disable offline mode"))
+    fun `offline toggle is deprecated — sayvis is always online, offline phrases fall through to sovereign core`() {
+        // SAYVIS has no offline mode — these must NOT be parsed as ToggleOffline; they flow to the AI.
+        assertNull(parse("حالت آفلاین را روشن کن"))
+        assertNull(parse("disable offline mode"))
+        assertNull(parse("حالت افلاین را خاموش کن"))
+        assertNull(parse("enable offline mode"))
     }
 
     @Test
