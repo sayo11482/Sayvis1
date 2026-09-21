@@ -3014,6 +3014,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     override fun onCleared() {
+        arenaAgentJob?.cancel()
         speechRecognizer?.destroy()
         speechRecognizer = null
         super.onCleared()

@@ -73,6 +73,15 @@ object ArenaAgent {
      */
     fun plan(goal: String): AgentPlan {
         val clean = goal.trim()
+        if (clean.isBlank()) {
+            return AgentPlan(
+                goal = "",
+                steps = listOf(
+                    PlanStep("هدف خالی است", "Empty goal", ToolKind.DONE, "no-op")
+                ),
+                estimatedMinutes = 0
+            )
+        }
         val isWeb = listOf("سایت", "وب", "صفحه", "landing", "website", "web", "html", "صفحه").any { clean.contains(it, true) }
         val isApp = listOf("اپ", "برنامه", "app", "اندروید", "android").any { clean.contains(it, true) }
         val isImage = listOf("عکس", "تصویر", "image", "photo", "گرافیک", "design").any { clean.contains(it, true) }
@@ -170,7 +179,7 @@ object ArenaAgent {
      * graphical canvas shows in real time, exactly like Arena's live preview.
      */
     fun generateHtmlPreview(goal: String): String {
-        val title = goal.take(40)
+        val title = goal.take(40).ifBlank { "SAYVIS Arena" }
         return """
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">

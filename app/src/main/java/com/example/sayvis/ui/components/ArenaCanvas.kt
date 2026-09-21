@@ -129,9 +129,14 @@ fun ArenaCanvas(
 @Composable
 private fun HtmlPreview(html: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    var webViewRef: WebView? by remember { mutableStateOf(null) }
+    DisposableEffect(Unit) {
+        onDispose { webViewRef?.destroy() }
+    }
     AndroidView(
         factory = {
             WebView(context).apply {
+                webViewRef = this
                 @SuppressLint("SetJavaScriptEnabled")
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
