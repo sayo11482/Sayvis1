@@ -2,7 +2,6 @@ package com.example.sayvis.agent
 
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -10,7 +9,6 @@ import android.webkit.MimeTypeMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import com.example.sayvis.net.SayvisNet
 
 /**

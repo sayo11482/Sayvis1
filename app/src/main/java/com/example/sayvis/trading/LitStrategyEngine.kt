@@ -3,8 +3,6 @@ package com.example.sayvis.trading
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sqrt
-
 /**
  * The LIT strategy engine (Liquidity–Impulse–Trend), SAYVIS's in-house
  * play-book for the live markets screen:

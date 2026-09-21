@@ -1,7 +1,6 @@
 package com.example.sayvis.voice
 
 import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.ln
 import kotlin.math.log10

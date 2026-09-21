@@ -18,7 +18,6 @@ import com.example.sayvis.model.Mission
 import com.example.sayvis.model.OpportunityStatus
 import com.example.sayvis.model.RiskLevel
 import com.example.sayvis.model.UicAttribute
-import com.example.sayvis.model.UicCategory
 import com.example.sayvis.model.UicStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
