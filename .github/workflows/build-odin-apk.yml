@@ -1,0 +1,207 @@
+name: Build ODIN APK
+
+# ODIN AGENT - Completely independent from SAYVIS
+# Professional Quantitative Trading AI Agent
+
+on:
+  push:
+    branches:
+      - arena/*
+      - main
+    paths:
+      - 'odin-agent/**'
+      - '.github/workflows/build-odin-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  odin-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Provide debug keystore and google-services
+        run: |
+          set -e
+          if [ -f debug.keystore ]; then
+            mkdir -p odin-agent/app
+            cp debug.keystore odin-agent/app/debug.keystore
+            cp debug.keystore odin-agent/debug.keystore
+            echo "Copied root debug.keystore"
+          fi
+          if [ ! -f odin-agent/app/debug.keystore ] && [ ! -f odin-agent/debug.keystore ]; then
+            echo "Creating new debug keystore"
+            mkdir -p odin-agent/app
+            keytool -genkeypair -v \
+              -keystore odin-agent/app/debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug, O=Android, C=US"
+            cp odin-agent/app/debug.keystore odin-agent/debug.keystore || true
+          fi
+          # Ensure google-services.json exists for build
+          if [ ! -f odin-agent/app/google-services.json ]; then
+            echo "Creating dummy google-services.json for ODIN"
+            cat > odin-agent/app/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "123456789000",
+              "project_id": "odin-agent-dummy",
+              "storage_bucket": "odin-agent-dummy.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:123456789000:android:abcdef1234567890",
+                  "android_client_info": {
+                    "package_name": "com.odin.agent"
+                  }
+                },
+                "oauth_client": [
+                  {
+                    "client_id": "123456789000-dummy.apps.googleusercontent.com",
+                    "client_type": 3
+                  }
+                ],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyDummyKeyForOdinAgentBuild1234567890"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": [
+                      {
+                        "client_id": "123456789000-dummy.apps.googleusercontent.com",
+                        "client_type": 3
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          JSON
+          fi
+          ls -lh odin-agent/app/debug.keystore odin-agent/debug.keystore odin-agent/app/google-services.json 2>&1 || true
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Assemble ODIN debug APK
+        id: build
+        working-directory: odin-agent
+        run: |
+          set -o pipefail
+          gradle :app:assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee ../build-odin.log
+
+      - name: Report build errors
+        if: failure() && steps.build.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd odin-agent || cd .
+          LOG="../build-odin.log"
+          if [ ! -f "$LOG" ]; then LOG="build-odin.log"; fi
+          if [ ! -f "$LOG" ]; then LOG="../build-odin.log"; fi
+          grep -E "^e: |error:|What went wrong|Caused by|Could not|FAILED|Unresolved|> Task .* FAILED" "$LOG" 2>/dev/null | head -300 > errors-odin.txt || true
+          [ -s errors-odin.txt ] || tail -n 200 "$LOG" 2>/dev/null > errors-odin.txt || echo "No log found" > errors-odin.txt
+          head -n 10 errors-odin.txt | while IFS= read -r line; do echo "::error::${line}"; done
+          {
+            echo "### ODIN Build failed for ${GITHUB_SHA::7}"
+            echo
+            echo '```'
+            head -c 60000 errors-odin.txt
+            echo '```'
+          } > comment-odin.md
+          PR=$(gh pr list --head "${GITHUB_REF_NAME}" --json number --jq '.[0].number' || true)
+          if [ -n "$PR" ]; then gh pr comment "$PR" --body-file comment-odin.md || true; fi
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: odin-build-log
+          path: build-odin.log
+          if-no-files-found: ignore
+
+      - name: Upload ODIN APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: odin-agent-debug-apk
+          path: odin-agent/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Publish ODIN APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' odin-agent/app/build.gradle.kts)
+          TAG="odin-v${VERSION}-build.${GITHUB_RUN_NUMBER}"
+          OUT="ODIN-AGENT-${VERSION}-debug.apk"
+          cp odin-agent/app/build/outputs/apk/debug/app-debug.apk "$OUT"
+          sha256sum "$OUT" > "$OUT.sha256"
+          # Create release notes file to avoid YAML escaping issues
+          cat > release-notes.md <<EOF
+          ODIN AGENT ${VERSION} - Professional Quantitative Trading AI Agent
+
+          اودین ایجنت - عامل ترید کوانت حرفه ای
+          کاملا جدا از پروژه سایویز
+
+          5 استراتژی حرفه ای:
+          1. Trend Following (Multi-TF) - EMA20/50 + ADX>25 + Volume
+          2. Mean Reversion - BB + RSI + Z-Score
+          3. Momentum Breakout - ATR-based
+          4. Pairs Trading - Stat Arb
+          5. Volatility Regime Detection
+
+          مدیریت ریسک غیرقابل مذاکره:
+          - 1% ریسک هر معامله
+          - 3% DD روزانه -> Kill-switch
+          - 15% DD کلی -> توقف
+
+          ویژگی های اپ:
+          - Dashboard با ریسک مانیتور
+          - 5 استراتژی ماژولار
+          - بک تست با Sharpe, Sortino, MaxDD
+          - پیپر ترید زنده
+          - اتصال به بک اند FastAPI (n8n + Ollama + Qdrant)
+
+          نصب:
+          1. دانلود APK
+          2. فعال سازی Install unknown apps
+          3. نصب و اجرا - باید ببینی ODIN AGENT
+
+          بک اند:
+          cd agent && docker compose --profile cpu up
+          Backend: http://YOUR_IP:8000
+          n8n: http://localhost:5678
+
+          Build از کامیت ${GITHUB_SHA::7} روی شاخه ${GITHUB_REF_NAME}
+          امضای debug
+
+          بقا > سود رویایی - هیچ سود تضمینی نیست!
+          EOF
+          gh release create "$TAG" "$OUT" "$OUT.sha256" \
+            --target "$GITHUB_SHA" \
+            --title "ODIN AGENT ${VERSION} (build ${GITHUB_RUN_NUMBER}) - Quantitative Trading AI Agent - اودین ایجنت" \
+            --notes-file release-notes.md \
+            --prerelease

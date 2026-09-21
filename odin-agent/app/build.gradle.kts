@@ -17,8 +17,8 @@ android {
     applicationId = "com.odin.agent"
     minSdk = 26
     targetSdk = 36
-    versionCode = 25
-    versionName = "1.0.25-arena-ai-professional"
+    versionCode = 24
+    versionName = "1.0.24-vittaverse-real"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

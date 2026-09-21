@@ -27,7 +27,6 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageVector) {
-    ARENA_AGENT("Arena AI", "ایجنت آرنا", Icons.Default.SmartToy),
     DASHBOARD("Dashboard", "داشبورد", Icons.Default.Dashboard),
     LIVE_CHART("Real Chart", "چارت واقعی", Icons.Default.ShowChart),
     SCANNER_ALARM("Scanner Vittaverse", "اسکنر ویتاورس", Icons.Default.NotificationImportant),
@@ -38,7 +37,7 @@ enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageV
 
 @Composable
 fun OdinApp() {
-    var currentScreen by remember { mutableStateOf(OdinScreen.ARENA_AGENT) }
+    var currentScreen by remember { mutableStateOf(OdinScreen.DASHBOARD) }
     var isPersian by remember { mutableStateOf(true) }
     val riskManager = remember { RiskManager(initialCapital = 10000.0) }
     var riskStatus by remember { mutableStateOf(riskManager.getStatus()) }
@@ -60,11 +59,11 @@ fun OdinApp() {
         bottomBar = {
             NavigationBar(containerColor = Color(0xFF050505), contentColor = OdinSilver) {
                 val mainTabs = listOf(
-                    OdinScreen.ARENA_AGENT,
                     OdinScreen.DASHBOARD,
                     OdinScreen.LIVE_CHART,
                     OdinScreen.SCANNER_ALARM,
-                    OdinScreen.TRADING_HUB
+                    OdinScreen.TRADING_HUB,
+                    OdinScreen.BACKTEST
                 )
                 mainTabs.forEach { screen ->
                     NavigationBarItem(
@@ -114,7 +113,6 @@ fun OdinApp() {
                     }
                 }
                 OdinScreen.SCANNER_ALARM -> EntryScannerScreen(isPersian = isPersian, onSignalClick = { signal -> selectedEntrySignal = signal; currentScreen = OdinScreen.LIVE_CHART })
-                OdinScreen.ARENA_AGENT -> ArenaAgentScreen(isPersian = isPersian)
                 OdinScreen.TRADING_HUB -> TradingHubScreen(isPersian = isPersian)
                 OdinScreen.BACKTEST -> BacktestScreen(isPersian = isPersian)
                 OdinScreen.AWARE -> AwareScreen(isPersian = isPersian)

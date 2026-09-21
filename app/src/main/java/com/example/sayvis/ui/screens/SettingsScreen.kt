@@ -226,6 +226,46 @@ fun SettingsScreen(
                     color = SayvisSilverMuted
                 )
 
+                AiProviderKind.SAYVIS_AGENT -> {
+                    Text(
+                        text = if (isPersian) "🔥 اودین ایجنت حرفه‌ای - شامل n8n, Ollama, Qdrant, Postgres\nدستور راه‌اندازی: cd agent && docker compose --profile cpu up"
+                        else "🔥 ODIN Professional Agent - includes n8n, Ollama, Qdrant, Postgres\nSetup: cd agent && docker compose --profile cpu up",
+                        fontSize = 11.sp,
+                        color = SayvisCyan
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SayvisField(
+                        label = if (isPersian) "نشانی اودین ایجنت" else "ODIN Agent URL",
+                        value = settings.ai.sayvisAgentBaseUrl,
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(sayvisAgentBaseUrl = it.trim()))) },
+                        hint = "http://192.168.1.100:8000",
+                        keyboardType = KeyboardType.Uri,
+                        monospace = true
+                    )
+                    SayvisField(
+                        label = s.model,
+                        value = settings.ai.sayvisAgentModel,
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(sayvisAgentModel = it.trim()))) },
+                        hint = "odin-agent",
+                        monospace = true
+                    )
+                    SecretField(
+                        label = s.apiKey,
+                        hint = if (isPersian) "اختیاری - کلید API اودین" else "optional - ODIN API key",
+                        value = settings.ai.sayvisAgentApiKey,
+                        reveal = revealKey,
+                        onRevealChange = { revealKey = it },
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(sayvisAgentApiKey = it.trim()))) },
+                        isPersian = isPersian
+                    )
+                    Text(
+                        text = if (isPersian) "💡 نکته: اگر روی گوشی تست می‌کنید، به جای localhost از IP کامپیوتر استفاده کنید (مثلاً 192.168.1.100:8000)"
+                        else "💡 Tip: If testing from phone, use computer's local IP instead of localhost (e.g. 192.168.1.100:8000)",
+                        fontSize = 10.5.sp,
+                        color = SayvisGold
+                    )
+                }
+
                 AiProviderKind.GEMINI -> {
                     SecretField(
                         label = s.apiKey,

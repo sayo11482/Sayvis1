@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">googleapis.com</domain>
+        <domain includeSubdomains="true">firebaseio.com</domain>
+        <domain includeSubdomains="true">tradingview.com</domain>
+        <domain includeSubdomains="true">binance.com</domain>
+        <domain includeSubdomains="true">gmail.com</domain>
+        <domain includeSubdomains="true">google.com</domain>
+    </domain-config>
+</network-security-config>
