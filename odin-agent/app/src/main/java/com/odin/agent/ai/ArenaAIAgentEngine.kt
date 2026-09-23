@@ -392,7 +392,7 @@ class ArenaAIAgentEngine(
                     )
                     if (res.isSuccess) {
                         val pos = res.getOrNull()
-                        "سفارش دمو در سرور ویتاورس ثبت شد: تیکت #${pos?.ticket} روی نماد $sym با حجم ${pos?.lotSize} لات در قیمت ${pos?.openPrice} | موجودی دمو: ${demo.state.value.account?.balance}$"
+                        "سفارش دمو در سرور ویتاورس ثبت شد: شناسه #${pos?.id} روی نماد $sym با حجم ${pos?.lots} لات در قیمت ${pos?.entryPrice} | موجودی دمو: ${demo.state.value.account?.balance}$"
                     } else {
                         "خطا در ثبت سفارش دمو: ${res.exceptionOrNull()?.message}"
                     }
