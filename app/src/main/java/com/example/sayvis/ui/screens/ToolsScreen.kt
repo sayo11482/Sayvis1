@@ -243,7 +243,7 @@ private fun toolTitle(screen: SayvisScreen, s: com.example.sayvis.i18n.SayvisStr
     SayvisScreen.TRADING -> s.toolTrading
     SayvisScreen.SCRIPTS -> s.toolScripts
     SayvisScreen.SECURITY -> s.toolSecurity
-    SayvisScreen.AUTH -> if (s.isPersian) "احراز هویت گوگل" else "Google Auth"
+    SayvisScreen.AUTH -> "احراز هویت گوگل"
     else -> screen.titleFa
 }
 
@@ -256,7 +256,7 @@ private fun toolHint(screen: SayvisScreen, s: com.example.sayvis.i18n.SayvisStri
     SayvisScreen.TRADING -> s.toolTradingHint
     SayvisScreen.SCRIPTS -> s.toolScriptsHint
     SayvisScreen.SECURITY -> s.toolSecurityHint
-    SayvisScreen.AUTH -> if (s.isPersian) "ورود امن با گوگل برای ترید واقعی" else "Secure Google login for live trading"
+    SayvisScreen.AUTH -> "ورود امن با گوگل برای ترید واقعی"
     else -> ""
 }
 
