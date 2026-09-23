@@ -373,13 +373,28 @@ class ArenaAIAgentEngine(
                 }
                 AgentTool.DEMO_TRADE -> {
                     val sym = extractSymbol(input)
-                    val demo = DemoAccountManager.getInstance()
+                    val tokenMgr = OdinTokenManager.getInstance()
+                    val demo = DemoAccountManager(tokenMgr)
+                    if (demo.state.value.account == null) {
+                        demo.createDemoAccount(10000.0)
+                    }
                     val isSell = input.contains("sell") || input.contains("فروش")
-                    val res = demo.openPosition(symbol = sym, type = if (isSell) "SELL" else "BUY", volume = 0.01)
-                    if (res.success) {
-                        "سفارش دمو در سرور ویتاورس ثبت شد: تیکت #${res.position?.ticket} روی نماد $sym با حجم 0.01 لات در قیمت ${res.position?.openPrice} | موجودی دمو: ${demo.getBalance()}$"
+                    val side = if (isSell) com.odin.agent.models.SignalSide.SELL else com.odin.agent.models.SignalSide.BUY
+                    val symInfo = SymbolManager.find(sym)
+                    val price = symInfo?.basePrice ?: 1.0850
+                    val res = demo.openPosition(
+                        symbol = sym,
+                        side = side,
+                        capitalUsd = 100.0,
+                        strategy = com.odin.agent.models.QuantStrategyType.TREND_FOLLOWING,
+                        livePrice = price,
+                        liveSpread = symInfo?.spreadTypical ?: 1.2
+                    )
+                    if (res.isSuccess) {
+                        val pos = res.getOrNull()
+                        "سفارش دمو در سرور ویتاورس ثبت شد: تیکت #${pos?.ticket} روی نماد $sym با حجم ${pos?.lotSize} لات در قیمت ${pos?.openPrice} | موجودی دمو: ${demo.state.value.account?.balance}$"
                     } else {
-                        "خطا در ثبت سفارش دمو: ${res.messageFa}"
+                        "خطا در ثبت سفارش دمو: ${res.exceptionOrNull()?.message}"
                     }
                 }
                 AgentTool.VITTAVERSE_AUTH -> {
