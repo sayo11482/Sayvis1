@@ -170,10 +170,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <!-- بنر دانلود APK نهایی -->
   <div class="download-banner">
     <div>
-      <h3 style="color: var(--gold-light); margin-bottom: 4px;">🚀 نسخه نهایی اپلیکیشن اندروید آماده است (Build 45)</h3>
-      <p style="color: var(--muted); font-size: 13px;">Odin.trade v1.0.28-odin-pro | کامپایل موفق و منتشر شده روی گیت‌هاب با چارت لایو و تایپوگرافی جدید</p>
+      <h3 style="color: var(--gold-light); margin-bottom: 4px;">🚀 نسخه نهایی اپلیکیشن اندروید آماده است (Build 49)</h3>
+      <p style="color: var(--muted); font-size: 13px;">Odin.trade v1.0.28-odin-pro | کامپایل موفق و منتشر شده روی گیت‌هاب با چارت لایو، ۹۰ نماد فارکس و درگاه تتر</p>
     </div>
-    <a href="https://github.com/sayo11482/Sayvis1/releases/download/odin-v1.0.28-odin-pro-build.45/ODIN-AGENT-1.0.28-odin-pro-debug.apk" target="_blank">دانلود فایل APK نهایی (۳۸ مگابایت)</a>
+    <a href="https://github.com/sayo11482/Sayvis1/releases/download/odin-v1.0.28-odin-pro-build.49/ODIN-AGENT-1.0.28-odin-pro-debug.apk" target="_blank">دانلود فایل APK نهایی (۳۸ مگابایت)</a>
   </div>
 
   <!-- نوار وضعیت الزامی ویتاورس و اینترنت جهانی -->
