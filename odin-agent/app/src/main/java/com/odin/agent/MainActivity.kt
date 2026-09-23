@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageVector) {
+    SIMPLE_SUITE("Trade Suite", "سامانه ترید ساده", Icons.Default.Bolt),
     ARENA_AGENT("Arena AI", "ایجنت آرنا", Icons.Default.SmartToy),
     DASHBOARD("Dashboard", "داشبورد", Icons.Default.Dashboard),
     LIVE_CHART("Real Chart", "چارت واقعی", Icons.Default.ShowChart),
@@ -50,7 +51,7 @@ enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageV
 
 @Composable
 fun OdinApp() {
-    var currentScreen by remember { mutableStateOf(OdinScreen.ARENA_AGENT) }
+    var currentScreen by remember { mutableStateOf(OdinScreen.SIMPLE_SUITE) }
     var isPersian by remember { mutableStateOf(true) }
     val riskManager = remember { RiskManager(initialCapital = 10000.0) }
     var riskStatus by remember { mutableStateOf(riskManager.getStatus()) }
@@ -75,10 +76,10 @@ fun OdinApp() {
         bottomBar = {
             NavigationBar(containerColor = Color(0xFF050505), contentColor = OdinSilver) {
                 val mainTabs = listOf(
+                    OdinScreen.SIMPLE_SUITE,
                     OdinScreen.ARENA_AGENT,
                     OdinScreen.DASHBOARD,
                     OdinScreen.LIVE_CHART,
-                    OdinScreen.SCANNER_ALARM,
                     OdinScreen.OUTCOME
                 )
                 mainTabs.forEach { screen ->
@@ -156,6 +157,7 @@ fun OdinApp() {
 
             Box(modifier = Modifier.weight(1f)) {
                 when (currentScreen) {
+                    OdinScreen.SIMPLE_SUITE -> SimpleTradingSuiteScreen(isPersian = isPersian)
                     OdinScreen.ARENA_AGENT -> ArenaAgentScreen(isPersian = isPersian)
                     OdinScreen.DASHBOARD -> DashboardScreen(
                         riskStatus = riskStatus,
