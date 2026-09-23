@@ -1,0 +1,25 @@
+{
+  "name": "Odin Trade Token",
+  "type": "BEP20",
+  "symbol": "ODN",
+  "decimals": 18,
+  "website": "https://vittaverse.com/fa/",
+  "description": "Official institutional quantitative utility and profit-share token for Odin.trade by Sevinex Technologies. Features auto-deflationary burning, 20% trading profit rake, and tier-based strategy gating.",
+  "explorer": "https://bscscan.com/token/0x78aF92C78912De3109B59F8214Fa82103498b7e2",
+  "status": "active",
+  "id": "0x78aF92C78912De3109B59F8214Fa82103498b7e2",
+  "network": {
+    "name": "BNB Smart Chain (BEP20)",
+    "chainId": 56,
+    "currencySymbol": "BNB",
+    "rpcUrl": "https://bsc-dataseed.binance.org/"
+  },
+  "trustwallet_import_guide": {
+    "step1": "Open Trust Wallet on your phone (iOS / Android).",
+    "step2": "Tap the top-right filter icon (Manage Crypto) -> Tap the '+' button to add custom token.",
+    "step3": "Select Network: 'BNB Smart Chain'.",
+    "step4": "Paste Contract Address: 0x78aF92C78912De3109B59F8214Fa82103498b7e2",
+    "step5": "Name: Odin Trade Token | Symbol: ODN | Decimals: 18",
+    "step6": "Tap 'Save' or 'Import'. ODN is now permanently visible in your Trust Wallet balance!"
+  }
+}
