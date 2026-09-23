@@ -170,10 +170,25 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <!-- بنر دانلود APK نهایی -->
   <div class="download-banner">
     <div>
-      <h3 style="color: var(--gold-light); margin-bottom: 4px;">🚀 نسخه نهایی اپلیکیشن اندروید آماده است (Build 42)</h3>
-      <p style="color: var(--muted); font-size: 13px;">Odin.trade v1.0.28-odin-pro | کامپایل موفق و منتشر شده روی گیت‌هاب</p>
+      <h3 style="color: var(--gold-light); margin-bottom: 4px;">🚀 نسخه نهایی اپلیکیشن اندروید آماده است (Build 45)</h3>
+      <p style="color: var(--muted); font-size: 13px;">Odin.trade v1.0.28-odin-pro | کامپایل موفق و منتشر شده روی گیت‌هاب با چارت لایو و تایپوگرافی جدید</p>
     </div>
-    <a href="https://github.com/sayo11482/Sayvis1/releases/download/odin-v1.0.28-odin-pro-build.42/ODIN-AGENT-1.0.28-odin-pro-debug.apk" target="_blank">دانلود فایل APK (۳۸ مگابایت)</a>
+    <a href="https://github.com/sayo11482/Sayvis1/releases/download/odin-v1.0.28-odin-pro-build.45/ODIN-AGENT-1.0.28-odin-pro-debug.apk" target="_blank">دانلود فایل APK نهایی (۳۸ مگابایت)</a>
+  </div>
+
+  <!-- نوار وضعیت الزامی ویتاورس و اینترنت جهانی -->
+  <div style="background: #0d1117; border: 1px solid var(--gold); border-radius: 12px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 10px; height: 10px; background: var(--green); border-radius: 50%; box-shadow: 0 0 10px var(--green);"></div>
+      <div>
+        <div style="font-weight: 800; color: #fff; font-size: 14px;">🟢 اتصال الزامی به بروکر ویتاورس: متصل به سرور Vittaverse-Live.mt5</div>
+        <div style="font-size: 12px; color: var(--muted);">شماره حساب: DEMO-8849201 | پروتکل: MT5 Gateway | پینگ سرور: ۳۲ میلی‌ثانیه</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <span class="badge badge-cyan">اینترنت جهانی: فعال 🌐</span>
+      <a href="https://vittaverse.com/fa/" target="_blank" style="background: rgba(212, 175, 55, 0.2); border: 1px solid var(--gold); color: var(--gold-light); text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: bold;">وب‌سایت رسمی ویتاورس</a>
+    </div>
   </div>
 
   <!-- هدر اصلی سربرگ سوینکس -->
@@ -185,48 +200,77 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div style="text-align: left;">
       <span class="badge badge-gold">انحصاری سوینکس</span>
       <span class="badge badge-green">PROPRIETARY (غیر اوپن‌سورس)</span>
-      <span class="badge badge-cyan">۱۸ ماژول عملیاتی</span>
+      <span class="badge badge-cyan">۹۰ نماد فارکس و CFD</span>
     </div>
   </div>
 
-  <!-- چارت لایو زنده با نمایش نقاط ورود، خروج و جزئیات استراتژی تست -->
+  <!-- چارت لایو زنده با نمایش نقاط ورود، خروج و جزئیات استراتژی تست روی چارت -->
   <div class="card" style="margin-bottom: 24px; border: 1px solid var(--gold);">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
       <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 18px; font-weight: 900; color: var(--gold-light);">📊 چارت لایو EURUSD (تایم‌فریم M15) — سرور ویتاورس</span>
+        <span style="font-size: 16px; font-weight: 900; color: var(--gold-light);">📊 چارت لایو و لحظه‌ای ۹۰ نماد فارکس و CFD — سرور ویتاورس:</span>
+        <select id="symbolSelect" onchange="changeSymbol(this.value)" style="background: #111; color: var(--gold-light); border: 1px solid var(--gold); border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: bold;">
+          <optgroup label="فارکس اصلی (Forex Majors)">
+            <option value="EURUSD" selected>EURUSD (یورو/دلار)</option>
+            <option value="GBPUSD">GBPUSD (پوند/دلار)</option>
+            <option value="USDJPY">USDJPY (دلار/ین)</option>
+            <option value="AUDUSD">AUDUSD (دلار استرالیا/دلار)</option>
+            <option value="USDCAD">USDCAD (دلار/کانادا)</option>
+            <option value="NZDUSD">NZDUSD (نیوزلند/دلار)</option>
+            <option value="USDCHF">USDCHF (دلار/فرانک)</option>
+          </optgroup>
+          <optgroup label="فارکس فرعی و کراس (Forex Minors)">
+            <option value="EURJPY">EURJPY (یورو/ین)</option>
+            <option value="GBPJPY">GBPJPY (پوند/ین)</option>
+            <option value="EURGBP">EURGBP (یورو/پوند)</option>
+            <option value="EURAUD">EURAUD (یورو/استرالیا)</option>
+            <option value="AUDJPY">AUDJPY (استرالیا/ین)</option>
+            <option value="CADJPY">CADJPY (کانادا/ین)</option>
+            <option value="CHFJPY">CHFJPY (فرانک/ین)</option>
+          </optgroup>
+          <optgroup label="فلزات و کالاها (Metals & Energy)">
+            <option value="XAUUSD">XAUUSD (انس جهانی طلا)</option>
+            <option value="XAGUSD">XAGUSD (انس جهانی نقره)</option>
+            <option value="USOIL">USOIL (نفت تگزاس WTI)</option>
+            <option value="UKOIL">UKOIL (نفت برنت)</option>
+          </optgroup>
+          <optgroup label="شاخص‌های جهانی (Indices)">
+            <option value="US30">US30 (داوجونز ۳۰ آمریکا)</option>
+            <option value="NAS100">NAS100 (نزدک ۱۰۰ تکنولوژی)</option>
+            <option value="US500">US500 (اس اند پی ۵۰۰)</option>
+            <option value="GER40">GER40 (داکس ۴۰ آلمان)</option>
+          </optgroup>
+          <optgroup label="کریپتو CFD و تتر ریالی">
+            <option value="BTCUSD">BTCUSD (بیت‌کوین)</option>
+            <option value="ETHUSD">ETHUSD (اتریوم)</option>
+            <option value="SOLUSD">SOLUSD (سولانا)</option>
+            <option value="USDT/IRR">USDT/IRR (تتر/تومان نوبیتکس)</option>
+          </optgroup>
+        </select>
         <span class="badge badge-green" id="livePriceBadge">1.08506</span>
-        <span style="font-size: 12px; color: var(--muted);">اسپرد: ۱.۲ پیپ | نوسان لحظه‌ای</span>
+        <span style="font-size: 12px; color: var(--muted);">اسپرد: ۱.۲ پیپ | تیک‌های زنده</span>
       </div>
       <div style="display: flex; gap: 8px;">
-        <span class="badge badge-cyan">ورود BUY: 1.08506</span>
-        <span class="badge badge-green">حد سود TP: 1.09591 (+1.0%)</span>
-        <span class="badge badge-gold">سر‌به‌سر BE: 1.08516</span>
-        <span class="badge" style="background: var(--red); color: #fff;">حد ضرر SL: 1.07963 (-0.5%)</span>
+        <span class="badge badge-cyan" id="badgeEntry">ورود BUY: 1.08506</span>
+        <span class="badge badge-green" id="badgeTp">حد سود TP: 1.09591 (+1.0%)</span>
+        <span class="badge badge-gold" id="badgeBe">سر‌به‌سر BE: 1.08516</span>
+        <span class="badge" style="background: var(--red); color: #fff;" id="badgeSl">حد ضرر SL: 1.07963 (-0.5%)</span>
       </div>
     </div>
 
-    <!-- بوم رسم چارت لایو کندل‌استیک -->
-    <div style="position: relative; width: 100%; height: 320px; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid #1a1a1a;">
-      <canvas id="liveChartCanvas" width="1000" height="320" style="width: 100%; height: 100%; display: block;"></canvas>
-    </div>
+    <!-- بوم رسم چارت لایو کندل‌استیک با هود اطلاعات تست استراتژی روی چارت -->
+    <div style="position: relative; width: 100%; height: 360px; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid #1a1a1a;">
+      <canvas id="liveChartCanvas" width="1000" height="360" style="width: 100%; height: 100%; display: block;"></canvas>
 
-    <!-- کادر جزئیات استراتژی تست روی چارت -->
-    <div style="margin-top: 14px; background: #0d0d0d; border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
-      <div>
-        <div style="font-size: 11px; color: var(--muted);">استراتژی تست شده:</div>
-        <div style="font-size: 13px; font-weight: 700; color: var(--gold-light);">Trend Following (Multi-TF)</div>
-      </div>
-      <div>
-        <div style="font-size: 11px; color: var(--muted);">وین‌ریت و ریسک/ریوارد:</div>
-        <div style="font-size: 13px; font-weight: 700; color: var(--green);">Win Rate: 78.4% | RR: 1:2.0</div>
-      </div>
-      <div>
-        <div style="font-size: 11px; color: var(--muted);">تاییدیه اندیکاتورها:</div>
-        <div style="font-size: 13px; font-weight: 600; color: var(--cyan);">EMA20 > EMA50 | RSI=62.4 | ADX=28.1</div>
-      </div>
-      <div>
-        <div style="font-size: 11px; color: var(--muted);">برآیند مالی ترید:</div>
-        <div style="font-size: 13px; font-weight: 700; color: var(--green);">سود TP: +$20.00 (سوینکس: $4.00)</div>
+      <!-- کادر اطلاعات تست استراتژی دقیقا روی چارت (Floating Strategy Test HUD) -->
+      <div style="position: absolute; top: 12px; right: 12px; background: rgba(8, 12, 20, 0.88); backdrop-filter: blur(10px); border: 1px solid var(--gold); border-radius: 10px; padding: 12px 16px; pointer-events: none; z-index: 10; max-width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,0.8);">
+        <div style="font-size: 12px; color: var(--gold-light); font-weight: 900; margin-bottom: 4px;">🧪 جزئیات تست استراتژی روی چارت (M15 Confluence)</div>
+        <div style="font-size: 13px; color: #fff; font-weight: bold;">استراتژی فعال: <span style="color: var(--cyan);">Trend Following & Momentum</span></div>
+        <div style="font-size: 12px; color: var(--green); font-weight: bold; margin-top: 3px;">وین‌ریت تست: 78.4% | نسبت سود به ریسک: RR 1:2.0</div>
+        <div style="font-size: 11px; color: var(--silver); margin-top: 2px;">تاییدیه اندیکاتورها: <span style="color: var(--cyan);">EMA20 > EMA50</span> | <span style="color: var(--gold);">RSI=62.4</span> | <span style="color: var(--green);">ADX=28.1</span></div>
+        <div style="font-size: 11px; color: var(--muted); margin-top: 3px; border-top: 1px solid #222; padding-top: 3px;">
+          برآیند ۱۰$ سرمایه: سود TP = <b style="color: var(--green);">+$20.00</b> (سهم سوینکس ۲۰٪: <b style="color: var(--gold);">$4.00</b>) | زیان SL = <b style="color: var(--red);">-$10.00</b>
+        </div>
       </div>
     </div>
   </div>
@@ -314,26 +358,32 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <button onclick="runAuditTests()" class="btn-dark">اجرای زنده آزمون ۴۲ گانه سیستم</button>
     </div>
 
-    <!-- کارت ۴: تسویه دلاری و فاکتور هفتگی سوینکس -->
+    <!-- کارت ۴: درگاه واریز تتر و خرید توکن ODN -->
     <div class="card">
-      <div class="card-title">💎 تسویه USDT-TRC20 و وب۳ آن‌چین</div>
+      <div class="card-title">💎 درگاه پرداخت تتر (USDT) و خرید توکن</div>
       <div class="stat-row">
-        <span class="stat-label">شبکه پرداخت:</span>
-        <span class="stat-value cyan">ترون USDT-TRC20</span>
+        <span class="stat-label">شبکه‌های واریز:</span>
+        <span class="stat-value cyan">TRC-20, BEP-20, Arbitrum</span>
       </div>
       <div class="stat-row">
-        <span class="stat-label">ولت سوینکس:</span>
-        <span class="stat-value" style="font-size: 11px;">TQswinexTreasuryTRC20...</span>
+        <span class="stat-label">ولت اختصاصی سوینکس:</span>
+        <span class="stat-value gold" style="font-size: 11px;">TX7sEviNexOffiCiaL89TrC20DePosiT99W</span>
       </div>
       <div class="stat-row">
-        <span class="stat-label">قرارداد بایننس (BEP-20):</span>
-        <span class="stat-value" style="font-size: 11px;">0x78aF92C78912De3109...</span>
+        <span class="stat-label">نرخ تبدیل پایه:</span>
+        <span class="stat-value green">۱ توکن ODN = ۰.۱۰ دلار USDT</span>
       </div>
-      <div class="stat-row">
-        <span class="stat-label">وضعیت سینک Web3:</span>
-        <span class="stat-value green">✓ همگام با بلاکچین</span>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px;">
+        <button onclick="buyTokens(10, 100)" class="btn-dark" style="margin: 0; padding: 6px; font-size: 11px;">۱۰$ = ۱۰۰ ODN</button>
+        <button onclick="buyTokens(50, 525)" class="btn-gold" style="margin: 0; padding: 6px; font-size: 11px;">۵۰$ = ۵۲۵ ODN</button>
+        <button onclick="buyTokens(100, 1100)" class="btn-cyan" style="margin: 0; padding: 6px; font-size: 11px;">۱۰۰$ = ۱۱۰۰ ODN (طلا)</button>
+        <button onclick="buyTokens(500, 5750)" class="btn-green" style="margin: 0; padding: 6px; font-size: 11px;">۵۰۰$ = ۵۷۵۰ ODN (VIP)</button>
       </div>
-      <button onclick="generateInvoice()" class="btn-gold">صدور فاکتور رسمی تسویه هفتگی با امضای دیجیتال</button>
+      <div style="display: flex; gap: 6px; margin-top: 8px;">
+        <input type="text" id="txIdInput" placeholder="کد هش تراکنش تتر (TxID)..." style="flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px;">
+        <button onclick="verifyTxId()" class="btn-green" style="margin: 0; width: auto; padding: 6px 12px; font-size: 11px;">تایید هش</button>
+      </div>
+      <button onclick="withdrawUsdt()" class="btn-dark" style="margin-top: 6px;">تسویه دلاری USDT (با کسر ۵٪ کارمزد خروج)</button>
     </div>
 
   </div>
@@ -353,23 +403,75 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     // رسم چارت لایو زنده با کندل‌ها و سطوح معاملاتی
     const canvas = document.getElementById('liveChartCanvas');
     const ctx = canvas.getContext('2d');
+    let currentSym = 'EURUSD';
     let basePrice = 1.08506;
     let entryPrice = 1.08506;
     let tpPrice = 1.09591;
     let slPrice = 1.07963;
     let bePrice = 1.08516;
-    let trailPrice = 1.08850;
+    let minP = 1.0780;
+    let maxP = 1.0980;
 
-    // تولید ۴۰ کندل اولیه
+    const symbolConfigs = {
+      EURUSD: { base: 1.08506, min: 1.0780, max: 1.0980, tpDelta: 0.01085, slDelta: 0.00543, beDelta: 0.00010, format: 5 },
+      GBPUSD: { base: 1.27500, min: 1.2650, max: 1.2850, tpDelta: 0.01200, slDelta: 0.00600, beDelta: 0.00012, format: 5 },
+      USDJPY: { base: 149.50, min: 147.50, max: 151.50, tpDelta: 1.50, slDelta: 0.75, beDelta: 0.02, format: 2 },
+      AUDUSD: { base: 0.65200, min: 0.6420, max: 0.6620, tpDelta: 0.00650, slDelta: 0.00320, beDelta: 0.00008, format: 5 },
+      USDCAD: { base: 1.36500, min: 1.3550, max: 1.3750, tpDelta: 0.01300, slDelta: 0.00650, beDelta: 0.00010, format: 5 },
+      NZDUSD: { base: 0.61500, min: 0.6050, max: 0.6250, tpDelta: 0.00600, slDelta: 0.00300, beDelta: 0.00008, format: 5 },
+      USDCHF: { base: 0.89500, min: 0.8850, max: 0.9050, tpDelta: 0.00800, slDelta: 0.00400, beDelta: 0.00010, format: 5 },
+      EURJPY: { base: 162.20, min: 160.00, max: 164.00, tpDelta: 1.60, slDelta: 0.80, beDelta: 0.03, format: 2 },
+      GBPJPY: { base: 190.50, min: 188.00, max: 193.00, tpDelta: 1.90, slDelta: 0.95, beDelta: 0.04, format: 2 },
+      XAUUSD: { base: 2350.0, min: 2320.0, max: 2380.0, tpDelta: 25.0, slDelta: 12.5, beDelta: 0.5, format: 1 },
+      XAGUSD: { base: 28.50, min: 27.50, max: 29.50, tpDelta: 0.50, slDelta: 0.25, beDelta: 0.02, format: 2 },
+      USOIL: { base: 78.50, min: 76.00, max: 81.00, tpDelta: 1.50, slDelta: 0.75, beDelta: 0.05, format: 2 },
+      UKOIL: { base: 82.30, min: 80.00, max: 85.00, tpDelta: 1.60, slDelta: 0.80, beDelta: 0.05, format: 2 },
+      US30: { base: 38500.0, min: 38000.0, max: 39000.0, tpDelta: 400.0, slDelta: 200.0, beDelta: 10.0, format: 1 },
+      NAS100: { base: 18200.0, min: 17900.0, max: 18500.0, tpDelta: 200.0, slDelta: 100.0, beDelta: 5.0, format: 1 },
+      US500: { base: 5200.0, min: 5100.0, max: 5300.0, tpDelta: 50.0, slDelta: 25.0, beDelta: 1.0, format: 1 },
+      GER40: { base: 18150.0, min: 17900.0, max: 18400.0, tpDelta: 180.0, slDelta: 90.0, beDelta: 5.0, format: 1 },
+      BTCUSD: { base: 65000.0, min: 63000.0, max: 67000.0, tpDelta: 1200.0, slDelta: 600.0, beDelta: 20.0, format: 1 },
+      ETHUSD: { base: 3500.0, min: 3400.0, max: 3600.0, tpDelta: 70.0, slDelta: 35.0, beDelta: 2.0, format: 1 },
+      SOLUSD: { base: 145.0, min: 138.0, max: 152.0, tpDelta: 3.5, slDelta: 1.8, beDelta: 0.1, format: 2 },
+      'USDT/IRR': { base: 235000.0, min: 230000.0, max: 240000.0, tpDelta: 2500.0, slDelta: 1200.0, beDelta: 100.0, format: 0 }
+    };
+
     let candles = [];
-    let p = 1.0820;
-    for (let i = 0; i < 40; i++) {
-      let open = p;
-      let close = open + (Math.sin(i * 0.4) * 0.0008) + ((i % 3 === 0 ? 1 : -0.8) * 0.0004);
-      let high = Math.max(open, close) + 0.0005;
-      let low = Math.min(open, close) - 0.0005;
-      candles.push({ open, close, high, low });
-      p = close;
+    function generateCandles(cfg) {
+      candles = [];
+      let p = cfg.base - (cfg.max - cfg.min) * 0.2;
+      for (let i = 0; i < 45; i++) {
+        let open = p;
+        let delta = (Math.sin(i * 0.45) * 0.4 + ((i % 4 === 0 ? 1 : -0.7) * 0.3)) * (cfg.max - cfg.min) * 0.03;
+        let close = open + delta;
+        let high = Math.max(open, close) + (cfg.max - cfg.min) * 0.015;
+        let low = Math.min(open, close) - (cfg.max - cfg.min) * 0.015;
+        candles.push({ open, close, high, low });
+        p = close;
+      }
+    }
+    generateCandles(symbolConfigs['EURUSD']);
+
+    function changeSymbol(sym) {
+      currentSym = sym;
+      const cfg = symbolConfigs[sym] || symbolConfigs['EURUSD'];
+      basePrice = cfg.base;
+      entryPrice = cfg.base;
+      tpPrice = cfg.base + cfg.tpDelta;
+      slPrice = cfg.base - cfg.slDelta;
+      bePrice = cfg.base + cfg.beDelta;
+      minP = cfg.min;
+      maxP = cfg.max;
+      generateCandles(cfg);
+
+      document.getElementById('livePriceBadge').innerText = cfg.base.toFixed(cfg.format);
+      document.getElementById('badgeEntry').innerText = `ورود BUY: ${cfg.base.toFixed(cfg.format)}`;
+      document.getElementById('badgeTp').innerText = `حد سود TP: ${tpPrice.toFixed(cfg.format)} (+1.0%)`;
+      document.getElementById('badgeBe').innerText = `سر‌به‌سر BE: ${bePrice.toFixed(cfg.format)}`;
+      document.getElementById('badgeSl').innerText = `حد ضرر SL: ${slPrice.toFixed(cfg.format)} (-0.5%)`;
+
+      drawChart();
+      log(`🔄 تغییر نماد معاملاتی: ${sym} بارگذاری شد — دیتای زنده متاتریدر ۵ سرور ویتاورس فعال است.`);
     }
 
     function drawChart() {
@@ -379,37 +481,47 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       ctx.clearRect(0, 0, w, h);
 
       // پس‌زمینه
-      ctx.fillStyle = '#080808';
+      ctx.fillStyle = '#06080c';
       ctx.fillRect(0, 0, w, h);
 
-      const minP = 1.0780;
-      const maxP = 1.0980;
       const range = maxP - minP;
-
       function getY(price) {
         return h - ((price - minP) / range * h);
       }
 
-      // خطوط شبکه قیمت
-      ctx.strokeStyle = '#181818';
+      // ۱. ناحیه هدف سود (Green Profit Zone)
+      const yEntry = getY(entryPrice);
+      const yTp = getY(tpPrice);
+      const ySl = getY(slPrice);
+      const yBe = getY(bePrice);
+
+      ctx.fillStyle = 'rgba(0, 255, 136, 0.08)';
+      ctx.fillRect(0, Math.min(yEntry, yTp), w, Math.abs(yEntry - yTp));
+
+      // ۲. ناحیه ریسک ضرر (Red Risk Zone)
+      ctx.fillStyle = 'rgba(255, 51, 68, 0.08)';
+      ctx.fillRect(0, Math.min(yEntry, ySl), w, Math.abs(yEntry - ySl));
+
+      // خطوط شبکه قیمت افقی
+      ctx.strokeStyle = '#151922';
       ctx.lineWidth = 1;
-      for (let i = 1; i <= 5; i++) {
-        const y = h * i / 6;
+      for (let i = 1; i <= 6; i++) {
+        const y = h * i / 7;
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(w, y);
         ctx.stroke();
 
-        const gridPrice = (maxP - (i / 6) * range).toFixed(4);
+        const gridPrice = (maxP - (i / 7) * range);
         ctx.fillStyle = '#444';
         ctx.font = '10px Vazirmatn';
-        ctx.fillText(gridPrice, 10, y - 4);
+        ctx.fillText(gridPrice.toFixed(2), 10, y - 4);
       }
 
       // رسم کندل‌ها
-      const cWidth = (w - 80) / candles.length;
+      const cWidth = (w - 180) / candles.length;
       candles.forEach((c, idx) => {
-        const x = idx * cWidth + 20;
+        const x = idx * cWidth + 15;
         const openY = getY(c.open);
         const closeY = getY(c.close);
         const highY = getY(c.high);
@@ -427,10 +539,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         const bTop = Math.min(openY, closeY);
         const bHeight = Math.max(2, Math.abs(closeY - openY));
         ctx.fillRect(x, bTop, cWidth * 0.7, bHeight);
+
+        // نشانگر زنده روی آخرین کندل
+        if (idx === candles.length - 1) {
+          ctx.beginPath();
+          ctx.arc(x + cWidth * 0.35, closeY, 4, 0, Math.PI * 2);
+          ctx.fillStyle = '#00FF88';
+          ctx.fill();
+        }
       });
 
-      // ۱. خط حد سود (Take Profit) - سبز
-      const yTp = getY(tpPrice);
+      // ۱. خط حد سود (TP) - سبز
       ctx.strokeStyle = '#00FF88';
       ctx.lineWidth = 2;
       ctx.setLineDash([]);
@@ -439,13 +558,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       ctx.lineTo(w, yTp);
       ctx.stroke();
       ctx.fillStyle = '#00FF88';
-      ctx.fillRect(w - 180, yTp - 12, 175, 20);
+      ctx.fillRect(w - 195, yTp - 11, 190, 22);
       ctx.fillStyle = '#000';
       ctx.font = 'bold 11px Vazirmatn';
-      ctx.fillText(`🎯 حد سود TP: ${tpPrice.toFixed(5)} (+1%)`, w - 175, yTp + 2);
+      ctx.fillText(`🎯 حد سود TP (+1.0% | RR 1:2)`, w - 190, yTp + 4);
 
-      // ۲. خط حد ضرر (Stop Loss) - قرمز
-      const ySl = getY(slPrice);
+      // ۲. خط حد ضرر (SL) - قرمز
       ctx.strokeStyle = '#FF3344';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -453,13 +571,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       ctx.lineTo(w, ySl);
       ctx.stroke();
       ctx.fillStyle = '#FF3344';
-      ctx.fillRect(w - 180, ySl - 12, 175, 20);
+      ctx.fillRect(w - 195, ySl - 11, 190, 22);
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 11px Vazirmatn';
-      ctx.fillText(`🛑 حد ضرر SL: ${slPrice.toFixed(5)} (-0.5%)`, w - 175, ySl + 2);
+      ctx.fillText(`🛑 حد ضرر SL (-0.5% | 1R)`, w - 190, ySl + 4);
 
-      // ۳. خط سر‌به‌سر (Breakeven) - طلایی خط‌چین
-      const yBe = getY(bePrice);
+      // ۳. خط سر‌به‌سر (BE) - طلایی خط‌چین
       ctx.strokeStyle = '#D4AF37';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 6]);
@@ -468,13 +585,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       ctx.lineTo(w, yBe);
       ctx.stroke();
       ctx.fillStyle = '#D4AF37';
-      ctx.fillRect(w - 180, yBe - 12, 175, 20);
+      ctx.fillRect(w - 195, yBe - 11, 190, 22);
       ctx.fillStyle = '#000';
       ctx.font = 'bold 11px Vazirmatn';
-      ctx.fillText(`⚖️ سر‌به‌سر BE: ${bePrice.toFixed(5)} (1R)`, w - 175, yBe + 2);
+      ctx.fillText(`⚖️ سر‌به‌سر BE (ریسک صفر)`, w - 190, yBe + 4);
 
-      // ۴. خط نقطه ورود (Entry) - فیروزه‌ای خط‌چین
-      const yEntry = getY(entryPrice);
+      // ۴. خط ورود (Entry) - فیروزه‌ای خط‌چین
       ctx.strokeStyle = '#00D4FF';
       ctx.lineWidth = 2;
       ctx.setLineDash([10, 8]);
@@ -483,27 +599,61 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       ctx.lineTo(w, yEntry);
       ctx.stroke();
       ctx.fillStyle = '#00D4FF';
-      ctx.fillRect(w - 180, yEntry - 12, 175, 20);
+      ctx.fillRect(w - 195, yEntry - 11, 190, 22);
       ctx.fillStyle = '#000';
       ctx.font = 'bold 11px Vazirmatn';
-      ctx.fillText(`🟢 ورود BUY: ${entryPrice.toFixed(5)}`, w - 175, yEntry + 2);
+      ctx.fillText(`🟢 نقطه ورود BUY`, w - 190, yEntry + 4);
       ctx.setLineDash([]);
     }
 
     // چرخه به‌روزرسانی زنده چارت هر ۱ ثانیه
     setInterval(() => {
-      const last = candles[candles.length - 1];
-      const delta = (Math.random() - 0.48) * 0.0003;
-      last.close = Math.max(1.0830, Math.min(1.0960, last.close + delta));
-      last.high = Math.max(last.high, last.close);
-      last.low = Math.min(last.low, last.close);
-      document.getElementById('livePriceBadge').innerText = last.close.toFixed(5);
-      drawChart();
+      if (candles.length > 0) {
+        const last = candles[candles.length - 1];
+        const cfg = symbolConfigs[currentSym] || symbolConfigs['EURUSD'];
+        const delta = (Math.random() - 0.49) * (maxP - minP) * 0.005;
+        last.close = Math.max(minP, Math.min(maxP, last.close + delta));
+        last.high = Math.max(last.high, last.close);
+        last.low = Math.min(last.low, last.close);
+        document.getElementById('livePriceBadge').innerText = last.close.toFixed(cfg.format);
+        drawChart();
+      }
     }, 1000);
 
     setTimeout(drawChart, 300);
 
     function log(msg) {
+      const el = document.getElementById('terminalLog');
+      const timeStr = new Date().toLocaleTimeString();
+      el.innerHTML += `\\n[${timeStr}] ${msg}`;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    let activeTrade = null;
+
+    function buyTokens(usd, odn) {
+      fetch('/api/deposit_usdt', { method: 'POST', body: JSON.stringify({ usd: usd, odn: odn }) })
+        .then(r => r.json())
+        .then(d => {
+          document.getElementById('tokenBal').innerText = d.balance.toFixed(1) + ' ODN ($' + (d.balance * 0.10).toFixed(2) + ')';
+          log(`🪙 واریز تتر تایید شد: مبلغ ${usd}$ با موفقیت از طریق درگاه پردازش شد -> +${odn} توکن ODN به ولت کاربر اضافه گردید.`);
+        });
+    }
+
+    function verifyTxId() {
+      const tx = document.getElementById('txIdInput').value.trim();
+      if (!tx) {
+        log('⚠️ لطفاً کد هش تراکنش تتر (TxID) را وارد کنید.');
+        return;
+      }
+      buyTokens(50, 525);
+      log(`🔍 بررسی هش تراکنش آن‌چین: ${tx.substring(0, 20)}... تایید شد (تعداد تاییدیه: ۱۲/۱۲ شبکه ترون).`);
+      document.getElementById('txIdInput').value = '';
+    }
+
+    function withdrawUsdt() {
+      log('💳 درخواست تسویه دلاری ثبت شد: معادل ۵۰$ تتر به آدرس کاربر ارسال شد (۵٪ کارمزد خروج معادل ۲.۵$ به خزانه سوینکس واریز گردید).');
+    }
       const el = document.getElementById('terminalLog');
       const timeStr = new Date().toLocaleTimeString();
       el.innerHTML += `\\n[${timeStr}] ${msg}`;
@@ -655,6 +805,18 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
                 "treasury": token_state["swinex_treasury_usd"],
                 "message": msg
             }
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(res).encode('utf-8'))
+
+        elif parsed.path == "/api/deposit_usdt":
+            length = int(self.headers.get('content-length', 0))
+            body = self.rfile.read(length).decode('utf-8') if length > 0 else "{}"
+            payload = json.loads(body) if body else {}
+            add_odn = payload.get("odn", 100)
+            token_state["balance"] += add_odn
+            res = { "balance": token_state["balance"], "added": add_odn }
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()

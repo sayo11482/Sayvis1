@@ -27,6 +27,7 @@ import com.odin.agent.models.*
 import com.odin.agent.trading.*
 import com.odin.agent.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
@@ -301,11 +302,11 @@ fun LiveChartScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // نمایش چارت گرافیکی
+                    // نمایش چارت گرافیکی با اطلاعات تست استراتژی روی چارت
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(320.dp)
+                            .height(340.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color.Black)
                             .border(1.dp, Color(0xFF1A1A1A), RoundedCornerShape(12.dp))
@@ -325,6 +326,35 @@ fun LiveChartScreen(
                                 val gridY = h * i / 5
                                 drawLine(color = Color(0xFF181818), start = Offset(0f, gridY), end = Offset(w, gridY), strokeWidth = 1f)
                             }
+
+                            // نقاط ورود و خروج
+                            val activeEntry = entryPoints.lastOrNull { it.symbol == selectedSymbol }
+                            val pEntry = activeEntry?.price ?: defaultEntry
+                            val pTp = activeEntry?.tp ?: defaultTp
+                            val pSl = activeEntry?.sl ?: defaultSl
+
+                            val yEntry = h - ((pEntry - minVal) / range * h).toFloat()
+                            val yTp = h - ((pTp - minVal) / range * h).toFloat()
+                            val ySl = h - ((pSl - minVal) / range * h).toFloat()
+                            val yBe = h - ((defaultBe - minVal) / range * h).toFloat()
+
+                            // ناحیه هدف سود (Green Profit Zone)
+                            val profitTop = min(yEntry, yTp)
+                            val profitHeight = max(2f, abs(yEntry - yTp))
+                            drawRect(
+                                color = OdinGreen.copy(alpha = 0.08f),
+                                topLeft = Offset(0f, profitTop),
+                                size = androidx.compose.ui.geometry.Size(w, profitHeight)
+                            )
+
+                            // ناحیه ریسک ضرر (Red Risk Zone)
+                            val riskTop = min(yEntry, ySl)
+                            val riskHeight = max(2f, abs(yEntry - ySl))
+                            drawRect(
+                                color = OdinRed.copy(alpha = 0.08f),
+                                topLeft = Offset(0f, riskTop),
+                                size = androidx.compose.ui.geometry.Size(w, riskHeight)
+                            )
 
                             // رسم کندل‌ها
                             if (displayCandles.isNotEmpty()) {
@@ -346,17 +376,15 @@ fun LiveChartScreen(
                                     val bBottom = max(openY, closeY)
                                     val bHeight = max(2f, bBottom - bTop)
                                     drawRect(color = candleCol, topLeft = Offset(cx - cWidth * 0.35f, bTop), size = androidx.compose.ui.geometry.Size(cWidth * 0.7f, bHeight))
+
+                                    // نشانگر قیمت لحظه‌ای آخرین کندل
+                                    if (i == displayCandles.size - 1) {
+                                        drawCircle(color = OdinGreen, radius = 5f, center = Offset(cx, closeY))
+                                    }
                                 }
                             }
 
-                            // رسم خطوط افقی ورود و خروج
-                            val activeEntry = entryPoints.lastOrNull { it.symbol == selectedSymbol }
-                            val pEntry = activeEntry?.price ?: defaultEntry
-                            val pTp = activeEntry?.tp ?: defaultTp
-                            val pSl = activeEntry?.sl ?: defaultSl
-
-                            // ۱. خط ورود (Entry)
-                            val yEntry = h - ((pEntry - minVal) / range * h).toFloat()
+                            // ۱. خط ورود (Entry) - فیروزه‌ای خط‌چین
                             drawLine(
                                 color = OdinCyan,
                                 start = Offset(0f, yEntry),
@@ -365,8 +393,7 @@ fun LiveChartScreen(
                                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))
                             )
 
-                            // ۲. خط حد سود (Take Profit)
-                            val yTp = h - ((pTp - minVal) / range * h).toFloat()
+                            // ۲. خط حد سود (Take Profit) - سبز
                             drawLine(
                                 color = OdinGreen,
                                 start = Offset(0f, yTp),
@@ -374,8 +401,7 @@ fun LiveChartScreen(
                                 strokeWidth = 2f
                             )
 
-                            // ۳. خط حد ضرر (Stop Loss)
-                            val ySl = h - ((pSl - minVal) / range * h).toFloat()
+                            // ۳. خط حد ضرر (Stop Loss) - قرمز
                             drawLine(
                                 color = OdinRed,
                                 start = Offset(0f, ySl),
@@ -383,8 +409,7 @@ fun LiveChartScreen(
                                 strokeWidth = 2f
                             )
 
-                            // ۴. خط سر‌به‌سر (Breakeven)
-                            val yBe = h - ((defaultBe - minVal) / range * h).toFloat()
+                            // ۴. خط سر‌به‌سر (Breakeven) - طلایی خط‌چین
                             drawLine(
                                 color = OdinGold,
                                 start = Offset(0f, yBe),
@@ -394,33 +419,39 @@ fun LiveChartScreen(
                             )
                         }
 
+                        // هود اطلاعات تست استراتژی دقیقا روی چارت (Strategy Test Details ON THE CHART)
+                        Surface(
+                            color = Color(0xEE0A0C12),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.6f)),
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(8.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("🧪 استراتژی تست شده: ", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = OdinGold)
+                                    Text("Trend Following M15", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text("وین‌ریت: 78.4% | RR: 1:2.0 | ضریب سود: 2.15", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = OdinGreen)
+                                Text("اندیکاتورها: EMA20>EMA50 | RSI=62.4 | ADX=28.1", fontSize = 9.sp, color = OdinCyan)
+                                Text("برآیند پایه ۱۰$: سود TP: +$20 (سوینکس: $4) | زیان: -$10", fontSize = 8.sp, color = OdinSilver)
+                            }
+                        }
+
                         // برچسب‌های خوانا روی چارت
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(8.dp),
-                            verticalArrangement = Arrangement.SpaceBetween
+                            verticalArrangement = Arrangement.SpaceBetween,
+                            horizontalAlignment = Alignment.End
                         ) {
                             // برچسب TP
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Surface(color = OdinGreen.copy(alpha = 0.85f), shape = RoundedCornerShape(4.dp)) {
-                                    Text(
-                                        text = "🎯 حد سود TP: ${SymbolManager.formatPrice(selectedSymbol, defaultTp)} (+1.0% | RR 1:2)",
-                                        color = Color.Black,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-
-                            // برچسب سر‌به‌سر
-                            Surface(color = OdinGold.copy(alpha = 0.85f), shape = RoundedCornerShape(4.dp)) {
+                            Surface(color = OdinGreen.copy(alpha = 0.9f), shape = RoundedCornerShape(4.dp)) {
                                 Text(
-                                    text = "⚖️ سر‌به‌سر (1R Breakeven): ${SymbolManager.formatPrice(selectedSymbol, defaultBe)}",
+                                    text = "🎯 حد سود TP: ${SymbolManager.formatPrice(selectedSymbol, defaultTp)} (+1.0% | RR 1:2)",
                                     color = Color.Black,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
@@ -428,23 +459,34 @@ fun LiveChartScreen(
                                 )
                             }
 
+                            // برچسب سر‌به‌سر
+                            Surface(color = OdinGold.copy(alpha = 0.9f), shape = RoundedCornerShape(4.dp)) {
+                                Text(
+                                    text = "⚖️ سر‌به‌سر BE: ${SymbolManager.formatPrice(selectedSymbol, defaultBe)}",
+                                    color = Color.Black,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+
                             // برچسب ورود
-                            Surface(color = OdinCyan.copy(alpha = 0.85f), shape = RoundedCornerShape(4.dp)) {
+                            Surface(color = OdinCyan.copy(alpha = 0.9f), shape = RoundedCornerShape(4.dp)) {
                                 Text(
                                     text = "🟢 نقطه ورود BUY: ${SymbolManager.formatPrice(selectedSymbol, defaultEntry)}",
                                     color = Color.Black,
-                                    fontSize = 11.sp,
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
 
                             // برچسب SL
-                            Surface(color = OdinRed.copy(alpha = 0.85f), shape = RoundedCornerShape(4.dp)) {
+                            Surface(color = OdinRed.copy(alpha = 0.9f), shape = RoundedCornerShape(4.dp)) {
                                 Text(
-                                    text = "🛑 حد ضرر SL: ${SymbolManager.formatPrice(selectedSymbol, defaultSl)} (-0.5% | ریسک 1R)",
+                                    text = "🛑 حد ضرر SL: ${SymbolManager.formatPrice(selectedSymbol, defaultSl)} (-0.5%)",
                                     color = Color.White,
-                                    fontSize = 11.sp,
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )

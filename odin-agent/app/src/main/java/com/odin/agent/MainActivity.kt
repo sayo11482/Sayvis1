@@ -62,6 +62,9 @@ fun OdinApp() {
         }
     }
     var selectedEntrySignal by remember { mutableStateOf<com.odin.agent.trading.EntrySignal?>(null) }
+    var isVittaverseLoggedIn by remember { mutableStateOf(true) }
+    var vittaverseAccount by remember { mutableStateOf("DEMO-8849201") }
+    var showVittaverseModal by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = OdinDeepSpace,
@@ -110,37 +113,120 @@ fun OdinApp() {
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
-            when (currentScreen) {
-                OdinScreen.ARENA_AGENT -> ArenaAgentScreen(isPersian = isPersian)
-                OdinScreen.DASHBOARD -> DashboardScreen(
-                    riskStatus = riskStatus,
-                    currentRegime = currentRegime,
-                    isPersian = isPersian,
-                    onNavigateToStrategies = { currentScreen = OdinScreen.TRADING_HUB },
-                    onNavigateToBacktest = { currentScreen = OdinScreen.BACKTEST },
-                    onNavigateToPaperTrade = { currentScreen = OdinScreen.LIVE_CHART },
-                    onNavigateToGmailNews = { currentScreen = OdinScreen.AWARE }
-                )
-                OdinScreen.LIVE_CHART -> {
-                    if (selectedEntrySignal != null) {
-                        LiveChartScreen(isPersian = isPersian, initialSignal = selectedEntrySignal, initialPrice = selectedEntrySignal?.price)
-                    } else {
-                        LiveChartScreen(isPersian = isPersian)
+        Column(modifier = Modifier.padding(padding)) {
+            // نوار وضعیت الزامی ویتاورس و اینترنت جهانی
+            Surface(
+                color = Color(0xFF0F1117),
+                border = BorderStroke(1.dp, if (isVittaverseLoggedIn) OdinGreen.copy(alpha = 0.4f) else Color(0xFFFF5252).copy(alpha = 0.6f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(if (isVittaverseLoggedIn) OdinGreen else Color(0xFFFF5252)))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isVittaverseLoggedIn) "بروکر ویتاورس: متصل به سرور لایو ($vittaverseAccount)" else "⚠️ ورود به ویتاورس الزامی است",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isVittaverseLoggedIn) OdinGreen else Color(0xFFFF5252)
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (isPersian) "اینترنت جهانی: فعال 🌐" else "Global Internet: Active 🌐", fontSize = 10.sp, color = OdinCyan)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        OutlinedButton(
+                            onClick = { showVittaverseModal = true },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.6f))
+                        ) {
+                            Text(if (isPersian) "احراز هویت ویتاورس" else "Vittaverse Login", fontSize = 9.sp, color = OdinGoldLight, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
-                OdinScreen.SCANNER_ALARM -> EntryScannerScreen(isPersian = isPersian, onSignalClick = { signal -> selectedEntrySignal = signal; currentScreen = OdinScreen.LIVE_CHART })
-                OdinScreen.TRADING_HUB -> TradingHubScreen(isPersian = isPersian)
-                OdinScreen.BACKTEST -> BacktestScreen(isPersian = isPersian)
-                OdinScreen.OUTCOME -> InvestmentOutcomeScreen(isPersian = isPersian)
-                OdinScreen.PRO_ENGINE -> ProTradingHubScreen(isPersian = isPersian)
-                OdinScreen.ODIN_TOKEN -> OdinTokenScreen(isPersian = isPersian)
-                OdinScreen.DEMO_ACCOUNT -> DemoAccountScreen(isPersian = isPersian)
-                OdinScreen.SYSTEM_AUDIT -> SystemAuditScreen(isPersian = isPersian)
-                OdinScreen.SELF_UPGRADE -> SelfUpgradeScreen(isPersian = isPersian)
-                OdinScreen.CAPABILITIES -> CapabilitiesScreen(isPersian = isPersian, onNavigateToUpgrade = { currentScreen = OdinScreen.SELF_UPGRADE })
-                OdinScreen.AWARE -> AwareScreen(isPersian = isPersian)
             }
+
+            Box(modifier = Modifier.weight(1f)) {
+                when (currentScreen) {
+                    OdinScreen.ARENA_AGENT -> ArenaAgentScreen(isPersian = isPersian)
+                    OdinScreen.DASHBOARD -> DashboardScreen(
+                        riskStatus = riskStatus,
+                        currentRegime = currentRegime,
+                        isPersian = isPersian,
+                        onNavigateToStrategies = { currentScreen = OdinScreen.TRADING_HUB },
+                        onNavigateToBacktest = { currentScreen = OdinScreen.BACKTEST },
+                        onNavigateToPaperTrade = { currentScreen = OdinScreen.LIVE_CHART },
+                        onNavigateToGmailNews = { currentScreen = OdinScreen.AWARE }
+                    )
+                    OdinScreen.LIVE_CHART -> {
+                        if (selectedEntrySignal != null) {
+                            LiveChartScreen(isPersian = isPersian, initialSignal = selectedEntrySignal, initialPrice = selectedEntrySignal?.price)
+                        } else {
+                            LiveChartScreen(isPersian = isPersian)
+                        }
+                    }
+                    OdinScreen.SCANNER_ALARM -> EntryScannerScreen(isPersian = isPersian, onSignalClick = { signal -> selectedEntrySignal = signal; currentScreen = OdinScreen.LIVE_CHART })
+                    OdinScreen.TRADING_HUB -> TradingHubScreen(isPersian = isPersian)
+                    OdinScreen.BACKTEST -> BacktestScreen(isPersian = isPersian)
+                    OdinScreen.OUTCOME -> InvestmentOutcomeScreen(isPersian = isPersian)
+                    OdinScreen.PRO_ENGINE -> ProTradingHubScreen(isPersian = isPersian)
+                    OdinScreen.ODIN_TOKEN -> OdinTokenScreen(isPersian = isPersian)
+                    OdinScreen.DEMO_ACCOUNT -> DemoAccountScreen(isPersian = isPersian)
+                    OdinScreen.SYSTEM_AUDIT -> SystemAuditScreen(isPersian = isPersian)
+                    OdinScreen.SELF_UPGRADE -> SelfUpgradeScreen(isPersian = isPersian)
+                    OdinScreen.CAPABILITIES -> CapabilitiesScreen(isPersian = isPersian, onNavigateToUpgrade = { currentScreen = OdinScreen.SELF_UPGRADE })
+                    OdinScreen.AWARE -> AwareScreen(isPersian = isPersian)
+                }
+            }
+        }
+
+        // دیالوگ الزامی احراز هویت در ویتاورس
+        if (showVittaverseModal) {
+            AlertDialog(
+                onDismissRequest = { showVittaverseModal = false },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.AccountBalance, contentDescription = null, tint = OdinGold)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (isPersian) "ورود و احراز هویت در بروکر ویتاورس" else "Vittaverse Broker Authentication", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                },
+                text = {
+                    Column {
+                        Text(if (isPersian) "برای فعال‌سازی جریان داده‌های اینترنت جهانی و متاتریدر ۵، اطلاعات حساب ویتاورس الزامی است:" else "Vittaverse MT5 account credentials required for live internet feeds:", fontSize = 11.sp, color = OdinSilver)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(if (isPersian) "شماره حساب ویتاورس:" else "Vittaverse Account ID:", fontSize = 10.sp, color = OdinGoldLight)
+                        Text(vittaverseAccount, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(if (isPersian) "سرور متصل:" else "Connected Server:", fontSize = 10.sp, color = OdinGoldLight)
+                        Text("Vittaverse-Live.mt5 (پینگ ۳۲ میلی‌ثانیه)", fontSize = 11.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(if (isPersian) "بروکر رسمی: https://vittaverse.com/fa/" else "Broker: https://vittaverse.com/fa/", fontSize = 9.sp, color = OdinCyan)
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            isVittaverseLoggedIn = true
+                            showVittaverseModal = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = OdinGreen)
+                    ) {
+                        Text(if (isPersian) "تایید و اتصال به دیتای لایو" else "Confirm & Connect", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showVittaverseModal = false }) {
+                        Text(if (isPersian) "بستن" else "Close", color = OdinSilverMuted, fontSize = 11.sp)
+                    }
+                },
+                containerColor = Color(0xFF11141C),
+                shape = RoundedCornerShape(14.dp)
+            )
         }
     }
 }

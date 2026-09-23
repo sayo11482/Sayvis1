@@ -159,21 +159,22 @@ fun ArenaAgentScreen(isPersian: Boolean) {
         // ورودی - حرفه‌ای - مثل Arena AI
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF050505)), border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.3f)), shape = RoundedCornerShape(0.dp)) {
             Column(modifier = Modifier.padding(8.dp)) {
-                // پیشنهادهای سریع - حرفه‌ای
+                // پیشنهادهای سریع - دسترسی جامع ایجنت به تمام بخش‌ها
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(
-                        if (isPersian) "BTC تحلیل" else "BTC Analysis",
-                        if (isPersian) "EURUSD سیگنال" else "EURUSD Signal",
-                        if (isPersian) "طلا" else "Gold",
-                        if (isPersian) "اسپرد ویتاورس" else "Vittaverse Spread",
-                        if (isPersian) "ریسک" else "Risk"
+                        if (isPersian) "🧪 تست کامل سیستم" else "System Audit",
+                        if (isPersian) "🏦 اتصال به ویتاورس" else "Vittaverse Connect",
+                        if (isPersian) "⚡ معامله دمو" else "Demo Trade",
+                        if (isPersian) "🪙 درگاه تتر و خرید توکن" else "Tether Gateway",
+                        if (isPersian) "🌐 ۹۰ نماد فارکس" else "90 Forex Symbols",
+                        if (isPersian) "📶 اینترنت جهانی" else "Global Internet"
                     ).forEach { suggestion ->
                         FilterChip(
                             selected = false,
                             onClick = { inputText = suggestion; scope.launch { if (inputText.isNotBlank()) { agentEngine.sendMessage(inputText, isPersian); inputText = "" } } },
-                            label = { Text(suggestion, fontSize = 8.sp) },
-                            colors = FilterChipDefaults.filterChipColors(containerColor = Color(0xFF0A0A0A), labelColor = OdinSilverMuted),
-                            border = FilterChipDefaults.filterChipBorder(borderColor = OdinBorder, enabled = true, selected = false)
+                            label = { Text(suggestion, fontSize = 9.sp, fontWeight = FontWeight.Bold) },
+                            colors = FilterChipDefaults.filterChipColors(containerColor = Color(0xFF141414), labelColor = OdinGoldLight),
+                            border = FilterChipDefaults.filterChipBorder(borderColor = OdinGold.copy(alpha = 0.5f), enabled = true, selected = false)
                         )
                     }
                 }
