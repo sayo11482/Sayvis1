@@ -17,8 +17,8 @@ android {
     applicationId = "com.odin.agent"
     minSdk = 26
     targetSdk = 36
-    versionCode = 32
-    versionName = "1.0.29-simple-suite"
+    versionCode = 33
+    versionName = "1.0.30-receiver-wallet"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

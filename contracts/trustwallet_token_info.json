@@ -8,6 +8,7 @@
   "explorer": "https://bscscan.com/token/0x78aF92C78912De3109B59F8214Fa82103498b7e2",
   "status": "active",
   "id": "0x78aF92C78912De3109B59F8214Fa82103498b7e2",
+  "official_receiver_wallet": "0xc325ACC3bb407f59cbfe275B901317c9B540bF57",
   "network": {
     "name": "BNB Smart Chain (BEP20)",
     "chainId": 56,
@@ -20,6 +21,7 @@
     "step3": "Select Network: 'BNB Smart Chain'.",
     "step4": "Paste Contract Address: 0x78aF92C78912De3109B59F8214Fa82103498b7e2",
     "step5": "Name: Odin Trade Token | Symbol: ODN | Decimals: 18",
-    "step6": "Tap 'Save' or 'Import'. ODN is now permanently visible in your Trust Wallet balance!"
+    "step6": "Tap 'Save' or 'Import'. ODN is now permanently visible in your Trust Wallet balance!",
+    "payout_receiver_address": "0xc325ACC3bb407f59cbfe275B901317c9B540bF57"
   }
 }

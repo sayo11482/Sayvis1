@@ -102,16 +102,19 @@ contract OdinTradeToken is Context, IERC20Metadata, Ownable {
     event Staked(address indexed user, uint256 amount);
     event Unstaked(address indexed user, uint256 amount);
 
-    constructor(address _treasury, address _liquidityVault) Ownable(_msgSender()) {
-        require(_treasury != address(0), "Invalid treasury");
-        require(_liquidityVault != address(0), "Invalid vault");
+    // Official Sevinex Technologies Treasury Receiver Wallet on BNB Smart Chain
+    address public constant OFFICIAL_SEVINEX_RECEIVER = 0xc325ACC3bb407f59cbfe275B901317c9B540bF57;
 
-        sevinexTreasury = _treasury;
-        sevinexLiquidityVault = _liquidityVault;
+    constructor(address _treasury, address _liquidityVault) Ownable(_msgSender()) {
+        address treasuryAddr = _treasury != address(0) ? _treasury : OFFICIAL_SEVINEX_RECEIVER;
+        address vaultAddr = _liquidityVault != address(0) ? _liquidityVault : OFFICIAL_SEVINEX_RECEIVER;
+
+        sevinexTreasury = treasuryAddr;
+        sevinexLiquidityVault = vaultAddr;
         
         _currentSupply = _totalSupply;
-        _balances[_msgSender()] = _totalSupply;
-        emit Transfer(address(0), _msgSender(), _totalSupply);
+        _balances[OFFICIAL_SEVINEX_RECEIVER] = _totalSupply;
+        emit Transfer(address(0), OFFICIAL_SEVINEX_RECEIVER, _totalSupply);
     }
 
     function name() public pure override returns (string memory) {

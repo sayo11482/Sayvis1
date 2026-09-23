@@ -799,6 +799,11 @@ fun SimpleTradingSuiteScreen(
                                         color = OdinSilverMuted
                                     )
                                     Spacer(modifier = Modifier.height(10.dp))
+                                    Text(
+                                        text = "آدرس قرارداد هوشمند توکن (BEP-20):",
+                                        fontSize = 10.sp,
+                                        color = OdinSilverMuted
+                                    )
                                     Surface(
                                         color = Color(0xFF090A0F),
                                         shape = RoundedCornerShape(8.dp),
@@ -808,6 +813,25 @@ fun SimpleTradingSuiteScreen(
                                             text = "0x78aF92C78912De3109B59F8214Fa82103498b7e2",
                                             fontSize = 10.sp,
                                             color = OdinCyan,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "آدرس رسمی دریافت واریزی‌های سوینکس:",
+                                        fontSize = 10.sp,
+                                        color = OdinGoldLight,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Surface(
+                                        color = Color(0xFF090A0F),
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, OdinGreen.copy(alpha = 0.5f))
+                                    ) {
+                                        Text(
+                                            text = "0xc325ACC3bb407f59cbfe275B901317c9B540bF57",
+                                            fontSize = 10.sp,
+                                            color = OdinGreen,
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                         )
                                     }

@@ -47,6 +47,7 @@ token_state = {
     "price_usd": 0.12,
     "staked_balance": 100.0,
     "swinex_treasury_usd": 48.50,
+    "treasury_receiver": "0xc325ACC3bb407f59cbfe275B901317c9B540bF57",
     "odn_burned": 242.0,
     "profit_rake_pct": 20.0,
     "burn_rate_pct": 50.0,
@@ -744,8 +745,20 @@ HTML_CONTENT = """<!DOCTYPE html>
     <div class="token-hero">
       <h2>Odin Trade Token (ODN)</h2>
       <p style="color:var(--muted); font-size:13px;">توکن اقتصادی و کاربردی سامانه الگوریتمی Odin.trade متعلق به شرکت سوینکس (SEVINEX)</p>
-      <div class="token-contract" id="contract-addr">
-        0x78aF92C78912De3109B59F8214Fa82103498b7e2
+      
+      <div style="margin-top: 10px;">
+        <span style="font-size:12px; color:var(--muted);">آدرس قرارداد هوشمند توکن (BEP-20):</span><br>
+        <div class="token-contract" id="contract-addr">
+          0x78aF92C78912De3109B59F8214Fa82103498b7e2
+        </div>
+      </div>
+
+      <div style="margin-top: 6px;">
+        <span style="font-size:12px; color:var(--gold-light); font-weight:700;">آدرس رسمی واریزی‌ها و درآمد سوینکس (BNB Smart Chain Receiver):</span><br>
+        <div class="token-contract" style="color:var(--green); border-color:var(--green);" id="receiver-addr">
+          0xc325ACC3bb407f59cbfe275B901317c9B540bF57
+        </div>
+        <p style="font-size:11px; color:var(--muted);">* کلیه کارمزدهای ۲۰٪ سود معاملات ربات و واریزی‌های خرید توکن مستقیماً به این آدرس واریز می‌گردد.</p>
       </div>
       <br>
       <button class="btn-primary" onclick="connectTrustWallet()" style="padding:12px 24px; font-size:14px;">
