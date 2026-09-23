@@ -149,59 +149,12 @@ jobs:
           path: odin-agent/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      - name: Publish ODIN APK to GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      # SEVINEX PROPRIETARY: Public release disabled to protect intellectual property
+      # - name: Publish ODIN APK to GitHub Release (DISABLED FOR SEVINEX IP PROTECTION)
+      - name: Verify Proprietary Sevinex Build
         run: |
-          set -e
-          VERSION=$(grep -oP 'versionName = "\K[^"]+' odin-agent/app/build.gradle.kts)
-          TAG="odin-v${VERSION}-build.${GITHUB_RUN_NUMBER}"
-          OUT="ODIN-AGENT-${VERSION}-debug.apk"
-          cp odin-agent/app/build/outputs/apk/debug/app-debug.apk "$OUT"
-          sha256sum "$OUT" > "$OUT.sha256"
-          # Create release notes file to avoid YAML escaping issues
-          cat > release-notes.md <<EOF
-          ODIN AGENT ${VERSION} - Professional Quantitative Trading AI Agent
-
-          اودین ایجنت - عامل ترید کوانت حرفه ای
-          کاملا جدا از پروژه سایویز
-
-          5 استراتژی حرفه ای:
-          1. Trend Following (Multi-TF) - EMA20/50 + ADX>25 + Volume
-          2. Mean Reversion - BB + RSI + Z-Score
-          3. Momentum Breakout - ATR-based
-          4. Pairs Trading - Stat Arb
-          5. Volatility Regime Detection
-
-          مدیریت ریسک غیرقابل مذاکره:
-          - 1% ریسک هر معامله
-          - 3% DD روزانه -> Kill-switch
-          - 15% DD کلی -> توقف
-
-          ویژگی های اپ:
-          - Dashboard با ریسک مانیتور
-          - 5 استراتژی ماژولار
-          - بک تست با Sharpe, Sortino, MaxDD
-          - پیپر ترید زنده
-          - اتصال به بک اند FastAPI (n8n + Ollama + Qdrant)
-
-          نصب:
-          1. دانلود APK
-          2. فعال سازی Install unknown apps
-          3. نصب و اجرا - باید ببینی ODIN AGENT
-
-          بک اند:
-          cd agent && docker compose --profile cpu up
-          Backend: http://YOUR_IP:8000
-          n8n: http://localhost:5678
-
-          Build از کامیت ${GITHUB_SHA::7} روی شاخه ${GITHUB_REF_NAME}
-          امضای debug
-
-          بقا > سود رویایی - هیچ سود تضمینی نیست!
-          EOF
-          gh release create "$TAG" "$OUT" "$OUT.sha256" \
-            --target "$GITHUB_SHA" \
-            --title "ODIN AGENT ${VERSION} (build ${GITHUB_RUN_NUMBER}) - Quantitative Trading AI Agent - اودین ایجنت" \
-            --notes-file release-notes.md \
-            --prerelease
+          echo "================================================================="
+          echo "SEVINEX TECHNOLOGIES — PROPRIETARY & CONFIDENTIAL BUILD"
+          echo "Public GitHub Release disabled to prevent unauthorized distribution."
+          echo "APK is securely preserved in GitHub Actions Artifacts."
+          echo "================================================================="

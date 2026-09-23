@@ -59,7 +59,7 @@ class OdnOnChainContract(
      * کد منبع استاندارد سالیدیتی قرارداد هوشمند BEP-20
      */
     fun getSolidityContractSource(): String = """
-        // SPDX-License-Identifier: MIT
+        // SPDX-License-Identifier: Proprietary-Sevinex
         ${_bridgeState.value.contractSpec.solidityVersion}
         
         import "@openzeppelin/contracts/token/ERC20/ERC20.sol";

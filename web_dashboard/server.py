@@ -183,8 +183,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <p>توسعه‌یافته توسط شرکت سوینکس (SWINEX Technologies) | بروکر اختصاصی: ویتاورس (Vittaverse)</p>
     </div>
     <div style="text-align: left;">
-      <span class="badge badge-gold">100% REAL</span>
-      <span class="badge badge-green">42 تست پاس شد</span>
+      <span class="badge badge-gold">انحصاری سوینکس</span>
+      <span class="badge badge-green">PROPRIETARY (غیر اوپن‌سورس)</span>
       <span class="badge badge-cyan">۱۸ ماژول عملیاتی</span>
     </div>
   </div>
