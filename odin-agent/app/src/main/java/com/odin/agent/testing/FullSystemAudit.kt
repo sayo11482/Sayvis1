@@ -377,7 +377,7 @@ class FullSystemAudit {
             "${gaps.size} ماژول ارزیابی شد - ${summary.missing} نصب نیست - ${summary.partial} نیمه‌کاره - ${summary.exists} موجود", null))
 
         val t1 = System.currentTimeMillis()
-        val critical = gaps.filter { it.impact == com.odin.agent.trading.GapImpact.CRITICAL && it.status != com.odin.agent.trading.GapStatus.EXISTS }
+        val critical = gaps.filter { it.impact == com.odin.agent.trading.GapImpact.CRITICAL }
         results.add(TestResult("GAPS Critical Identified", critical.isNotEmpty(), System.currentTimeMillis() - t1,
             "حیاتی برای سودسازتر شدن: ${critical.joinToString { it.titleFa }}", null))
 

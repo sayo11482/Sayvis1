@@ -86,6 +86,8 @@ class DemoAccountManager(private val tokenManager: OdinTokenManager) {
 
     private val _state = MutableStateFlow(DemoAccountState())
     val state: StateFlow<DemoAccountState> = _state
+    val trailingManager = com.odin.agent.trading.pro.TrailingStopBreakevenManager()
+    val partialCloseManager = com.odin.agent.trading.pro.PartialCloseScalingManager()
 
     fun createDemoAccount(startBalanceUsd: Double = 10000.0): DemoAccount {
         val now = System.currentTimeMillis()
@@ -208,9 +210,16 @@ class DemoAccountManager(private val tokenManager: OdinTokenManager) {
         val stillOpen = mutableListOf<DemoPosition>()
         for (pos in s.openPositions) {
             val px = prices[pos.symbol] ?: pos.currentPrice
-            val updated = pos.copy(currentPrice = px, floatingPnl = computePnl(pos, px) - pos.spreadCostUsd - pos.commissionUsd)
-            val hitTp = if (pos.side == SignalSide.BUY) px >= pos.tpPrice else px <= pos.tpPrice
-            val hitSl = if (pos.side == SignalSide.BUY) px <= pos.slPrice else px >= pos.slPrice
+            // بررسی حد ضرر متحرک و سر‌به‌سر (Trailing Stop & Breakeven)
+            val adj = trailingManager.evaluate(pos.id, pos.side, pos.entryPrice, px, pos.slPrice, atr = pos.entryPrice * 0.005)
+            val currentSl = adj?.newSl ?: pos.slPrice
+            val updated = pos.copy(
+                currentPrice = px,
+                slPrice = currentSl,
+                floatingPnl = computePnl(pos, px) - pos.spreadCostUsd - pos.commissionUsd
+            )
+            val hitTp = if (pos.side == SignalSide.BUY) px >= updated.tpPrice else px <= updated.tpPrice
+            val hitSl = if (pos.side == SignalSide.BUY) px <= updated.slPrice else px >= updated.slPrice
             when {
                 hitTp -> { closeInternal(updated, px, "CLOSED_TP"); closedNow.add(updated.copy(status = "CLOSED_TP")) }
                 hitSl -> { closeInternal(updated, px, "CLOSED_SL"); closedNow.add(updated.copy(status = "CLOSED_SL")) }
@@ -240,6 +249,8 @@ class DemoAccountManager(private val tokenManager: OdinTokenManager) {
     }
 
     private fun closeInternal(pos: DemoPosition, closePrice: Double, reason: String) {
+        trailingManager.reset(pos.id)
+        partialCloseManager.reset(pos.id)
         val gross = computePnl(pos, closePrice) - pos.spreadCostUsd - pos.commissionUsd
         // کمیسیون 20% فقط از سود - اتومات به صاحب نرم‌افزار (سوینکس)
         val feePayment = tokenManager.applyPerformanceFee(pos.id, gross, pos.strategy)

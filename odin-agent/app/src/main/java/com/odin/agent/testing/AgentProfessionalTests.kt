@@ -41,6 +41,8 @@ class AgentProfessionalTests {
         results.add(testCapabilitiesScreen())
         // v1.0.27 Odin Token + Demo + Audit tests
         results.addAll(OdinV27Tests().runAll())
+        // v1.0.28 Odin Pro Advanced Quantitative Suite tests (15 tests)
+        results.addAll(OdinV28ProTests().runAll())
 
         return results
     }

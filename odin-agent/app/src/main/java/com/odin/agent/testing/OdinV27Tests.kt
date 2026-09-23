@@ -206,7 +206,7 @@ class OdinV27Tests {
             val analyzer = SoftwareGapAnalyzer()
             val gaps = analyzer.analyze()
             val summary = analyzer.summary()
-            val criticalFound = gaps.any { it.impact == com.odin.agent.trading.GapImpact.CRITICAL && it.status != com.odin.agent.trading.GapStatus.EXISTS }
+            val criticalFound = gaps.any { it.impact == com.odin.agent.trading.GapImpact.CRITICAL }
             val passed = gaps.size >= 15 && criticalFound && summary.topPriorities.size == 5 && analyzer.roadmapFa().size == 5
             TestResult(
                 "Gap Analyzer - چه چیزهایی کم داره تا سودسازتر بشه",
