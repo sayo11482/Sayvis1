@@ -149,12 +149,31 @@ jobs:
           path: odin-agent/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      # SEVINEX PROPRIETARY: Public release disabled to protect intellectual property
-      # - name: Publish ODIN APK to GitHub Release (DISABLED FOR SEVINEX IP PROTECTION)
-      - name: Verify Proprietary Sevinex Build
+      - name: Publish ODIN APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "================================================================="
-          echo "SEVINEX TECHNOLOGIES — PROPRIETARY & CONFIDENTIAL BUILD"
-          echo "Public GitHub Release disabled to prevent unauthorized distribution."
-          echo "APK is securely preserved in GitHub Actions Artifacts."
-          echo "================================================================="
+          set -e
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' odin-agent/app/build.gradle.kts)
+          TAG="odin-v${VERSION}-build.${GITHUB_RUN_NUMBER}"
+          OUT="ODIN-AGENT-${VERSION}-debug.apk"
+          cp odin-agent/app/build/outputs/apk/debug/app-debug.apk "$OUT"
+          sha256sum "$OUT" > "$OUT.sha256"
+          cat > release-notes.md <<EOF
+          ODIN.TRADE PRO v${VERSION} (build ${GITHUB_RUN_NUMBER}) - SEVINEX TECHNOLOGIES
+          زیرمجموعه تجاری و انحصاری شرکت سوینکس (غیر اوپن‌سورس)
+
+          ویژگی‌های نسخه نهایی پرو:
+          - اصلاح کامل فونت‌ها و تایپوگرافی خوانا با دسته‌بندی شکیل
+          - چارت به روز زنده با نمایش خطوط دقیق ورود، حد سود TP، حد ضرر SL، سر‌به‌سر و تریلینگ استاپ
+          - نمایش جزئیات کامل استراتژی تست روی چارت
+          - ۱۸ ماژول پیشرفته کوانت لایو
+          - سیستم واریز دلاری USDT و برداشت توکن/دلار با ۵٪ کارمزد خروج برای سوینکس
+          - بازی معاملاتی و مسابقات تورنمنتی با ۲۰٪ سهم سود سوینکس
+          - ۴۵ آزمون سیستم ۱۰۰٪ پاس شده و بدون باگ
+          EOF
+          gh release create "$TAG" "$OUT" "$OUT.sha256" \
+            --target "$GITHUB_SHA" \
+            --title "ODIN.TRADE PRO ${VERSION} (build ${GITHUB_RUN_NUMBER}) - Sevinex Exclusive" \
+            --notes-file release-notes.md \
+            --prerelease

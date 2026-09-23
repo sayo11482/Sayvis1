@@ -59,6 +59,7 @@ private val OdinColorScheme = darkColorScheme(
 fun OdinTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = OdinColorScheme,
+        typography = OdinTypography,
         content = content
     )
 }
