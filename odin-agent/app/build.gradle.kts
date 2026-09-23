@@ -17,8 +17,8 @@ android {
     applicationId = "com.odin.agent"
     minSdk = 26
     targetSdk = 36
-    versionCode = 26
-    versionName = "1.0.26-odin-trade"
+    versionCode = 27
+    versionName = "1.0.27-odin-token"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

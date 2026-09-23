@@ -35,6 +35,9 @@ enum class OdinScreen(val titleEn: String, val titleFa: String, val icon: ImageV
     TRADING_HUB("Vittaverse", "ویتاورس", Icons.Default.AccountBalance),
     BACKTEST("Backtest 10$", "بک‌تست 10$", Icons.Default.BarChart),
     OUTCOME("Outcome 10$", "برآیند 10$", Icons.Default.AccountBalanceWallet),
+    ODIN_TOKEN("ODIN Token", "توکن اودین", Icons.Default.Paid),
+    DEMO_ACCOUNT("Demo Account", "حساب دمو", Icons.Default.CurrencyExchange),
+    SYSTEM_AUDIT("System Audit", "تست کامل سیستم", Icons.Default.Science),
     SELF_UPGRADE("Self-Upgrade", "خود ارتقایی", Icons.Default.SystemUpdate),
     CAPABILITIES("Capabilities", "قابلیت‌ها", Icons.Default.Extension),
     AWARE("AWARE Security", "امنیت آگاه", Icons.Default.Security)
@@ -90,9 +93,12 @@ fun OdinApp() {
         topBar = {
             @OptIn(ExperimentalMaterial3Api::class)
             TopAppBar(
-                title = { Row(verticalAlignment = Alignment.CenterVertically) { Text(text = "Odin.trade v1.0.26", color = OdinGoldLight, fontWeight = FontWeight.Black, fontSize = 13.sp) } },
+                title = { Row(verticalAlignment = Alignment.CenterVertically) { Text(text = "Odin.trade v1.0.27", color = OdinGoldLight, fontWeight = FontWeight.Black, fontSize = 13.sp) } },
                 actions = {
                     IconButton(onClick = { isPersian = !isPersian }) { Text(text = if (isPersian) "FA | EN" else "EN | FA", color = OdinGold, fontWeight = FontWeight.Bold, fontSize = 10.sp) }
+                    IconButton(onClick = { currentScreen = OdinScreen.ODIN_TOKEN }) { Icon(Icons.Default.Paid, contentDescription = null, tint = if (currentScreen == OdinScreen.ODIN_TOKEN) OdinGold else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
+                    IconButton(onClick = { currentScreen = OdinScreen.DEMO_ACCOUNT }) { Icon(Icons.Default.CurrencyExchange, contentDescription = null, tint = if (currentScreen == OdinScreen.DEMO_ACCOUNT) OdinCyan else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
+                    IconButton(onClick = { currentScreen = OdinScreen.SYSTEM_AUDIT }) { Icon(Icons.Default.Science, contentDescription = null, tint = if (currentScreen == OdinScreen.SYSTEM_AUDIT) OdinGreen else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
                     IconButton(onClick = { currentScreen = OdinScreen.SELF_UPGRADE }) { Icon(Icons.Default.SystemUpdate, contentDescription = null, tint = if (currentScreen == OdinScreen.SELF_UPGRADE) OdinCyan else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
                     IconButton(onClick = { currentScreen = OdinScreen.CAPABILITIES }) { Icon(Icons.Default.Extension, contentDescription = null, tint = if (currentScreen == OdinScreen.CAPABILITIES) OdinGold else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
                     IconButton(onClick = { currentScreen = OdinScreen.TRADING_HUB }) { Icon(Icons.Default.AccountBalance, contentDescription = null, tint = if (currentScreen == OdinScreen.TRADING_HUB) OdinGreen else OdinSilverMuted, modifier = Modifier.size(18.dp)) }
@@ -125,6 +131,9 @@ fun OdinApp() {
                 OdinScreen.TRADING_HUB -> TradingHubScreen(isPersian = isPersian)
                 OdinScreen.BACKTEST -> BacktestScreen(isPersian = isPersian)
                 OdinScreen.OUTCOME -> InvestmentOutcomeScreen(isPersian = isPersian)
+                OdinScreen.ODIN_TOKEN -> OdinTokenScreen(isPersian = isPersian)
+                OdinScreen.DEMO_ACCOUNT -> DemoAccountScreen(isPersian = isPersian)
+                OdinScreen.SYSTEM_AUDIT -> SystemAuditScreen(isPersian = isPersian)
                 OdinScreen.SELF_UPGRADE -> SelfUpgradeScreen(isPersian = isPersian)
                 OdinScreen.CAPABILITIES -> CapabilitiesScreen(isPersian = isPersian, onNavigateToUpgrade = { currentScreen = OdinScreen.SELF_UPGRADE })
                 OdinScreen.AWARE -> AwareScreen(isPersian = isPersian)

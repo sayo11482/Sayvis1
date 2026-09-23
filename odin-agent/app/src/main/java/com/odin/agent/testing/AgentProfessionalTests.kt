@@ -39,6 +39,8 @@ class AgentProfessionalTests {
         results.add(testJalaliCalendarBoth())
         results.add(testInvestmentOutcome10Base())
         results.add(testCapabilitiesScreen())
+        // v1.0.27 Odin Token + Demo + Audit tests
+        results.addAll(OdinV27Tests().runAll())
 
         return results
     }
