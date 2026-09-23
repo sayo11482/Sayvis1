@@ -29,7 +29,50 @@ class OdinV28ProTests {
         results.add(testOdnOnChainBscContract())
         results.add(testTwoFactorAuthAndAntiPiracy())
         results.add(testCloudTradeJournalCsvExport())
+        results.add(testWithdrawUsdAndOdnWithSwinexFee())
+        results.add(testGamifiedTradingArenaRake())
         return results
+    }
+
+    private fun testWithdrawUsdAndOdnWithSwinexFee(): TestResult {
+        val start = System.currentTimeMillis()
+        return try {
+            val tm = OdinTokenManager.getInstance()
+            tm.topUp(50.0) // 500 ODN
+            val beforeTreasury = tm.state.value.ownerTreasuryUsd
+            val res = tm.withdrawUsd(200.0, "TQdestinationTrc20AddressTestWallet11")
+            val receipt = res.getOrNull()
+            val passed = receipt != null && receipt.grossUsd == 20.0 && receipt.swinexCashoutFeeUsd == 1.0 && receipt.netUsdPaid == 18.0 && tm.state.value.ownerTreasuryUsd > beforeTreasury
+            TestResult(
+                "PRO Token Withdrawal - تبدیل به دلار و کارمزد ۵٪ نقد کردن برای سوینکس",
+                passed,
+                System.currentTimeMillis() - start,
+                "برداشت ۲۰۰ ODN (معادل ۲۰$) -> کارمزد ۵٪ سوینکس: ${receipt?.swinexCashoutFeeUsd}$ + کارمزد شبکه: ${receipt?.networkFeeUsd}$ -> دریافتی کاربر: ${receipt?.netUsdPaid}$",
+                null
+            )
+        } catch (e: Exception) {
+            TestResult("PRO Token Withdrawal", false, System.currentTimeMillis() - start, "Exception", e.message)
+        }
+    }
+
+    private fun testGamifiedTradingArenaRake(): TestResult {
+        val start = System.currentTimeMillis()
+        return try {
+            val tm = OdinTokenManager.getInstance()
+            tm.topUp(20.0) // 200 ODN
+            val arena = GamifiedTradingArena(tm)
+            val joinRes = arena.joinTournament("TOURN-WEEKLY-1")
+            val passed = joinRes.isSuccess && arena.state.value.totalSwinexGameRevenueUsd > 0.0
+            TestResult(
+                "PRO Gamified Arena - مسابقات تورنمنتی و کسب درآمد ۲۰٪ Rake سوینکس",
+                passed,
+                System.currentTimeMillis() - start,
+                "ورودی ۵۰ ODN تورنمنت -> سود خالص پلتفرم سوینکس: ۲۰٪ استخر - مجموع درآمد بازی‌ها: ${arena.state.value.totalSwinexGameRevenueUsd}$",
+                null
+            )
+        } catch (e: Exception) {
+            TestResult("PRO Gamified Arena", false, System.currentTimeMillis() - start, "Exception", e.message)
+        }
     }
 
     private fun testTrailingStopBreakeven(): TestResult {

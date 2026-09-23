@@ -31,10 +31,33 @@ enum class OdinTier(
 }
 
 enum class TokenTxKind(val labelFa: String) {
-    TOP_UP("شارژ"), STAKE("استیک"), UNSTAKE("خروج از استیک"),
+    TOP_UP("شارژ دلاری"), STAKE("استیک"), UNSTAKE("خروج از استیک"),
     PERFORMANCE_FEE("کمیسیون سود"), BURN("سوزاندن"),
-    REWARD("پاداش"), REFERRAL("زیرمجموعه")
+    REWARD("پاداش"), REFERRAL("زیرمجموعه"),
+    WITHDRAW_USD("برداشت دلاری"), WITHDRAW_ODN("برداشت توکن")
 }
+
+data class UsdWithdrawalReceipt(
+    val id: String,
+    val odnAmount: Double,
+    val grossUsd: Double,
+    val swinexCashoutFeeUsd: Double, // 5% کارمزد نقد کردن برای مالک
+    val networkFeeUsd: Double,       // 1 دلار کارمزد شبکه
+    val netUsdPaid: Double,
+    val destinationWallet: String,
+    val txHash: String,
+    val jalaliDate: String
+)
+
+data class OdnWithdrawalReceipt(
+    val id: String,
+    val odnAmount: Double,
+    val swinexFeeOdn: Double,        // 10 توکن کارمزد ثابت برای مالک
+    val netOdnPaid: Double,
+    val destinationAddress: String,
+    val txHash: String,
+    val jalaliDate: String
+)
 
 data class TokenTransaction(
     val id: String,
@@ -200,6 +223,90 @@ class OdinTokenManager private constructor() {
             refreshGatesAndTier()
         }
         return true
+    }
+
+    // ---------- واریز دلاری و برداشت توکن و دلار ----------
+    /**
+     * برداشت دلاری: تبدیل توکن ODN به USDT-TRC20
+     * کسر ۵٪ کارمزد خروج و نقد کردن به نفع خزانه سوینکس + ۱ دلار کارمزد شبکه
+     */
+    fun withdrawUsd(odnAmount: Double, destinationTrc20Address: String): Result<UsdWithdrawalReceipt> {
+        if (odnAmount < 100.0) return Result.failure(IllegalStateException("حداقل برداشت دلاری ۱۰۰ توکن ODN (معادل ۱۰ دلار) است"))
+        synchronized(this) {
+            val s = _state.value
+            if (s.wallet.balance < odnAmount) return Result.failure(IllegalStateException("موجودی توکن ناکافی است"))
+
+            val grossUsd = round2(odnAmount * TOKEN_PRICE_USD)
+            val swinexFeeUsd = round2(grossUsd * 0.05) // ۵٪ کارمزد نقد کردن به نفع سوینکس
+            val networkFeeUsd = 1.0 // کارمزد شبکه ترون
+            val netUsd = round2(grossUsd - swinexFeeUsd - networkFeeUsd)
+
+            val now = System.currentTimeMillis()
+            val (g, j) = JalaliCalendar.formatBothCalendars(now)
+            val tx = buildTx(TokenTxKind.WITHDRAW_USD, -odnAmount, s.wallet, g, j, lastHash(s.transactions))
+            val receiptId = "WTH-USD-$now"
+            val txHash = "0x" + sha256("$receiptId|$destinationTrc20Address|$netUsd").take(40)
+
+            val receipt = UsdWithdrawalReceipt(
+                id = receiptId,
+                odnAmount = odnAmount,
+                grossUsd = grossUsd,
+                swinexCashoutFeeUsd = swinexFeeUsd,
+                networkFeeUsd = networkFeeUsd,
+                netUsdPaid = netUsd,
+                destinationWallet = destinationTrc20Address,
+                txHash = txHash,
+                jalaliDate = j
+            )
+
+            _state.value = s.copy(
+                wallet = s.wallet.copy(balance = round2(s.wallet.balance - odnAmount)),
+                ownerTreasuryUsd = round2(s.ownerTreasuryUsd + swinexFeeUsd),
+                transactions = (s.transactions + tx).takeLast(200),
+                lastUpdate = now
+            )
+            refreshGatesAndTier()
+            return Result.success(receipt)
+        }
+    }
+
+    /**
+     * برداشت توکن آن‌چین ODN به آدرس ولت بایننس اسمارت چین (BEP-20)
+     * کسر ۱۰ توکن ODN کارمزد ثابت به نفع خزانه سوینکس
+     */
+    fun withdrawOdn(odnAmount: Double, destinationBscAddress: String): Result<OdnWithdrawalReceipt> {
+        if (odnAmount < 50.0) return Result.failure(IllegalStateException("حداقل برداشت ۵۰ توکن ODN است"))
+        synchronized(this) {
+            val s = _state.value
+            if (s.wallet.balance < odnAmount) return Result.failure(IllegalStateException("موجودی توکن ناکافی است"))
+
+            val feeOdn = 10.0 // کارمزد ۱۰ ODN به نفع سوینکس
+            val netOdn = round2(odnAmount - feeOdn)
+            val now = System.currentTimeMillis()
+            val (g, j) = JalaliCalendar.formatBothCalendars(now)
+            val tx = buildTx(TokenTxKind.WITHDRAW_ODN, -odnAmount, s.wallet, g, j, lastHash(s.transactions))
+            val receiptId = "WTH-ODN-$now"
+            val txHash = "0x" + sha256("$receiptId|$destinationBscAddress|$netOdn").take(40)
+
+            val receipt = OdnWithdrawalReceipt(
+                id = receiptId,
+                odnAmount = odnAmount,
+                swinexFeeOdn = feeOdn,
+                netOdnPaid = netOdn,
+                destinationAddress = destinationBscAddress,
+                txHash = txHash,
+                jalaliDate = j
+            )
+
+            _state.value = s.copy(
+                wallet = s.wallet.copy(balance = round2(s.wallet.balance - odnAmount)),
+                ownerTreasuryUsd = round2(s.ownerTreasuryUsd + (feeOdn * TOKEN_PRICE_USD)),
+                transactions = (s.transactions + tx).takeLast(200),
+                lastUpdate = now
+            )
+            refreshGatesAndTier()
+            return Result.success(receipt)
+        }
     }
 
     // ---------- گیت اجباری استراتژی ----------
