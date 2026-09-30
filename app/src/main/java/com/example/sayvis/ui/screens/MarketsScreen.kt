@@ -1,6 +1,7 @@
 package com.example.sayvis.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,15 +9,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -111,6 +116,127 @@ fun MarketsScreen(
         }
 
         Spacer(modifier = Modifier.height(10.dp))
+
+        // ---- LIVE CHART — Vitaverse + LIT + Backtest 10-56 + SL/TP image (any timeframe, instant beep)
+        val latestChart by viewModel.latestLiveChart.collectAsState()
+        val liveCharts by viewModel.liveChartSignals.collectAsState()
+        latestChart?.let { signal ->
+            SayvisCard(
+                containerColor = SayvisGreenSuccess.copy(alpha = 0.07f),
+                borderColor = SayvisGreenSuccess.copy(alpha = 0.45f)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.Icon(
+                            Icons.Default.CameraAlt, contentDescription = null,
+                            tint = SayvisGreenSuccess, modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.size(6.dp))
+                        Text(
+                            text = if (LocalStrings.current.fa) "📸 چارتِ زنده — نقطهٔ ورود حرفه‌ای"
+                            else "📸 Live Chart — Professional Entry",
+                            fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = SayvisGreenSuccess,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = signal.timeframe, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                            color = SayvisGold,
+                            modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(SayvisGold.copy(alpha = 0.15f)).padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                    Text(
+                        text = "${signal.symbol.labelFa}  •  ${signal.plan.side}  •  RR 1:${"%.1f".format(signal.plan.rr)}",
+                        fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SayvisSilver
+                    )
+                    Text(
+                        text = signal.spreadLabel, fontSize = 10.sp, color = SayvisCyan
+                    )
+                    Text(
+                        text = if (LocalStrings.current.fa) signal.backtest.verdictFa else signal.backtest.verdictEn,
+                        fontSize = 10.sp, color = if (signal.backtest.isConvincing) SayvisGreenSuccess else SayvisAmberWarning
+                    )
+                    Text(
+                        text = if (LocalStrings.current.fa) signal.backtest.summaryFa() else signal.backtest.summaryEn(),
+                        fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, color = SayvisSilverMuted
+                    )
+                    Image(
+                        bitmap = signal.bitmap.asImageBitmap(),
+                        contentDescription = "Live chart ${signal.symbol.labelEn} SL/TP",
+                        modifier = Modifier.fillMaxWidth().aspectRatio(1200f / 720f).clip(RoundedCornerShape(10.dp)).border(1.dp, SayvisGold.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "SL ${fmt(signal.plan.stop)}", fontSize = 10.sp, color = SayvisRedAlert,
+                            modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(SayvisRedAlert.copy(alpha = 0.15f)).padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                        Text(
+                            text = "ENTRY ${fmt(signal.plan.entry)}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SayvisGreenSuccess,
+                            modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(SayvisGreenSuccess.copy(alpha = 0.15f)).padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                        signal.plan.targets.firstOrNull()?.let { tp ->
+                            Text(
+                                text = "TP1 ${fmt(tp.price)}", fontSize = 10.sp, color = SayvisCyan,
+                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(SayvisCyan.copy(alpha = 0.15f)).padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        text = if (LocalStrings.current.fa) "بک‌تست ${signal.backtest.settledTrades} معامله (۱۰-۵۶) — ${"%.0f".format(signal.backtest.winRate*100)}٪ برد"
+                        else "Backtested ${signal.backtest.settledTrades} trades (10-56) — ${"%.0f".format(signal.backtest.winRate*100)}% win",
+                        fontSize = 9.5.sp, color = SayvisSilverMuted
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            if (liveCharts.size > 1) {
+                Text(
+                    text = if (LocalStrings.current.fa) "تاریخچهٔ چارت‌ها (${liveCharts.size})" else "Chart history (${liveCharts.size})",
+                    fontSize = 10.sp, color = SayvisSilverMuted
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                liveCharts.drop(1).take(3).forEach { hist ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(SayvisSurfaceVariant).padding(8.dp)
+                    ) {
+                        Image(
+                            bitmap = hist.bitmap.asImageBitmap(), contentDescription = null,
+                            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(6.dp))
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "${hist.symbol.labelFa} ${hist.timeframe} ${hist.plan.side}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SayvisSilver)
+                            Text(text = if (LocalStrings.current.fa) hist.backtest.verdictFa else hist.backtest.verdictEn, fontSize = 9.sp, color = SayvisSilverMuted, maxLines = 1)
+                        }
+                        Text(text = fmt(hist.plan.entry), fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = SayvisGold)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+        } ?: run {
+            SayvisCard(borderColor = SayvisAmberWarning.copy(alpha = 0.25f)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = if (LocalStrings.current.fa) "📸 چارتِ زنده — در انتظارِ نقطهٔ ورود حرفه‌ای…"
+                        else "📸 Live Chart — waiting for professional entry…",
+                        fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = SayvisSilver
+                    )
+                    Text(
+                        text = if (LocalStrings.current.fa) "به محضِ پیدا شدنِ نقطهٔ ورود (هر تایم‌فریم) با اسپردِ روزِ Vitaverse و استراتژیِ LIT (بک‌تستِ ۱۰-۵۶) بوق می‌زند، عکسِ چارت با SL/TP ترسیم و همین‌جا نمایش داده می‌شود."
+                        else "As soon as a professional entry (any timeframe) with Vitaverse day-spread + LIT (backtested 10-56) appears, it beeps, renders the SL/TP chart and shows it here.",
+                        fontSize = 10.sp, color = SayvisSilverMuted
+                    )
+                    SayvisButton(
+                        label = if (LocalStrings.current.fa) "ساختِ چارت برایِ بهترین ورودِ فعلی" else "Render chart for current best entry",
+                        onClick = { viewModel.generateChartForBestEntry() },
+                        tone = com.example.sayvis.ui.components.ButtonTone.GOLD,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+        }
 
         // ---- symbol tabs
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
