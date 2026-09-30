@@ -96,9 +96,9 @@ object LitBacktestEngine {
         }
 
         val trades = ArrayList<Trade>()
-        val maxStart = closes.size - 30 // need 30 for EMA/RSI + 20 for settlement
+        val maxStart = closes.size - 20 // need 20 for settlement; analyse() itself needs 30 but we start at 60 for EMA50
 
-        var i = 30
+        var i = 60
         while (i <= maxStart && trades.size < maxTrades) {
             val window = closes.subList(0, i) // 0..i-1 unseen future
             val analysis = LitStrategyEngine.analyse(window, tuning) ?: run { i++; continue }
