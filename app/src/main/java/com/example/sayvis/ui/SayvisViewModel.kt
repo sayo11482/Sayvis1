@@ -23,9 +23,7 @@ import com.example.sayvis.trading.MarketDataService
 import android.graphics.Bitmap
 import com.example.sayvis.trading.ChartImageGenerator
 import com.example.sayvis.trading.LitBacktestEngine
-import com.example.sayvis.settings.MtGatewayProfile
 import com.example.sayvis.settings.MtAccountType
-import com.example.sayvis.settings.TradingExecutionMode
 import com.example.sayvis.trading.MtOrderRequest
 import com.example.sayvis.trading.MtOrderSide
 import com.example.sayvis.trading.VitaverseSpreadProvider
