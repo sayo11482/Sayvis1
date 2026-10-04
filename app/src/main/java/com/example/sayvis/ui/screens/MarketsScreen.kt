@@ -187,22 +187,60 @@ fun MarketsScreen(
                     )
                 }
             }
+            // ───── ۳ نما — شمعی / درصد سود / تفکیک استراتژی ─────
             Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = if (LocalStrings.current.fa) "▸ ۳ نما — شمعی  •  درصد سود  •  تفکیک استراتژی" else "▸ 3 views — Candles • PnL • Strategy",
+                fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SayvisGold
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            // ۱) شمعی
+            SayvisCard(borderColor = SayvisGold.copy(alpha = 0.18f)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = if (LocalStrings.current.fa) "① شمعی" else "① Candlestick", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SayvisSilver)
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(text = "CANDLE", fontSize = 9.sp, fontFamily = FontFamily.Monospace, color = SayvisGold, modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(SayvisGold.copy(alpha = 0.15f)).padding(horizontal = 7.dp, vertical = 2.dp))
+                    }
+                    Text(text = if (LocalStrings.current.fa) "کندل‌های واقعی با SL/TP — همان ورود، نمایِ شمعی" else "Real candles with SL/TP — same entry, candle view", fontSize = 9.5.sp, color = SayvisSilverMuted)
+                    Image(bitmap = signal.candleBitmap.asImageBitmap(), contentDescription = "Candlestick ${signal.symbol.labelEn}", modifier = Modifier.fillMaxWidth().aspectRatio(1200f / 720f).clip(RoundedCornerShape(10.dp)).border(1.dp, SayvisSilverMuted.copy(alpha = 0.18f), RoundedCornerShape(10.dp)))
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            // ۲) درصد سود
+            SayvisCard(borderColor = SayvisGreenSuccess.copy(alpha = 0.18f)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = if (LocalStrings.current.fa) "② درصد سود در معامله (R)" else "② Profit per trade (R)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SayvisSilver)
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(text = "PnL", fontSize = 9.sp, fontFamily = FontFamily.Monospace, color = SayvisGreenSuccess, modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(SayvisGreenSuccess.copy(alpha = 0.15f)).padding(horizontal = 7.dp, vertical = 2.dp))
+                    }
+                    Text(text = if (LocalStrings.current.fa) "هر ستون یک معاملهٔ بک‌تست (۱۰-۵۶) — سبز برد R، قرمز زیان ۱R" else "Each bar = one backtest trade (10-56) — green = win R, red = loss 1R", fontSize = 9.5.sp, color = SayvisSilverMuted)
+                    Image(bitmap = signal.pnlBitmap.asImageBitmap(), contentDescription = "PnL ${signal.symbol.labelEn}", modifier = Modifier.fillMaxWidth().aspectRatio(1200f / 720f).clip(RoundedCornerShape(10.dp)).border(1.dp, SayvisSilverMuted.copy(alpha = 0.18f), RoundedCornerShape(10.dp)))
+                    Text(text = if (LocalStrings.current.fa) "${signal.backtest.settledTrades} معامله • برد ${"%.0f".format(signal.backtest.winRate*100)}٪ • PF ${"%.2f".format(signal.backtest.profitFactor)}" else "${signal.backtest.settledTrades} trades • ${"%.0f".format(signal.backtest.winRate*100)}% win • PF ${"%.2f".format(signal.backtest.profitFactor)}", fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, color = SayvisSilverMuted)
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            // ۳) تفکیک استراتژی
+            SayvisCard(borderColor = SayvisCyan.copy(alpha = 0.18f)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = if (LocalStrings.current.fa) "③ تفکیک استراتژی LIT" else "③ LIT Strategy breakdown", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SayvisSilver)
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(text = "LIT", fontSize = 9.sp, fontFamily = FontFamily.Monospace, color = SayvisCyan, modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(SayvisCyan.copy(alpha = 0.15f)).padding(horizontal = 7.dp, vertical = 2.dp))
+                    }
+                    Text(text = if (LocalStrings.current.fa) "روند / نقدینگی / تایمینگ / اهداف — هر کارت یک رکنِ استراتژی" else "Trend / Liquidity / Timing / Targets — each card is one leg", fontSize = 9.5.sp, color = SayvisSilverMuted)
+                    Image(bitmap = signal.strategyBitmap.asImageBitmap(), contentDescription = "Strategy ${signal.symbol.labelEn}", modifier = Modifier.fillMaxWidth().aspectRatio(1200f / 720f).clip(RoundedCornerShape(10.dp)).border(1.dp, SayvisSilverMuted.copy(alpha = 0.18f), RoundedCornerShape(10.dp)))
+                }
+            }
+            // تاریخچه (اگر بیش از یکی باشد) — فشرده
             if (liveCharts.size > 1) {
-                Text(
-                    text = if (LocalStrings.current.fa) "تاریخچهٔ چارت‌ها (${liveCharts.size})" else "Chart history (${liveCharts.size})",
-                    fontSize = 10.sp, color = SayvisSilverMuted
-                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = if (LocalStrings.current.fa) "تاریخچهٔ سیگنال‌ها (${liveCharts.size})" else "Signal history (${liveCharts.size})", fontSize = 10.sp, color = SayvisSilverMuted)
                 Spacer(modifier = Modifier.height(6.dp))
-                liveCharts.drop(1).take(3).forEach { hist ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(SayvisSurfaceVariant).padding(8.dp)
-                    ) {
-                        Image(
-                            bitmap = hist.bitmap.asImageBitmap(), contentDescription = null,
-                            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(6.dp))
-                        )
+                liveCharts.drop(1).take(2).forEach { hist ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(SayvisSurfaceVariant).padding(8.dp)) {
+                        Image(bitmap = hist.bitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(6.dp)))
                         Spacer(modifier = Modifier.size(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(text = "${hist.symbol.labelFa} ${hist.timeframe} ${hist.plan.side}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SayvisSilver)

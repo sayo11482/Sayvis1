@@ -1349,6 +1349,13 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         val backtest: LitBacktestEngine.Result,
         val bitmap: Bitmap,
         val file: java.io.File,
+        // ۳ نما — شمعی / سود / استراتژی (همان سیگنال، سه تصویر)
+        val candleBitmap: Bitmap,
+        val candleFile: java.io.File,
+        val pnlBitmap: Bitmap,
+        val pnlFile: java.io.File,
+        val strategyBitmap: Bitmap,
+        val strategyFile: java.io.File,
         val createdAt: Long = System.currentTimeMillis()
     )
 
@@ -1384,18 +1391,21 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             LitBacktestEngine.backtest(closes, symbol, _tradeTuning.value, minTrades = 10, maxTrades = 56)
         }
 
-        // Render chart bitmap with SL/TP + Vitaverse spread + backtest summary
+        // Render 4 bitmaps: main line + 3 detail views (candlestick / pnl / strategy)
         val app = getApplication<Application>()
+        val isFa = app.resources.configuration.locales[0].language == "fa"
+        val summary = if (isFa) backtest.summaryFa() else backtest.summaryEn()
         val render = withContext(Dispatchers.IO) {
-            ChartImageGenerator.render(
-                context = app,
-                closes = closes,
-                plan = adjPlan,
-                symbol = symbol,
-                spreadLabel = spreadLabel,
-                backtestSummary = if (app.resources.configuration.locales[0].language == "fa") backtest.summaryFa() else backtest.summaryEn(),
-                timeframeLabel = timeframe
-            )
+            ChartImageGenerator.render(app, closes, adjPlan, symbol, spreadLabel, summary, timeframe)
+        }
+        val candleRender = withContext(Dispatchers.IO) {
+            ChartImageGenerator.renderCandlestick(app, closes, adjPlan, symbol, spreadLabel, summary, timeframe)
+        }
+        val pnlRender = withContext(Dispatchers.IO) {
+            ChartImageGenerator.renderPnl(app, backtest, symbol, timeframe)
+        }
+        val stratRender = withContext(Dispatchers.IO) {
+            ChartImageGenerator.renderStrategy(app, adjPlan, backtest, symbol, spreadLabel, timeframe)
         }
 
         val signal = LiveChartSignal(
@@ -1407,7 +1417,13 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             spreadLabel = spreadLabel,
             backtest = backtest,
             bitmap = render.bitmap,
-            file = render.file
+            file = render.file,
+            candleBitmap = candleRender.bitmap,
+            candleFile = candleRender.file,
+            pnlBitmap = pnlRender.bitmap,
+            pnlFile = pnlRender.file,
+            strategyBitmap = stratRender.bitmap,
+            strategyFile = stratRender.file
         )
         _liveChartSignals.value = (listOf(signal) + _liveChartSignals.value).take(20)
         _latestLiveChart.value = signal
