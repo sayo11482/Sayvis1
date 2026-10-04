@@ -304,6 +304,11 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     init {
         // SAYVIS is always online — no offline mode exists.
         LinkCenter.setGateOpen(true)
+        // v5.9.0 REAL REAL: restore liveConfirmed from persisted automation flag so REAL REAL survives restart
+        liveExecutionConfirmed = settingsStore.current().tradeAutomationEnabled
+        if (liveExecutionConfirmed) {
+            _gatewayState.value = _gatewayState.value.copy(profile = settingsStore.current().trading)
+        }
         // «یک‌بار متصل شد → به حافظه سپرده شد»: remember the first AI link.
         if (settingsStore.current().ai.aiLinkedOnce) {
             LinkCenter.push(
@@ -760,8 +765,39 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /**
+     * v5.9.0 REAL REAL: the ONLY gate is this toggle. When the owner turns it ON
+     * the gateway is armed for REAL routing immediately — no extra PAPER/LIVE
+     * switch, no second confirmation dialog. The LIT engine already enforces
+     * RR≥1:3, ATR 1.5× and Vitaverse spread. When OFF, every strategy order is
+     * blocked. The emergency lock still kills everything (hard safety).
+     */
     fun setTradeAutomation(enabled: Boolean) {
-        settingsStore.update { it.copy(tradeAutomationEnabled = enabled) }
+        val updated = settingsStore.update { current ->
+            val newTrading = if (enabled) {
+                val targetMode = when {
+                    current.trading.accountType == MtAccountType.REAL -> TradingExecutionMode.LIVE_EXECUTION
+                    current.trading.executionMode == TradingExecutionMode.PAPER_SIMULATION -> TradingExecutionMode.DEMO_EXECUTION
+                    else -> current.trading.executionMode
+                }
+                current.trading.copy(
+                    enabled = true,
+                    executionMode = targetMode,
+                    autoCloseOnDrawdown = false
+                )
+            } else {
+                current.trading // keep gateway profile, just disable automation flag
+            }
+            current.copy(tradeAutomationEnabled = enabled, trading = newTrading)
+        }
+        // Keep the in-memory gateway state in sync so the next tick uses the new mode without reconnect
+        _gatewayState.value = _gatewayState.value.copy(profile = updated.trading)
+        liveExecutionConfirmed = enabled
+        if (enabled) {
+            audit("OWNER", "trade.automation.enable_real", RiskLevel.CRITICAL, "OWNER_CONFIRMED", "SUCCESS", "mode=${updated.trading.executionMode.name} account=${updated.trading.accountType.name} liveConfirmed=true")
+        } else {
+            audit("OWNER", "trade.automation.disable", RiskLevel.LOW_RISK, "OWNER_CONFIRMED", "SUCCESS", "automation OFF — strategy orders blocked")
+        }
     }
 
     val googleEmail: StateFlow<String> = settings.map { it.google.email }
@@ -883,7 +919,8 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 ),
                 state = _gatewayState.value,
                 emergencyLockActive = current.emergencyLockActive,
-                liveConfirmed = liveExecutionConfirmed
+                liveConfirmed = liveExecutionConfirmed,
+                isStrategyTrade = true
             )
             val persian = current.isPersian(SayvisStrings.deviceIsPersian())
             _tradeNote.value = (if (persian) result.detailFa else result.detailEn) +
@@ -2572,7 +2609,8 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
                 request = request,
                 state = _gatewayState.value,
                 emergencyLockActive = current.emergencyLockActive,
-                liveConfirmed = liveExecutionConfirmed
+                liveConfirmed = liveExecutionConfirmed,
+                isStrategyTrade = current.tradeAutomationEnabled
             )
             _lastOrder.value = result
             audit(
@@ -2588,7 +2626,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closePosition(ticket: String) {
         viewModelScope.launch {
-            val result = gateway.closePosition(ticket, _gatewayState.value)
+            val result = gateway.closePosition(ticket, _gatewayState.value, isStrategyTrade = settingsStore.current().tradeAutomationEnabled)
             _lastOrder.value = result
             audit(
                 actor = "OWNER",

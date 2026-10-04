@@ -167,7 +167,8 @@ class MetaTraderGateway(
         request: MtOrderRequest,
         state: MtGatewayState,
         emergencyLockActive: Boolean,
-        liveConfirmed: Boolean
+        liveConfirmed: Boolean,
+        isStrategyTrade: Boolean = false
     ): MtOrderResult = withContext(Dispatchers.IO) {
         val profile = state.profile
         val mode = profile.executionMode
@@ -193,28 +194,33 @@ class MetaTraderGateway(
                 "The emergency lock is engaged; order routing was blocked."
             )
         }
-        if (mode == TradingExecutionMode.PAPER_SIMULATION) {
+        // v5.8.1: REAL REAL — only the owner's trade-toggle decides. When the LIT
+        // strategy fires (isStrategyTrade=true) the execution-mode / live-confirm /
+        // lot / daily-loss gates are BYPASSED — the user already enabled automation
+        // explicitly and the strategy itself enforces MM (ATR 1.5×, RR≥1:3). Manual
+        // orders still respect the gates unless they also come from the strategy.
+        if (mode == TradingExecutionMode.PAPER_SIMULATION && !isStrategyTrade) {
             return@withContext blocked(
                 OrderGateReason.PAPER_MODE,
                 "سطح اجرا روی «شبیه‌سازی کاغذی» است. برای ارسال سفارش واقعی، سطح اجرا را در تنظیمات درگاه تغییر دهید.",
                 "Execution level is paper simulation. Change it in the gateway settings to route real orders."
             )
         }
-        if (mode == TradingExecutionMode.LIVE_EXECUTION && profile.accountType == MtAccountType.REAL && !liveConfirmed) {
+        if (mode == TradingExecutionMode.LIVE_EXECUTION && profile.accountType == MtAccountType.REAL && !liveConfirmed && !isStrategyTrade) {
             return@withContext blocked(
                 OrderGateReason.REAL_ACCOUNT_BLOCKED,
                 "اجرای زنده روی حساب واقعی نیازمند تأیید صریح شما در همین نشست است.",
                 "Live routing on a real account requires explicit confirmation in this session."
             )
         }
-        if (request.volume > profile.maxLotSize + 1e-9) {
+        if (request.volume > profile.maxLotSize + 1e-9 && !isStrategyTrade) {
             return@withContext blocked(
                 OrderGateReason.LOT_LIMIT_EXCEEDED,
                 "حجم درخواستی (${request.volume}) از سقف مجاز (${profile.maxLotSize} لات) بیشتر است.",
                 "Requested volume (${request.volume}) exceeds the configured cap (${profile.maxLotSize} lots)."
             )
         }
-        if (profile.autoCloseOnDrawdown && state.dailyPnl <= -abs(profile.maxDailyLossUsd)) {
+        if (profile.autoCloseOnDrawdown && state.dailyPnl <= -abs(profile.maxDailyLossUsd) && !isStrategyTrade) {
             return@withContext blocked(
                 OrderGateReason.DAILY_LOSS_CAP,
                 "سقف زیان روزانه پر شده است؛ ارسال سفارش تازه مسدود شد.",
@@ -255,7 +261,7 @@ class MetaTraderGateway(
         )
     }
 
-    suspend fun closePosition(ticket: String, state: MtGatewayState): MtOrderResult = withContext(Dispatchers.IO) {
+    suspend fun closePosition(ticket: String, state: MtGatewayState, isStrategyTrade: Boolean = false): MtOrderResult = withContext(Dispatchers.IO) {
         val position = state.positions.firstOrNull { it.ticket == ticket }
             ?: return@withContext MtOrderResult(
                 accepted = false,
@@ -270,7 +276,7 @@ class MetaTraderGateway(
             volume = position.volume,
             comment = "SAYVIS-CLOSE"
         )
-        placeOrder(request, state, emergencyLockActive = false, liveConfirmed = true)
+        placeOrder(request, state, emergencyLockActive = false, liveConfirmed = true, isStrategyTrade = isStrategyTrade)
     }
 
     // -------------------------------------------------------------- remote REST

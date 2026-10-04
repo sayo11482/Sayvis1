@@ -114,11 +114,11 @@ data class MtGatewayProfile(
     /** Bridge/API token (MetaApi account token or self-hosted bridge secret). */
     val bridgeToken: String = "",
     val bridgeUrl: String = "",
-    val executionMode: TradingExecutionMode = TradingExecutionMode.PAPER_SIMULATION,
-    val maxDailyLossUsd: Double = 50.0,
-    val maxLotSize: Double = 0.10,
-    val autoCloseOnDrawdown: Boolean = true,
-    val enabled: Boolean = false
+    val executionMode: TradingExecutionMode = TradingExecutionMode.DEMO_EXECUTION,
+    val maxDailyLossUsd: Double = 500.0,
+    val maxLotSize: Double = 1.0,
+    val autoCloseOnDrawdown: Boolean = false,
+    val enabled: Boolean = true
 )
 
 /** AI inference configuration block. */

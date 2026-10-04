@@ -86,10 +86,16 @@ class SettingsStore private constructor(context: Context) {
             xaiApiKey = getSecret(SecretKey.XAI_API_KEY),
             customApiKey = getSecret(SecretKey.CUSTOM_API_KEY)
         )
-        val trading = base.trading.copy(
+        var trading = base.trading.copy(
             password = getSecret(SecretKey.MT_PASSWORD),
             bridgeToken = getSecret(SecretKey.MT_BRIDGE_TOKEN)
         )
+        // v5.9.0 REAL REAL migration: PAPER → DEMO, close cap relaxed, autoClose off
+        if (trading.executionMode == TradingExecutionMode.PAPER_SIMULATION) {
+            trading = trading.copy(executionMode = TradingExecutionMode.DEMO_EXECUTION, enabled = true, autoCloseOnDrawdown = false)
+        }
+        if (trading.maxLotSize < 0.5) trading = trading.copy(maxLotSize = 1.0)
+        if (trading.maxDailyLossUsd < 100) trading = trading.copy(maxDailyLossUsd = 500.0)
         return base.copy(ai = ai, trading = trading)
     }
 
@@ -276,11 +282,11 @@ class SettingsStore private constructor(context: Context) {
                 serverAddress = mt.optString("server", ""),
                 login = mt.optString("login", ""),
                 bridgeUrl = mt.optString("bridgeUrl", ""),
-                executionMode = enumOr(mt.optString("execMode"), TradingExecutionMode.PAPER_SIMULATION),
-                maxDailyLossUsd = mt.optDouble("maxLoss", 50.0),
-                maxLotSize = mt.optDouble("maxLot", 0.10),
-                autoCloseOnDrawdown = mt.optBoolean("autoClose", true),
-                enabled = mt.optBoolean("enabled", false)
+                executionMode = enumOr(mt.optString("execMode"), TradingExecutionMode.DEMO_EXECUTION),
+                maxDailyLossUsd = mt.optDouble("maxLoss", 500.0),
+                maxLotSize = mt.optDouble("maxLot", 1.0),
+                autoCloseOnDrawdown = mt.optBoolean("autoClose", false),
+                enabled = mt.optBoolean("enabled", true)
             )
         )
     }
