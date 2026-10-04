@@ -23,6 +23,9 @@ import com.example.sayvis.trading.MarketDataService
 import android.graphics.Bitmap
 import com.example.sayvis.trading.ChartImageGenerator
 import com.example.sayvis.trading.LitBacktestEngine
+import com.example.sayvis.settings.MtGatewayProfile
+import com.example.sayvis.settings.MtAccountType
+import com.example.sayvis.settings.TradingExecutionMode
 import com.example.sayvis.trading.MtOrderRequest
 import com.example.sayvis.trading.MtOrderSide
 import com.example.sayvis.trading.VitaverseSpreadProvider
@@ -304,11 +307,6 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     init {
         // SAYVIS is always online — no offline mode exists.
         LinkCenter.setGateOpen(true)
-        // v5.9.0 REAL REAL: restore liveConfirmed from persisted automation flag so REAL REAL survives restart
-        liveExecutionConfirmed = settingsStore.current().tradeAutomationEnabled
-        if (liveExecutionConfirmed) {
-            _gatewayState.value = _gatewayState.value.copy(profile = settingsStore.current().trading)
-        }
         // «یک‌بار متصل شد → به حافظه سپرده شد»: remember the first AI link.
         if (settingsStore.current().ai.aiLinkedOnce) {
             LinkCenter.push(
@@ -2531,8 +2529,8 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
     )
 
-    // ------------------------------------------------------- trading gateway
-    private val _gatewayState = MutableStateFlow(MtGatewayState())
+    // ------------------------------------------------------- trading gateway — v5.9.0 REAL REAL: gateway armed from persisted profile + automation flag survives restart
+    private val _gatewayState = MutableStateFlow(MtGatewayState(profile = settingsStore.current().trading))
     val gatewayState: StateFlow<MtGatewayState> = _gatewayState.asStateFlow()
 
     private val _gatewayBusy = MutableStateFlow(false)
@@ -2541,8 +2539,8 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private val _lastOrder = MutableStateFlow<MtOrderResult?>(null)
     val lastOrder: StateFlow<MtOrderResult?> = _lastOrder.asStateFlow()
 
-    /** Re-confirmed per session; never persisted, so a restart always drops to paper. */
-    private var liveExecutionConfirmed = false
+    /** v5.9.0 REAL REAL: restored from tradeAutomationEnabled so REAL REAL survives restart */
+    private var liveExecutionConfirmed = settingsStore.current().tradeAutomationEnabled
 
     fun saveGatewayProfile(profile: MtGatewayProfile) {
         settingsStore.update { it.copy(trading = profile) }
