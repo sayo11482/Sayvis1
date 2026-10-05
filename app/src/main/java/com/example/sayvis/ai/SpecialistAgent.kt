@@ -40,15 +40,17 @@ object SpecialistAgent {
      */
     fun pickBrain(settings: AiSettings): Brain? {
         val candidates = listOf(
-            Brain(AiProviderKind.GEMINI, settings.geminiModel, "جمینای فلش — رایگان تا سهمیهٔ روزانه", "Gemini Flash — free daily tier"),
+            Brain(AiProviderKind.DEEPSEEK, settings.deepSeekModel, "دیپ‌سیک — بدونِ تحریم، پیشنهادی برای ایران", "DeepSeek — Iran-friendly, sanction-free"),
             Brain(AiProviderKind.GROQ, settings.groqModel, "گروک LPU — رایگان و بسیار سریع، کم‌توکن", "Groq LPU — free, fast, token-lean"),
-            Brain(AiProviderKind.OPENAI, settings.openAiModel, "چت‌جی‌پی‌تی — پولی، دقیق", "ChatGPT — paid, precise"),
-            Brain(AiProviderKind.XAI, settings.xaiModel, "گراک — پولی", "Grok — paid"),
             Brain(AiProviderKind.OPENROUTER, settings.openRouterModel, "اوپن‌روتر — چندمدلی (مدل‌های :free)", "OpenRouter — multi-model (:free options)"),
-            Brain(AiProviderKind.CUSTOM, settings.customModel, "سرویس دلخواه مالک", "Owner's custom endpoint")
+            Brain(AiProviderKind.CUSTOM, settings.customModel, "سرویس دلخواه مالک", "Owner's custom endpoint"),
+            Brain(AiProviderKind.OPENAI, settings.openAiModel, "چت‌جی‌پی‌تی — پولی، تحریمی", "ChatGPT — paid, sanctioned"),
+            Brain(AiProviderKind.XAI, settings.xaiModel, "گراک — پولی، تحریمی", "Grok — paid, sanctioned"),
+            Brain(AiProviderKind.GEMINI, settings.geminiModel, "جمینای — تحریمی (نیاز به VPN)", "Gemini — sanctioned (needs VPN)")
         )
         return candidates.firstOrNull { brain ->
             when (brain.kind) {
+                AiProviderKind.DEEPSEEK -> settings.deepSeekApiKey.isNotBlank()
                 AiProviderKind.GEMINI -> settings.geminiApiKey.isNotBlank()
                 AiProviderKind.GROQ -> settings.groqApiKey.isNotBlank()
                 AiProviderKind.OPENAI -> settings.openAiApiKey.isNotBlank()

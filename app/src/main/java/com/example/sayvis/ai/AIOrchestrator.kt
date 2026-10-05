@@ -14,6 +14,7 @@ import com.example.sayvis.settings.AiSettings
  */
 open class AIOrchestrator(
     private val geminiProvider: GeminiProvider = GeminiProvider(),
+    private val deepSeekProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.DEEPSEEK),
     private val openRouterProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.OPENROUTER),
     private val groqProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.GROQ),
     private val openAiProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(AiProviderKind.OPENAI),
@@ -30,6 +31,7 @@ open class AIOrchestrator(
         settings.provider != AiProviderKind.LOCAL && settings.isProviderConfigured()
 
     private fun networkProviderFor(kind: AiProviderKind): AIProvider? = when (kind) {
+        AiProviderKind.DEEPSEEK -> deepSeekProvider
         AiProviderKind.GEMINI -> geminiProvider
         AiProviderKind.OPENROUTER -> openRouterProvider
         AiProviderKind.GROQ -> groqProvider
@@ -132,16 +134,18 @@ open class AIOrchestrator(
      */
     fun failoverChain(selected: AiProviderKind): List<AiProviderKind> =
         listOf(
-            AiProviderKind.GEMINI,
+            AiProviderKind.DEEPSEEK,
+            AiProviderKind.GROQ,
+            AiProviderKind.OPENROUTER,
+            AiProviderKind.CUSTOM,
             AiProviderKind.OPENAI,
             AiProviderKind.XAI,
-            AiProviderKind.OPENROUTER,
-            AiProviderKind.GROQ,
-            AiProviderKind.CUSTOM
+            AiProviderKind.GEMINI
         ).filter { it != selected && it != AiProviderKind.LOCAL }
 
     /** Runs a live credential/reachability check for the Settings screen. */
     open suspend fun probe(settings: AiSettings): ProbeOutcome = when (settings.provider) {
+        AiProviderKind.DEEPSEEK -> deepSeekProvider.probe(settings)
         AiProviderKind.GEMINI -> geminiProvider.probe(settings)
         AiProviderKind.OPENROUTER -> openRouterProvider.probe(settings)
         AiProviderKind.GROQ -> groqProvider.probe(settings)

@@ -1206,6 +1206,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
             return effective to (auto?.noteFa ?: "هستهٔ محلی سایویس (انتخاب نامعتبر — خودکار)")
         }
         val configured = picked.isLocal || when (picked) {
+            com.example.sayvis.settings.AiProviderKind.DEEPSEEK -> settings.ai.deepSeekApiKey.isNotBlank()
             com.example.sayvis.settings.AiProviderKind.GEMINI -> settings.ai.geminiApiKey.isNotBlank()
             com.example.sayvis.settings.AiProviderKind.GROQ -> settings.ai.groqApiKey.isNotBlank()
             com.example.sayvis.settings.AiProviderKind.OPENAI -> settings.ai.openAiApiKey.isNotBlank()

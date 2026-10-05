@@ -5,6 +5,7 @@ import com.example.sayvis.settings.AiSettings
 
 /** Identity of the engine that actually produced an answer. */
 enum class ProviderType(val displayName: String, val displayNameFa: String) {
+    DEEPSEEK("DeepSeek (Iran-friendly)", "دیپ‌سیک (بدون تحریم)"),
     GEMINI("Google Gemini", "گوگل جمینای"),
     OPEN_ROUTER("OpenRouter", "اوپن‌روتر"),
     GROQ_ROUTER("Groq LPU", "گروک"),
@@ -18,6 +19,7 @@ enum class ProviderType(val displayName: String, val displayNameFa: String) {
     companion object {
         fun from(kind: AiProviderKind): ProviderType = when (kind) {
             AiProviderKind.LOCAL -> LOCAL_COGNITIVE
+            AiProviderKind.DEEPSEEK -> DEEPSEEK
             AiProviderKind.GEMINI -> GEMINI
             AiProviderKind.OPENROUTER -> OPEN_ROUTER
             AiProviderKind.GROQ -> GROQ_ROUTER

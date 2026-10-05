@@ -20,12 +20,13 @@ enum class AppLanguage(val labelFa: String, val labelEn: String) {
 /** Selectable AI inference backends. */
 enum class AiProviderKind(val labelFa: String, val labelEn: String, val isLocal: Boolean) {
     LOCAL("هستهٔ حاکم سایویس (همیشه متصل)", "SAYVIS Sovereign Core (Always Connected)", true),
-    GEMINI("گوگل جمینای", "Google Gemini", false),
-    OPENROUTER("اوپن‌روتر (چندمدلی)", "OpenRouter (multi-model)", false),
+    DEEPSEEK("دیپ‌سیک (بدونِ تحریم — پیشنهادی برای ایران)", "DeepSeek (Iran-friendly)", false),
     GROQ("گروک (پاسخ سریع)", "Groq (fast LPU)", false),
+    OPENROUTER("اوپن‌روتر (چندمدلی)", "OpenRouter (multi-model)", false),
+    GEMINI("گوگل جمینای (تحریمی)", "Google Gemini (sanctioned)", false),
     CUSTOM("سرویس دلخواه سازگار با OpenAI", "Custom OpenAI-compatible", false),
-    OPENAI("چت‌جی‌پی‌تی (OpenAI)", "ChatGPT (OpenAI)", false),
-    XAI("گراک (xAI)", "Grok (xAI)", false);
+    OPENAI("چت‌جی‌پی‌تی (OpenAI — تحریمی)", "ChatGPT (OpenAI — sanctioned)", false),
+    XAI("گراک (xAI — تحریمی)", "Grok (xAI — sanctioned)", false);
 
     fun label(isPersian: Boolean): String = if (isPersian) labelFa else labelEn
 }
@@ -134,6 +135,8 @@ data class AiSettings(
     val openAiModel: String = "gpt-4o-mini",
     val xaiApiKey: String = "",
     val xaiModel: String = "grok-3-mini",
+    val deepSeekApiKey: String = "",
+    val deepSeekModel: String = "deepseek-chat",
     val customBaseUrl: String = "",
     val customApiKey: String = "",
     val customModel: String = "",
@@ -155,6 +158,7 @@ data class AiSettings(
     /** True when the selected provider has everything it needs to actually run. */
     fun isProviderConfigured(): Boolean = when (provider) {
         AiProviderKind.LOCAL -> true
+        AiProviderKind.DEEPSEEK -> deepSeekApiKey.isNotBlank()
         AiProviderKind.GEMINI -> geminiApiKey.isNotBlank()
         AiProviderKind.OPENROUTER -> openRouterApiKey.isNotBlank()
         AiProviderKind.GROQ -> groqApiKey.isNotBlank()
@@ -165,6 +169,7 @@ data class AiSettings(
 
     fun activeModel(): String = when (provider) {
         AiProviderKind.LOCAL -> "sayvis-local-core"
+        AiProviderKind.DEEPSEEK -> deepSeekModel
         AiProviderKind.GEMINI -> geminiModel
         AiProviderKind.OPENROUTER -> openRouterModel
         AiProviderKind.GROQ -> groqModel

@@ -80,6 +80,7 @@ class SettingsStore private constructor(context: Context) {
         // Merge secrets back in from the vault.
         val ai = base.ai.copy(
             geminiApiKey = getSecret(SecretKey.GEMINI_API_KEY),
+            deepSeekApiKey = getSecret(SecretKey.DEEPSEEK_API_KEY),
             openRouterApiKey = getSecret(SecretKey.OPENROUTER_API_KEY),
             groqApiKey = getSecret(SecretKey.GROQ_API_KEY),
             openAiApiKey = getSecret(SecretKey.OPENAI_API_KEY),
@@ -102,6 +103,7 @@ class SettingsStore private constructor(context: Context) {
     private fun persist(settings: AppSettings) {
         // Secrets are stripped from the JSON blob and pushed to the vault instead.
         putSecret(SecretKey.GEMINI_API_KEY, settings.ai.geminiApiKey)
+        putSecret(SecretKey.DEEPSEEK_API_KEY, settings.ai.deepSeekApiKey)
         putSecret(SecretKey.OPENROUTER_API_KEY, settings.ai.openRouterApiKey)
         putSecret(SecretKey.GROQ_API_KEY, settings.ai.groqApiKey)
         putSecret(SecretKey.OPENAI_API_KEY, settings.ai.openAiApiKey)
@@ -113,7 +115,7 @@ class SettingsStore private constructor(context: Context) {
 
         val redacted = settings.copy(
             ai = settings.ai.copy(
-                geminiApiKey = "", openRouterApiKey = "", groqApiKey = "",
+                geminiApiKey = "", deepSeekApiKey = "", openRouterApiKey = "", groqApiKey = "",
                 openAiApiKey = "", xaiApiKey = "", customApiKey = ""
             ),
             linked = settings.linked.copy(linkedSites = ""),
@@ -149,6 +151,7 @@ class SettingsStore private constructor(context: Context) {
             put("aiLinkedOnce", s.ai.aiLinkedOnce)
             put("aiLinkedAt", s.ai.aiLinkedAt)
             put("aiLinkedModel", s.ai.aiLinkedModel)
+            put("deepSeekModel", s.ai.deepSeekModel)
             put("openRouterModel", s.ai.openRouterModel)
             put("groqModel", s.ai.groqModel)
             put("openAiModel", s.ai.openAiModel)
@@ -234,6 +237,7 @@ class SettingsStore private constructor(context: Context) {
                 aiLinkedOnce = ai.optBoolean("aiLinkedOnce", false),
                 aiLinkedAt = ai.optLong("aiLinkedAt", 0),
                 aiLinkedModel = ai.optString("aiLinkedModel", ""),
+                deepSeekModel = ai.optString("deepSeekModel", "deepseek-chat"),
                 openRouterModel = ai.optString("openRouterModel", "anthropic/claude-3.5-sonnet"),
                 groqModel = ai.optString("groqModel", "llama-3.3-70b-versatile"),
                 openAiModel = ai.optString("openAiModel", "gpt-4o-mini"),
@@ -319,6 +323,7 @@ class SettingsStore private constructor(context: Context) {
 enum class SecretKey(val vaultKey: String, val labelFa: String, val labelEn: String) {
     GEMINI_API_KEY("sec_gemini_key", "کلید API گوگل جمینای", "Google Gemini API key"),
     OPENROUTER_API_KEY("sec_openrouter_key", "کلید API اوپن‌روتر", "OpenRouter API key"),
+    DEEPSEEK_API_KEY("sec_deepseek_key", "کلید API دیپ‌سیک (بدون تحریم)", "DeepSeek API key (Iran-friendly)"),
     GROQ_API_KEY("sec_groq_key", "کلید API گروک", "Groq API key"),
     OPENAI_API_KEY("sec_openai_key", "کلید API چت‌جی‌پی‌تی", "ChatGPT / OpenAI API key"),
     XAI_API_KEY("sec_xai_key", "کلید API گراک", "Grok / xAI API key"),

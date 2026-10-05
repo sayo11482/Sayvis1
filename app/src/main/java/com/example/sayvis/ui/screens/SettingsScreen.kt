@@ -354,6 +354,31 @@ fun SettingsScreen(
                     color = SayvisSilverMuted
                 )
 
+                AiProviderKind.DEEPSEEK -> {
+                    SecretField(
+                        label = s.apiKey,
+                        hint = "sk-… (deepseek)",
+                        value = settings.ai.deepSeekApiKey,
+                        reveal = revealKey,
+                        onRevealChange = { revealKey = it },
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(deepSeekApiKey = it.trim()))) },
+                        isPersian = isPersian
+                    )
+                    SayvisField(
+                        label = s.model,
+                        value = settings.ai.deepSeekModel,
+                        onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(deepSeekModel = it.trim()))) },
+                        hint = "deepseek-chat / deepseek-reasoner",
+                        monospace = true
+                    )
+                    Text(
+                        text = if (isPersian) "★ پیشنهادی برای ایران: دیپ‌سیک تحت تحریم آمریکا نیست و با اینترنت ایران کار می‌کند."
+                        else "★ Iran-friendly: DeepSeek is not US-sanctioned and works on Iranian networks.",
+                        fontSize = 11.sp,
+                        color = SayvisGreenSuccess
+                    )
+                }
+
                 AiProviderKind.GEMINI -> {
                     SecretField(
                         label = s.apiKey,
@@ -370,6 +395,12 @@ fun SettingsScreen(
                         onValueChange = { onSettingsChange(settings.copy(ai = settings.ai.copy(geminiModel = it.trim()))) },
                         hint = "gemini-3.6-flash / gemini-flash-latest",
                         monospace = true
+                    )
+                    Text(
+                        text = if (isPersian) "⚠️ گوگل جمینای تحت تحریم آمریکا است و بدون VPN در ایران کار نمی‌کند — برای اتصال پایدار از دیپ‌سیک یا گروک استفاده کنید."
+                        else "⚠️ Google Gemini is US-sanctioned and needs VPN in Iran — prefer DeepSeek or Groq for stable access.",
+                        fontSize = 11.sp,
+                        color = SayvisAmberWarning
                     )
 
                     // Sign in with Google → AI Studio → automatic key capture,

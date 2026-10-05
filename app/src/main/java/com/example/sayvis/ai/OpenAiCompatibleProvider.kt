@@ -23,6 +23,7 @@ class OpenAiCompatibleProvider(private val kind: AiProviderKind) : AIProvider {
     override val providerType: ProviderType = ProviderType.from(kind)
 
     override fun isConfigured(settings: AiSettings): Boolean = when (kind) {
+        AiProviderKind.DEEPSEEK -> settings.deepSeekApiKey.isNotBlank()
         AiProviderKind.OPENROUTER -> settings.openRouterApiKey.isNotBlank()
         AiProviderKind.GROQ -> settings.groqApiKey.isNotBlank()
         AiProviderKind.OPENAI -> settings.openAiApiKey.isNotBlank()
@@ -32,6 +33,7 @@ class OpenAiCompatibleProvider(private val kind: AiProviderKind) : AIProvider {
     }
 
     private fun endpoint(settings: AiSettings): String = when (kind) {
+        AiProviderKind.DEEPSEEK -> "https://api.deepseek.com/v1/chat/completions"
         AiProviderKind.OPENROUTER -> "https://openrouter.ai/api/v1/chat/completions"
         AiProviderKind.GROQ -> "https://api.groq.com/openai/v1/chat/completions"
         AiProviderKind.OPENAI -> "https://api.openai.com/v1/chat/completions"
@@ -41,6 +43,7 @@ class OpenAiCompatibleProvider(private val kind: AiProviderKind) : AIProvider {
     }
 
     private fun apiKey(settings: AiSettings): String = when (kind) {
+        AiProviderKind.DEEPSEEK -> settings.deepSeekApiKey.trim()
         AiProviderKind.OPENROUTER -> settings.openRouterApiKey.trim()
         AiProviderKind.GROQ -> settings.groqApiKey.trim()
         AiProviderKind.OPENAI -> settings.openAiApiKey.trim()
@@ -50,6 +53,7 @@ class OpenAiCompatibleProvider(private val kind: AiProviderKind) : AIProvider {
     }
 
     private fun model(settings: AiSettings): String = when (kind) {
+        AiProviderKind.DEEPSEEK -> settings.deepSeekModel.trim()
         AiProviderKind.OPENROUTER -> settings.openRouterModel.trim()
         AiProviderKind.GROQ -> settings.groqModel.trim()
         AiProviderKind.OPENAI -> settings.openAiModel.trim()
