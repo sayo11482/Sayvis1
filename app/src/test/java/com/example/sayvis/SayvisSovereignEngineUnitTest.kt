@@ -53,10 +53,12 @@ class SayvisSovereignEngineUnitTest {
     @Test
     fun `preference order starts with gemini groq`() {
         val order = SovereignEngine.preferenceOrder()
-        assertEquals(AiProviderKind.GEMINI, order[0])
+        // Iran-friendly: DeepSeek (sanction-free) leads, Groq second, sanctioned last
+        assertEquals(AiProviderKind.DEEPSEEK, order[0])
         assertEquals(AiProviderKind.GROQ, order[1])
-        assertEquals(6, order.size)
+        assertEquals(7, order.size)
         assertFalse(order.contains(AiProviderKind.LOCAL))
+        assertEquals(AiProviderKind.GEMINI, order.last())
     }
 
     @Test

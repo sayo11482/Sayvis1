@@ -63,19 +63,21 @@ class SayvisReliabilityUnitTest {
     @Test
     fun `failover chain covers every other cloud brain in stable order`() {
         val chain = AIOrchestrator().failoverChain(com.example.sayvis.settings.AiProviderKind.GEMINI)
+        // Iran-friendly order: DeepSeek→Groq→OpenRouter→Custom→OpenAI→XAI (sanctioned last, GEMINI excluded as selected)
         assertEquals(
             listOf(
-                com.example.sayvis.settings.AiProviderKind.OPENAI,
-                com.example.sayvis.settings.AiProviderKind.XAI,
-                com.example.sayvis.settings.AiProviderKind.OPENROUTER,
+                com.example.sayvis.settings.AiProviderKind.DEEPSEEK,
                 com.example.sayvis.settings.AiProviderKind.GROQ,
-                com.example.sayvis.settings.AiProviderKind.CUSTOM
+                com.example.sayvis.settings.AiProviderKind.OPENROUTER,
+                com.example.sayvis.settings.AiProviderKind.CUSTOM,
+                com.example.sayvis.settings.AiProviderKind.OPENAI,
+                com.example.sayvis.settings.AiProviderKind.XAI
             ),
             chain
         )
         // The selected provider and LOCAL never appear in their own chain.
         assertTrue(!chain.contains(com.example.sayvis.settings.AiProviderKind.GEMINI))
         assertTrue(!chain.contains(com.example.sayvis.settings.AiProviderKind.LOCAL))
-        assertEquals(5, AIOrchestrator().failoverChain(com.example.sayvis.settings.AiProviderKind.OPENAI).size)
+        assertEquals(6, AIOrchestrator().failoverChain(com.example.sayvis.settings.AiProviderKind.OPENAI).size)
     }
 }

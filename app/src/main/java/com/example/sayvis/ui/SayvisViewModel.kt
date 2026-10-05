@@ -1171,6 +1171,7 @@ class SayvisViewModel(application: Application) : AndroidViewModel(application) 
     private fun storeProviderKey(provider: String, apiKey: String) {
         settingsStore.update { current ->
             val ai = when (provider.lowercase()) {
+                "deepseek" -> current.ai.copy(deepSeekApiKey = apiKey)
                 "gemini" -> current.ai.copy(geminiApiKey = apiKey)
                 "openai" -> current.ai.copy(openAiApiKey = apiKey)
                 "groq" -> current.ai.copy(groqApiKey = apiKey)

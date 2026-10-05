@@ -61,12 +61,13 @@ object SovereignEngine {
 
         // Prefer successful probes, then lowest latency, then stable preference order
         val preferenceOrder = listOf(
-            AiProviderKind.GEMINI,
+            AiProviderKind.DEEPSEEK,
             AiProviderKind.GROQ,
+            AiProviderKind.OPENROUTER,
+            AiProviderKind.CUSTOM,
             AiProviderKind.OPENAI,
             AiProviderKind.XAI,
-            AiProviderKind.OPENROUTER,
-            AiProviderKind.CUSTOM
+            AiProviderKind.GEMINI
         )
         val successful = results.filter { it.success }
         if (successful.isNotEmpty()) {
@@ -81,6 +82,7 @@ object SovereignEngine {
     /** True when [kind] has a non-blank key / config in [settings]. */
     fun isConfigured(kind: AiProviderKind, settings: AiSettings): Boolean = when (kind) {
         AiProviderKind.LOCAL -> true
+        AiProviderKind.DEEPSEEK -> settings.deepSeekApiKey.isNotBlank()
         AiProviderKind.GEMINI -> settings.geminiApiKey.isNotBlank()
         AiProviderKind.GROQ -> settings.groqApiKey.isNotBlank()
         AiProviderKind.OPENAI -> settings.openAiApiKey.isNotBlank()
@@ -89,14 +91,15 @@ object SovereignEngine {
         AiProviderKind.CUSTOM -> settings.customBaseUrl.isNotBlank() && settings.customModel.isNotBlank()
     }
 
-    /** Stable preference order for tie-breaking (fastest free first). */
+    /** Stable preference order for tie-breaking (Iran-friendly: DeepSeek first). */
     fun preferenceOrder(): List<AiProviderKind> = listOf(
-        AiProviderKind.GEMINI,
+        AiProviderKind.DEEPSEEK,
         AiProviderKind.GROQ,
+        AiProviderKind.OPENROUTER,
+        AiProviderKind.CUSTOM,
         AiProviderKind.OPENAI,
         AiProviderKind.XAI,
-        AiProviderKind.OPENROUTER,
-        AiProviderKind.CUSTOM
+        AiProviderKind.GEMINI
     )
 
     /** Human-readable label for the engine that will actually answer. */
