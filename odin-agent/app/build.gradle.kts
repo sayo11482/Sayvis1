@@ -17,8 +17,8 @@ android {
     applicationId = "com.odin.agent"
     minSdk = 26
     targetSdk = 36
-    versionCode = 34
-    versionName = "1.0.31-tv-backtest-quant"
+    versionCode = 35
+    versionName = "1.0.32-real-quant-mtf"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

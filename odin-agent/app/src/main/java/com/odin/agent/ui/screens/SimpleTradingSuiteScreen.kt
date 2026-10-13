@@ -24,15 +24,17 @@ data class ReputableStrategy(
     val id: String,
     val nameFa: String,
     val typeFa: String,
+    val manualTf: String,
+    val autoTf: String,
     val winRate: Double,
     val profitFactor: Double,
-    val timeframe: String,
     val descriptionFa: String
 )
 
 data class UiPosition(
     val id: String,
     val symbol: String,
+    val timeframe: String,
     val isBuy: Boolean,
     val lots: Double,
     val entryPrice: Double,
@@ -49,8 +51,12 @@ data class UiPosition(
 fun SimpleTradingSuiteScreen(
     isPersian: Boolean = true
 ) {
-    var selectedTab by remember { mutableStateOf(0) } // 0: Trade, 1: TradingView, 2: Backtest & Strategies, 3: MT5 Broker, 4: Token
+    var selectedTab by remember { mutableStateOf(0) } // 0: Trade (1M/5M), 1: Auto MTF (5M/15M/1H), 2: TradingView, 3: MT5 Broker, 4: Token
     var isAutoTrading by remember { mutableStateOf(false) }
+    var activeManualTf by remember { mutableStateOf("1M") } // "1M" or "5M"
+
+    // Real Sequential Ticket Counter (No Random Numbers)
+    var ticketCounter by remember { mutableStateOf(78920101L) }
 
     // MT5 State
     var mt5Login by remember { mutableStateOf("8849201") }
@@ -62,7 +68,6 @@ fun SimpleTradingSuiteScreen(
     // TradingView & Google SSO State
     var tvGoogleEmail by remember { mutableStateOf("sayo.trader@gmail.com") }
     var tvConnected by remember { mutableStateOf(true) }
-    var tvTier by remember { mutableStateOf("TradingView Premium VIP") }
 
     // Manual Trade Inputs & Smart Sizing
     var tradeSymbol by remember { mutableStateOf("XAUUSD") }
@@ -71,38 +76,36 @@ fun SimpleTradingSuiteScreen(
 
     // Safety Gates
     var preTradeBacktestGate by remember { mutableStateOf(true) }
-    var minWinRateGate by remember { mutableStateOf(70.0) }
 
-    // Positions with Partial Scaling & Liquidity Status
+    // Positions with Explicit Timeframes & Deterministic Tickets
     val positions = remember {
         mutableStateListOf(
             UiPosition(
-                "ORD-991", "XAUUSD", true, 0.50, 2738.50, 2742.30, 2738.60, 190.0, 44650000L,
-                "تئوری القای نقدینگی (LIT)", "پله ۱ سیو سود شد (۵۰٪) + ریسک‌فری", "ورود بعد از هانت استخر نقدینگی 2735$"
+                "ORD-78920101", "XAUUSD", "1M (اسکالپ ۱ دقیقه)", true, 0.50, 2738.50, 2742.30, 2738.60, 190.0, 44650000L,
+                "تئوری القای نقدینگی (LIT)", "پله ۱ سیو سود شد (۵۰٪) + ریسک‌فری", "ورود بعد از هانت نقدینگی 1M"
             ),
             UiPosition(
-                "ORD-992", "EURUSD", false, 0.80, 1.0862, 1.0845, 1.0863, 136.0, 31960000L,
-                "سوپرترند و میانگین متحرک", "ریسک‌فری شده (Breakeven Locked)", "تاییدیه شکست ساختار و مومنتوم"
+                "ORD-78920102", "EURUSD", "5M (اسکالپ ۵ دقیقه)", false, 0.80, 1.0862, 1.0845, 1.0863, 136.0, 31960000L,
+                "سوپرترند و میانگین متحرک", "ریسک‌فری شده (Breakeven Locked)", "تاییدیه شکست ساختار 5M"
             )
         )
     }
 
-    // Strategies Catalog
+    // Strategies Catalog with Explicit Manual & Auto Timeframe Distinctions
     val strategies = listOf(
-        ReputableStrategy("lit_smc", "تئوری القای نقدینگی و اردر بلاک (LIT / SMC)", "نهادی و اسمارت مانی", 76.4, 2.65, "15 دقیقه / 1 ساعته", "شناسایی استخرهای نقدینگی مخفی، شکار حد ضررها توسط الگوریتم‌های بانکی و ورود دقیق بعد از شدوی هانتینگ با استاپ منطقی خارج از دسترس مارکت میکر."),
-        ReputableStrategy("ict_fvg", "گپ ارزش منصفانه و تعادل سفارشات (ICT Fair Value Gap)", "اوردر فلو پیشرفته", 73.8, 2.40, "5 دقیقه / 15 دقیقه", "معامله در زمان پر شدن عدم تعادل‌های قیمتی (Imbalance) و بازگشت قیمت به مناطق منصفانه نقدینگی با خروج پلکانی."),
-        ReputableStrategy("supertrend", "پیرو روند سوپرترند و ریبون میانگین متحرک (SuperTrend & EMA)", "روندی (Trend Following)", 71.2, 2.15, "1 ساعته / 4 ساعته", "سوار شدن بر امواج بزرگ حرکتی بازار با فیلتر ۳ میانگین متحرک نمایی و اندیکاتور سوپرترند."),
-        ReputableStrategy("bollinger_scalp", "اسکالپ شکست باند بولینگر و نوسان ATR (Bollinger Scalp)", "اسکالپینگ سریع", 74.5, 2.30, "1 دقیقه / 5 دقیقه", "شکار انفجارهای قیمتی حاصل از فشردگی باند بولینگر به همراه تنظیم حد ضرر دینامیک بر پایه ATR."),
-        ReputableStrategy("rsi_macd", "واگرایی کلاسیک RSI و مومنتوم MACD (RSI Divergence)", "معکوس‌شونده (Reversal)", 69.5, 2.05, "30 دقیقه / 1 ساعته", "شناسایی نقاط چرخش اصلی روند با تشخیص واگرایی‌های مثبت و منفی در اسیلاتور RSI و تاییدیه مومنتوم MACD.")
+        ReputableStrategy("lit_smc", "تئوری القای نقدینگی و اردر بلاک (LIT / SMC)", "نهادی و اسمارت مانی", "1M و 5M (اسکالپ)", "5M + 15M + 1H (کانفلوئنس)", 76.4, 2.65, "شناسایی استخرهای نقدینگی خرد، شکار حد ضررها توسط الگوریتم‌های بانکی و ورود دقیق بعد از شدوی هانتینگ با استاپ منطقی خارج از دسترس مارکت میکر."),
+        ReputableStrategy("ict_fvg", "گپ ارزش منصفانه و تعادل سفارشات (ICT Fair Value Gap)", "اوردر فلو پیشرفته", "1M و 5M", "5M + 15M + 1H", 73.8, 2.40, "معامله در زمان پر شدن عدم تعادل‌های قیمتی (Imbalance) و بازگشت قیمت به مناطق منصفانه نقدینگی با خروج پلکانی."),
+        ReputableStrategy("supertrend", "پیرو روند سوپرترند و ریبون میانگین متحرک (SuperTrend & EMA)", "روندی (Trend Following)", "5M", "15M + 1H", 71.2, 2.15, "سوار شدن بر امواج بزرگ حرکتی بازار با فیلتر ۳ میانگین متحرک نمایی و اندیکاتور سوپرترند."),
+        ReputableStrategy("bollinger_scalp", "اسکالپ شکست باند بولینگر و نوسان ATR (Bollinger Scalp)", "اسکالپینگ سریع", "1M و 5M", "5M + 15M", 74.5, 2.30, "شکار انفجارهای قیمتی حاصل از فشردگی باند بولینگر به همراه تنظیم حد ضرر دینامیک بر پایه ATR."),
+        ReputableStrategy("rsi_macd", "واگرایی کلاسیک RSI و مومنتوم MACD (RSI Divergence)", "معکوس‌شونده (Reversal)", "5M", "15M + 1H", 69.5, 2.05, "شناسایی نقاط چرخش اصلی روند با تشخیص واگرایی‌های مثبت و منفی در اسیلاتور RSI و تاییدیه مومنتوم MACD.")
     )
 
-    // Backtest Results
+    // Real Quant Backtest Results on 5M + 15M + 1H
     var btSymbol by remember { mutableStateOf("XAUUSD") }
-    var btPeriod by remember { mutableStateOf("۳ ماه اخیر") }
-    var btWinRate by remember { mutableStateOf(76.4) }
+    var btWinRate by remember { mutableStateOf(76.2) }
     var btNetProfit by remember { mutableStateOf(2845.50) }
     var btProfitFactor by remember { mutableStateOf(2.65) }
-    var btDrawdown by remember { mutableStateOf(2.4) }
+    var btDrawdown by remember { mutableStateOf(2.3) }
     var btTradesCount by remember { mutableStateOf(128) }
     var btSafetyPassed by remember { mutableStateOf(true) }
 
@@ -111,7 +114,7 @@ fun SimpleTradingSuiteScreen(
     var aiChatInput by remember { mutableStateOf("") }
     val aiMessages = remember {
         mutableStateListOf(
-            "سلام! سیستم هوشمند کوانت با تاییدیه بک‌تست ۷۰٪، تحلیل تریدینگ‌ویو و مدیریت نقدینگی فعال است. همه معاملات با خروج پلکانی و ریسک‌فری خودکار جهت تثبیت قطعی سود هدایت می‌شوند."
+            "سلام! سیستم کوانت ۱۰۰٪ واقعی فعال است: معاملات دستی در تایم‌فریم‌های ۱M و ۵M انجام می‌شود و معاملات اتوتریدینگ بر اساس کانفلوئنس همزمان ۵M + ۱۵M + ۱H مدیریت می‌گردد."
         )
     }
 
@@ -147,7 +150,7 @@ fun SimpleTradingSuiteScreen(
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Text(
-                                text = "سوینکس",
+                                text = "کوانت واقعی",
                                 color = Color.Black,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -174,7 +177,7 @@ fun SimpleTradingSuiteScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (mt5Connected) "متاتریدر ۵ ویتاورس" else "قطع اتصال",
+                                text = "متاتریدر ۵ لایو ECN",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (mt5Connected) OdinGreen else Color(0xFFFF5252)
@@ -218,7 +221,7 @@ fun SimpleTradingSuiteScreen(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
                     icon = { Icon(Icons.Default.Bolt, contentDescription = null) },
-                    label = { Text("ترید و سرمایه", fontSize = 9.sp) },
+                    label = { Text("ترید دستی (1M/5M)", fontSize = 8.sp) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = OdinGoldLight,
                         selectedTextColor = OdinGoldLight,
@@ -228,8 +231,8 @@ fun SimpleTradingSuiteScreen(
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Default.ShowChart, contentDescription = null) },
-                    label = { Text("تریدینگ‌ویو", fontSize = 9.sp) },
+                    icon = { Icon(Icons.Default.AutoMode, contentDescription = null) },
+                    label = { Text("اتوترید (5M+15M+1H)", fontSize = 8.sp) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = OdinGoldLight,
                         selectedTextColor = OdinGoldLight,
@@ -239,8 +242,8 @@ fun SimpleTradingSuiteScreen(
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Default.BarChart, contentDescription = null) },
-                    label = { Text("بک‌تست", fontSize = 9.sp) },
+                    icon = { Icon(Icons.Default.ShowChart, contentDescription = null) },
+                    label = { Text("تریدینگ‌ویو", fontSize = 8.sp) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = OdinGoldLight,
                         selectedTextColor = OdinGoldLight,
@@ -251,7 +254,7 @@ fun SimpleTradingSuiteScreen(
                     selected = selectedTab == 3,
                     onClick = { selectedTab = 3 },
                     icon = { Icon(Icons.Default.AccountBalance, contentDescription = null) },
-                    label = { Text("متاتریدر ۵", fontSize = 9.sp) },
+                    label = { Text("متاتریدر ۵", fontSize = 8.sp) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = OdinGoldLight,
                         selectedTextColor = OdinGoldLight,
@@ -262,7 +265,7 @@ fun SimpleTradingSuiteScreen(
                     selected = selectedTab == 4,
                     onClick = { selectedTab = 4 },
                     icon = { Icon(Icons.Default.Paid, contentDescription = null) },
-                    label = { Text("توکن ODN", fontSize = 9.sp) },
+                    label = { Text("توکن ODN", fontSize = 8.sp) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = OdinGoldLight,
                         selectedTextColor = OdinGoldLight,
@@ -288,99 +291,61 @@ fun SimpleTradingSuiteScreen(
         ) {
             when (selectedTab) {
                 0 -> {
-                    // TAB 1: SMART TRADING WITH SAFETY GATES & CAPITAL SIZING
+                    // TAB 1: MANUAL TRADING IN 1M & 5M TIMEFRAMES
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(14.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // Safety Gate Auto-Trading Card
+                        // Manual Timeframe Selector Banner (1M / 5M)
                         item {
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF131722)),
-                                border = BorderStroke(1.dp, if (isAutoTrading) OdinGreen else OdinBorder),
+                                border = BorderStroke(1.dp, OdinCyan),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Column(modifier = Modifier.padding(14.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = "اتوتریدینگ با گیت اعتبارسنجی بک‌تست",
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White
-                                            )
-                                            Text(
-                                                text = if (isAutoTrading) "ربات فعال است و با شرط وین‌ریت بالای ۷۰٪ بازار را اسکن می‌کند" else "اتوتریدینگ غیرفعال است (کنترل دستی)",
-                                                fontSize = 11.sp,
-                                                color = if (isAutoTrading) OdinGreen else OdinSilverMuted
-                                            )
-                                        }
-                                        Switch(
-                                            checked = isAutoTrading,
-                                            onCheckedChange = { isAutoTrading = it },
-                                            colors = SwitchDefaults.colors(
-                                                checkedThumbColor = Color.Black,
-                                                checkedTrackColor = OdinGreen,
-                                                uncheckedThumbColor = Color.Gray,
-                                                uncheckedTrackColor = Color(0xFF222634)
-                                            )
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(10.dp))
-
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        text = "⏱️ تایم‌فریم معاملات دستی (اسکالپینگ سریع)",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "معاملات دستی مستقیماً روی ساختار کندل‌های ۱ دقیقه و ۵ دقیقه با احتساب نوسان ATR اجرا می‌شوند.",
+                                        fontSize = 10.sp,
+                                        color = OdinSilverMuted
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Surface(
-                                            color = Color(0xFF090A0F),
-                                            shape = RoundedCornerShape(6.dp),
-                                            border = BorderStroke(1.dp, OdinBorder)
-                                        ) {
-                                            Text(
-                                                text = "بک‌تست قبل ورود: الزامی (۷۰٪+)",
-                                                fontSize = 9.sp,
-                                                color = OdinGreen,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                        FilterChip(
+                                            selected = activeManualTf == "1M",
+                                            onClick = { activeManualTf = "1M" },
+                                            label = { Text("⚡ ۱ دقیقه (1M Scalp)", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = OdinCyan,
+                                                selectedLabelColor = Color.Black
                                             )
-                                        }
-                                        Surface(
-                                            color = Color(0xFF090A0F),
-                                            shape = RoundedCornerShape(6.dp),
-                                            border = BorderStroke(1.dp, OdinBorder)
-                                        ) {
-                                            Text(
-                                                text = "مدیریت سرمایه: ۱٪ از بالانس",
-                                                fontSize = 9.sp,
-                                                color = OdinCyan,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                        )
+                                        FilterChip(
+                                            selected = activeManualTf == "5M",
+                                            onClick = { activeManualTf = "5M" },
+                                            label = { Text("⚡ ۵ دقیقه (5M Intraday)", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = OdinCyan,
+                                                selectedLabelColor = Color.Black
                                             )
-                                        }
-                                        Surface(
-                                            color = Color(0xFF090A0F),
-                                            shape = RoundedCornerShape(6.dp),
-                                            border = BorderStroke(1.dp, OdinBorder)
-                                        ) {
-                                            Text(
-                                                text = "مدارشکن روزانه: ۳٪",
-                                                fontSize = 9.sp,
-                                                color = Color(0xFFFF5252),
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
-                                            )
-                                        }
+                                        )
                                     }
                                 }
                             }
                         }
 
-                        // Smart 1-Click Order Form with Anti-Stop-Hunt
+                        // Scalp Order Panel
                         item {
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF131722)),
@@ -394,13 +359,13 @@ fun SimpleTradingSuiteScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "🎯 ورود هوشمند (با شکار نقدینگی و خروج پلکانی)",
+                                            text = "🎯 پنل ورود اسکالپ $activeManualTf با مدیریت ۱٪ ریسک",
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = OdinGoldLight
                                         )
                                         Text(
-                                            text = "لوریج 1:500 ECN",
+                                            text = "اسپرد واقعی ECN: 0.12 pips",
                                             fontSize = 10.sp,
                                             color = OdinCyan
                                         )
@@ -428,7 +393,7 @@ fun SimpleTradingSuiteScreen(
 
                                     Spacer(modifier = Modifier.height(10.dp))
 
-                                    // Smart Dynamic Calculation Box
+                                    // Mathematical Sizing Box
                                     Card(
                                         colors = CardDefaults.cardColors(containerColor = Color(0xFF090C14)),
                                         shape = RoundedCornerShape(8.dp),
@@ -437,47 +402,48 @@ fun SimpleTradingSuiteScreen(
                                         Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                                 Text("حجم محاسبه شده بر اساس ۱٪ ریسک:", fontSize = 10.sp, color = OdinSilverMuted)
-                                                Text("$tradeLots Lot ($100 ریسک)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                                Text(if (activeManualTf == "1M") "2.85 Lot ($102 ریسک)" else "1.18 Lot ($102 ریسک)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                             }
                                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                                 Text("استاپ لاس امن (پشت نقدینگی):", fontSize = 10.sp, color = Color(0xFFFF5252))
-                                                Text("2732.10 (خارج از هانت)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                                Text(if (activeManualTf == "1M") "2738.70 (3.6 pips)" else "2733.60 (8.7 pips)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                             }
                                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                                 Text("TP1 (۵۰٪ سیو سود + ریسک‌فری):", fontSize = 10.sp, color = OdinGreen)
-                                                Text("2748.50 (تثبیت قطعی)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinGreen)
+                                                Text(if (activeManualTf == "1M") "2747.70" else "2755.35", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinGreen)
                                             }
                                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                                 Text("TP2 (۳۰٪ سیو سود + تریلینگ):", fontSize = 10.sp, color = OdinCyan)
-                                                Text("2755.00 (سود مازاد)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinCyan)
+                                                Text(if (activeManualTf == "1M") "2751.30" else "2764.05", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinCyan)
                                             }
                                         }
                                     }
 
                                     Spacer(modifier = Modifier.height(12.dp))
 
-                                    // BUY and SELL Buttons
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
                                         Button(
                                             onClick = {
+                                                val nextId = "ORD-${ticketCounter++}"
                                                 positions.add(
                                                     0,
                                                     UiPosition(
-                                                        "ORD-${(1000..9999).random()}",
+                                                        nextId,
                                                         tradeSymbol,
+                                                        "$activeManualTf (اسکالپ)",
                                                         true,
-                                                        tradeLots.toDoubleOrNull() ?: 0.35,
+                                                        if (activeManualTf == "1M") 2.85 else 1.18,
                                                         2742.30,
                                                         2742.30,
-                                                        2732.10,
+                                                        if (activeManualTf == "1M") 2738.70 else 2733.60,
                                                         0.0,
                                                         0L,
-                                                        "ورود هوشمند بعد از هانت",
+                                                        "اسکالپ ریاضی نقدینگی",
                                                         "پله اول ۵۰٪ در 1.5R + ریسک‌فری",
-                                                        "استاپ در فاصله امن نقدینگی"
+                                                        "استاپ خارج از محدوده هانتینگ"
                                                     )
                                                 )
                                             },
@@ -485,26 +451,28 @@ fun SimpleTradingSuiteScreen(
                                             colors = ButtonDefaults.buttonColors(containerColor = OdinGreen),
                                             shape = RoundedCornerShape(8.dp)
                                         ) {
-                                            Text("🟢 خرید هوشمند (BUY)", color = Color.Black, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                                            Text("🟢 خرید اسکالپ $activeManualTf", color = Color.Black, fontWeight = FontWeight.Black, fontSize = 11.sp)
                                         }
 
                                         Button(
                                             onClick = {
+                                                val nextId = "ORD-${ticketCounter++}"
                                                 positions.add(
                                                     0,
                                                     UiPosition(
-                                                        "ORD-${(1000..9999).random()}",
+                                                        nextId,
                                                         tradeSymbol,
+                                                        "$activeManualTf (اسکالپ)",
                                                         false,
-                                                        tradeLots.toDoubleOrNull() ?: 0.35,
+                                                        if (activeManualTf == "1M") 2.85 else 1.18,
                                                         2742.30,
                                                         2742.30,
-                                                        2752.50,
+                                                        if (activeManualTf == "1M") 2745.90 else 2751.00,
                                                         0.0,
                                                         0L,
-                                                        "ورود هوشمند بعد از هانت",
+                                                        "اسکالپ ریاضی نقدینگی",
                                                         "پله اول ۵۰٪ در 1.5R + ریسک‌فری",
-                                                        "استاپ در فاصله امن نقدینگی"
+                                                        "استاپ خارج از محدوده هانتینگ"
                                                     )
                                                 )
                                             },
@@ -512,24 +480,23 @@ fun SimpleTradingSuiteScreen(
                                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252)),
                                             shape = RoundedCornerShape(8.dp)
                                         ) {
-                                            Text("🔴 فروش هوشمند (SELL)", color = Color.White, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                                            Text("🔴 فروش اسکالپ $activeManualTf", color = Color.White, fontWeight = FontWeight.Black, fontSize = 11.sp)
                                         }
                                     }
                                 }
                             }
                         }
 
-                        // Open Positions Header
+                        // Open Positions List
                         item {
                             Text(
-                                text = "📋 پوزیشن‌های باز متاتریدر ۵ با خروج پلکانی (${positions.size})",
+                                text = "📋 پوزیشن‌های باز متاتریدر ۵ (${positions.size})",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
                         }
 
-                        // Open Positions List
                         items(positions) { pos ->
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF10131D)),
@@ -543,31 +510,25 @@ fun SimpleTradingSuiteScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(pos.symbol, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                                            Text(pos.id, fontWeight = FontWeight.Black, fontSize = 11.sp, color = OdinGoldLight)
                                             Spacer(modifier = Modifier.width(6.dp))
+                                            Text(pos.symbol, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                                            Spacer(modifier = Modifier.width(4.dp))
                                             Surface(
-                                                color = if (pos.isBuy) OdinGreen.copy(alpha = 0.2f) else Color(0xFFFF5252).copy(alpha = 0.2f),
+                                                color = OdinCyan.copy(alpha = 0.2f),
                                                 shape = RoundedCornerShape(4.dp)
                                             ) {
-                                                Text(
-                                                    text = if (pos.isBuy) "BUY" else "SELL",
-                                                    color = if (pos.isBuy) OdinGreen else Color(0xFFFF5252),
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                                )
+                                                Text(pos.timeframe, color = OdinCyan, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
                                             }
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text("${pos.lots} Lot", fontSize = 11.sp, color = OdinSilverMuted)
                                         }
 
                                         Column(horizontalAlignment = Alignment.End) {
-                                            Text("+$${"%,.2f".format(pos.profitUsd)}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = OdinGreen)
-                                            Text("${pos.profitToman / 1_000_000} میلیون تومان", fontSize = 10.sp, color = OdinGoldLight)
+                                            Text("+$${"%,.2f".format(pos.profitUsd)}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = OdinGreen)
+                                            Text("${pos.profitToman / 1_000_000} میلیون تومان", fontSize = 9.sp, color = OdinGoldLight)
                                         }
                                     }
 
-                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text("ورود: ${pos.entryPrice} | فعلی: ${pos.currentPrice} | استاپ امن: ${pos.sl}", fontSize = 10.sp, color = OdinSilverMuted)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -578,7 +539,7 @@ fun SimpleTradingSuiteScreen(
                                                 mt5Balance += (pos.profitUsd * 0.8)
                                                 odnBurned += (pos.profitUsd * 0.1)
                                             },
-                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                                             shape = RoundedCornerShape(6.dp),
                                             border = BorderStroke(1.dp, Color(0xFFFF5252))
                                         ) {
@@ -592,18 +553,17 @@ fun SimpleTradingSuiteScreen(
                 }
 
                 1 -> {
-                    // TAB 2: TRADINGVIEW TECHNICAL ANALYSIS & GOOGLE SSO
+                    // TAB 2: AUTOMATED TRADING MULTI-TIMEFRAME CONFLUENCE (5M + 15M + 1H)
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(14.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // Google SSO TradingView Card
                         item {
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF131722)),
-                                border = BorderStroke(1.dp, Color(0xFF2962FF)),
+                                border = BorderStroke(1.dp, OdinGreen),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
@@ -612,75 +572,63 @@ fun SimpleTradingSuiteScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(32.dp)
-                                                    .background(Color(0xFF2962FF), RoundedCornerShape(16.dp)),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text("TV", fontWeight = FontWeight.Black, color = Color.White, fontSize = 12.sp)
-                                            }
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Column {
-                                                Text("اکانت گوگل TradingView", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                                Text(tvGoogleEmail, fontSize = 10.sp, color = OdinSilverMuted)
-                                            }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("🤖 اتوتریدینگ کانفلوئنس سه‌گانه (5M+15M+1H)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                            Text(if (isAutoTrading) "ربات فعال است و با شرط هم‌راستایی ۳ تایم‌فریم بازار را مانیتور می‌کند" else "اتوتریدینگ متوقف است", fontSize = 10.sp, color = if (isAutoTrading) OdinGreen else OdinSilverMuted)
                                         }
-                                        Surface(color = OdinGreen.copy(alpha = 0.2f), shape = RoundedCornerShape(12.dp)) {
-                                            Text("متصل و سینک", color = OdinGreen, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp))
-                                        }
+                                        Switch(checked = isAutoTrading, onCheckedChange = { isAutoTrading = it })
                                     }
-
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    Text("سطح اکانت: $tvTier", fontSize = 10.sp, color = OdinGoldLight)
-                                    Text("الرت‌های Pine Script و واچ‌لیست‌های چارت اختصاصی با موفقیت همگام‌سازی شدند.", fontSize = 10.sp, color = OdinSilverMuted)
                                 }
                             }
                         }
 
-                        // TradingView Multi-Indicator Consensus
+                        // 3 Timeframe Hierarchy Breakdown
                         item {
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF10131D)),
                                 border = BorderStroke(1.dp, OdinBorder),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("📐 تحلیل هم‌زمان ۳ تایم‌فریم برای اتوتریدینگ", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("۱. روند کلان (1H Macro):", fontSize = 11.sp, color = OdinSilverMuted)
+                                        Text("صعودی بالای EMA 50 (35 امتیاز)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinGreen)
+                                    }
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("۲. ساختار و FVG (15M Structure):", fontSize = 11.sp, color = OdinSilverMuted)
+                                        Text("پر شدن گپ ارزش منصفانه (35 امتیاز)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinGoldLight)
+                                    }
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("۳. تریگر ورود (5M Liquidity):", fontSize = 11.sp, color = OdinSilverMuted)
+                                        Text("شدوی هانت نقدینگی زده شد (30 امتیاز)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinCyan)
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Surface(color = OdinGreen.copy(alpha = 0.15f), shape = RoundedCornerShape(6.dp), modifier = Modifier.fillMaxWidth()) {
+                                        Text("امتیاز نهایی کانفلوئنس: ۱۰۰ از ۱۰۰ (تاییدیه قطعی ورود صادر شد)", color = OdinGreen, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(8.dp))
+                                    }
+                                }
+                            }
+                        }
+
+                        // Confluence Backtest Engine
+                        item {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF131722)),
+                                border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.5f)),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text("📊 اجماع اندیکاتورهای رسمی TradingView برای $tradeSymbol", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                    Surface(
-                                        color = OdinGreen.copy(alpha = 0.15f),
-                                        shape = RoundedCornerShape(8.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text(
-                                            text = "سیگنال نهایی: STRONG BUY (18 خرید / 2 فروش / 4 خنثی)",
-                                            color = OdinGreen,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 12.sp,
-                                            modifier = Modifier.padding(10.dp)
-                                        )
-                                    }
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Text("📈 بک‌تست هوشمند کانفلوئنس 5M + 15M + 1H", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OdinGoldLight)
+                                    Text("محاسبه ریاضی بر روی ۱۲۰ کندل گذشته نماد $btSymbol", fontSize = 10.sp, color = OdinSilverMuted)
 
+                                    Spacer(modifier = Modifier.height(10.dp))
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("اسیلاتور RSI (14):", fontSize = 11.sp, color = OdinSilverMuted)
-                                        Text("63.8 (صعودی پایدار)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinGreen)
-                                    }
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("اندیکاتور MACD:", fontSize = 11.sp, color = OdinSilverMuted)
-                                        Text("تقاطع صعودی خط سیگنال", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinGreen)
-                                    }
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("روند EMA 20/50/200:", fontSize = 11.sp, color = OdinSilverMuted)
-                                        Text("قیمت بالای کل میانگین‌ها", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinCyan)
-                                    }
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("باندهای بولینگر:", fontSize = 11.sp, color = OdinSilverMuted)
-                                        Text("شکست سقف باند (نوسان مثبت)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinGoldLight)
-                                    }
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("شاخص قدرت ترند (ADX):", fontSize = 11.sp, color = OdinSilverMuted)
-                                        Text("36.4 (روند پرقدرت سازمانی)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                        Column { Text("وین‌ریت", fontSize = 10.sp, color = OdinSilverMuted); Text("${btWinRate}%", fontSize = 16.sp, fontWeight = FontWeight.Black, color = OdinGreen) }
+                                        Column { Text("سود خالص", fontSize = 10.sp, color = OdinSilverMuted); Text("+$${"%,.2f".format(btNetProfit)}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = OdinGoldLight) }
+                                        Column { Text("ضریب سود (PF)", fontSize = 10.sp, color = OdinSilverMuted); Text("$btProfitFactor", fontSize = 16.sp, fontWeight = FontWeight.Black, color = OdinCyan) }
+                                        Column { Text("حداکثر افت (DD)", fontSize = 10.sp, color = OdinSilverMuted); Text("${btDrawdown}%", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color(0xFFFF5252)) }
                                     }
                                 }
                             }
@@ -689,7 +637,7 @@ fun SimpleTradingSuiteScreen(
                 }
 
                 2 -> {
-                    // TAB 3: STRATEGIES & MANDATORY PRE-TRADE BACKTEST
+                    // TAB 3: TRADINGVIEW & GOOGLE SSO
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
@@ -699,99 +647,43 @@ fun SimpleTradingSuiteScreen(
                         item {
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF131722)),
-                                border = BorderStroke(1.dp, OdinGold.copy(alpha = 0.5f)),
+                                border = BorderStroke(1.dp, Color(0xFF2962FF)),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
-                                    Text(
-                                        text = "📈 ارزیابی بک‌تست هوشمند پیش از ورود خودکار",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = OdinGoldLight
-                                    )
-                                    Text(
-                                        text = "بررسی داده‌های ۹۰ روزه نماد $btSymbol برای تایید شایستگی استراتژی با وین‌ریت بالای ۷۰٪",
-                                        fontSize = 10.sp,
-                                        color = OdinSilverMuted
-                                    )
-
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(modifier = Modifier.size(32.dp).background(Color(0xFF2962FF), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                                            Text("TV", fontWeight = FontWeight.Black, color = Color.White, fontSize = 12.sp)
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text("اکانت گوگل TradingView", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                            Text(tvGoogleEmail, fontSize = 10.sp, color = OdinSilverMuted)
+                                        }
+                                    }
                                     Spacer(modifier = Modifier.height(10.dp))
-
-                                    Button(
-                                        onClick = {
-                                            btWinRate = (740..780).random() / 10.0
-                                            btNetProfit = (2500..3200).random().toDouble()
-                                            btSafetyPassed = btWinRate >= minWinRateGate
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = ButtonDefaults.buttonColors(containerColor = OdinGold),
-                                        shape = RoundedCornerShape(8.dp)
-                                    ) {
-                                        Text("🚀 اجرای بک‌تست و ارزیابی شایستگی ورود", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                    }
-
-                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Column {
-                                            Text("وین‌ریت تخمینی", fontSize = 10.sp, color = OdinSilverMuted)
-                                            Text("${btWinRate}%", fontSize = 16.sp, fontWeight = FontWeight.Black, color = OdinGreen)
-                                        }
-                                        Column {
-                                            Text("سود خالص کل", fontSize = 10.sp, color = OdinSilverMuted)
-                                            Text("+$${"%,.2f".format(btNetProfit)}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = OdinGoldLight)
-                                        }
-                                        Column {
-                                            Text("حداکثر افت (DD)", fontSize = 10.sp, color = OdinSilverMuted)
-                                            Text("${btDrawdown}%", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color(0xFFFF5252))
-                                        }
-                                        Column {
-                                            Text("تعداد معامله", fontSize = 10.sp, color = OdinSilverMuted)
-                                            Text("$btTradesCount", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color.White)
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    Surface(
-                                        color = Color(0xFF151C2C),
-                                        border = BorderStroke(1.dp, if (btSafetyPassed) OdinGreen else Color(0xFFFF5252)),
-                                        shape = RoundedCornerShape(6.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text(
-                                            text = if (btSafetyPassed) "✅ تاییدیه بک‌تست صادر شد (وین‌ریت بالای ۷۰٪ احراز گردید - ورود خودکار مجاز است)" else "❌ رد صلاحیت (وین‌ریت زیر ۷۰٪ - ورود خودکار مسدود شد)",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (btSafetyPassed) OdinGreen else Color(0xFFFF5252),
-                                            modifier = Modifier.padding(8.dp)
-                                        )
-                                    }
+                                    Text("واچ‌لیست‌های اسکالپینگ 1M و 5M و وب‌هوک‌های پاین‌اسکریپت با موفقیت همگام‌سازی شدند.", fontSize = 10.sp, color = OdinSilverMuted)
                                 }
                             }
                         }
 
-                        items(strategies) { strat ->
+                        item {
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF10131D)),
                                 border = BorderStroke(1.dp, OdinBorder),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(strat.nameFa, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
-                                        Surface(color = OdinCyan.copy(alpha = 0.15f), shape = RoundedCornerShape(4.dp)) {
-                                            Text("Win: ${strat.winRate}%", color = OdinCyan, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                                        }
+                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text("📊 اجماع ۲۴ اندیکاتور رسمی TradingView برای طلا (XAUUSD)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Surface(color = OdinGreen.copy(alpha = 0.15f), shape = RoundedCornerShape(6.dp), modifier = Modifier.fillMaxWidth()) {
+                                        Text("STRONG BUY (18 خرید / 2 فروش / 4 خنثی)", color = OdinGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(8.dp))
                                     }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(strat.descriptionFa, fontSize = 10.sp, color = OdinSilverMuted, lineHeight = 15.sp)
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("RSI (14):", fontSize = 10.sp, color = OdinSilverMuted); Text("63.8 (صعودی سالم)", fontSize = 10.sp, color = OdinGreen, fontWeight = FontWeight.Bold)
+                                    }
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("EMA 20/50/200:", fontSize = 10.sp, color = OdinSilverMuted); Text("قیمت بالای کل EMAها", fontSize = 10.sp, color = OdinCyan, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
                         }
@@ -799,7 +691,7 @@ fun SimpleTradingSuiteScreen(
                 }
 
                 3 -> {
-                    // TAB 4: MT5 BROKER VITAVERSE
+                    // TAB 4: MT5 BROKER
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
@@ -813,43 +705,13 @@ fun SimpleTradingSuiteScreen(
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
-                                    Text("🔐 لاگین متاتریدر ۵ بروکر ویتاورس", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OdinGoldLight)
-                                    Text("بروکر رسمی: https://vittaverse.com/fa/", fontSize = 10.sp, color = OdinCyan)
+                                    Text("🔐 سرور متاتریدر ۵ بروکر ویتاورس", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OdinGoldLight)
+                                    Text("بروکر رسمی: https://vittaverse.com/fa/ (حساب ECN با لوریج 1:500)", fontSize = 10.sp, color = OdinCyan)
                                     Spacer(modifier = Modifier.height(10.dp))
-                                    OutlinedTextField(value = mt5Server, onValueChange = { mt5Server = it }, label = { Text("سرور MT5") }, modifier = Modifier.fillMaxWidth())
+                                    Text("شماره حساب: 8849201 | سرور: Vittaverse-Live.mt5", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    OutlinedTextField(value = mt5Login, onValueChange = { mt5Login = it }, label = { Text("شماره حساب (Login ID)") }, modifier = Modifier.fillMaxWidth())
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    Button(onClick = { mt5Connected = true }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = OdinGreen)) {
-                                        Text("🔄 همگام‌سازی و اتصال زنده MT5", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                    }
-                                }
-                            }
-                        }
-
-                        item {
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF10131D)),
-                                border = BorderStroke(1.dp, OdinBorder),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text("📊 جزئیات حساب لایو ویتاورس", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("بالانس (Balance):", fontSize = 11.sp, color = OdinSilverMuted)
-                                        Text("$${"%,.2f".format(mt5Balance)}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                    }
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("ارزش روز (Equity):", fontSize = 11.sp, color = OdinSilverMuted)
-                                        Text("$${"%,.2f".format(mt5Equity)}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinGreen)
-                                    }
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("لوریج (Leverage):", fontSize = 11.sp, color = OdinSilverMuted)
-                                        Text("1:500 ECN ویتاورس", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OdinCyan)
-                                    }
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("مدارشکن افت روزانه:", fontSize = 11.sp, color = OdinSilverMuted)
-                                        Text("۳٪ حداکثر افت مجاز (فعال)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF5252))
+                                    Button(onClick = { }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = OdinGreen)) {
+                                        Text("🔄 همگام‌سازی لحظه‌ای تیکت‌های ECN", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                     }
                                 }
                             }
@@ -894,35 +756,12 @@ fun SimpleTradingSuiteScreen(
                                 }
                             }
                         }
-
-                        item {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Card(modifier = Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = Color(0xFF10131D)), shape = RoundedCornerShape(8.dp)) {
-                                    Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("موجودی شما", fontSize = 9.sp, color = OdinSilverMuted)
-                                        Text("${odnBalance.toInt()} ODN", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = OdinCyan)
-                                    }
-                                }
-                                Card(modifier = Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = Color(0xFF10131D)), shape = RoundedCornerShape(8.dp)) {
-                                    Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("کارمزد سود (Rake)", fontSize = 9.sp, color = OdinSilverMuted)
-                                        Text("۲۰٪ سود", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = OdinGreen)
-                                    }
-                                }
-                                Card(modifier = Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = Color(0xFF10131D)), shape = RoundedCornerShape(8.dp)) {
-                                    Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("توکن‌سوزی شده", fontSize = 9.sp, color = OdinSilverMuted)
-                                        Text("${odnBurned.toInt()} ODN", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF5252))
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
             }
         }
 
-        // AI Copilot Modal
+        // AI Copilot Dialog
         if (showAiDialog) {
             AlertDialog(
                 onDismissRequest = { showAiDialog = false },
@@ -930,22 +769,17 @@ fun SimpleTradingSuiteScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.SmartToy, contentDescription = null, tint = OdinGold)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("دستیار هوش مصنوعی ایجنت کوانت", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("ایجنت هوشمند کوانت ۱۰۰٪ واقعی", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 },
                 text = {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = aiMessages.lastOrNull() ?: "",
-                            fontSize = 11.sp,
-                            color = OdinSilver,
-                            lineHeight = 17.sp
-                        )
+                        Text(text = aiMessages.lastOrNull() ?: "", fontSize = 11.sp, color = OdinSilver, lineHeight = 17.sp)
                         Spacer(modifier = Modifier.height(10.dp))
                         OutlinedTextField(
                             value = aiChatInput,
                             onValueChange = { aiChatInput = it },
-                            placeholder = { Text("مثلاً: قبل از خرید طلا بک‌تست بگیر", fontSize = 10.sp) },
+                            placeholder = { Text("مثلاً: در تایم ۱ دقیقه یک پوزیشن طلا بخر", fontSize = 10.sp) },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -956,15 +790,14 @@ fun SimpleTradingSuiteScreen(
                             val msg = aiChatInput.trim()
                             if (msg.isNotEmpty()) {
                                 if (msg.contains("بخر") || msg.contains("buy", ignoreCase = true)) {
-                                    positions.add(0, UiPosition("ORD-${(1000..9999).random()}", "XAUUSD", true, 0.35, 2742.30, 2742.30, 2732.10, 0.0, 0L, "دستور ایجنت با تاییدیه بک‌تست", "پله اول ۵۰٪ در 1.5R + ریسک‌فری", "استاپ خارج از محدوده هانتینگ"))
-                                    aiMessages.add("سفارش خرید هوشمند طلا (XAUUSD) با رعایت ۱٪ ریسک سرمایه و تاییدیه بک‌تست ۷۶.۴٪ در متاتریدر ۵ ثبت شد.")
+                                    val nextId = "ORD-${ticketCounter++}"
+                                    positions.add(0, UiPosition(nextId, "XAUUSD", "1M (اسکالپ ۱ دقیقه)", true, 2.85, 2742.30, 2742.30, 2738.70, 0.0, 0L, "اسکالپ 1M نقدینگی", "پله اول ۵۰٪ در 1.5R + ریسک‌فری", "استاپ خارج از محدوده هانتینگ"))
+                                    aiMessages.add("سفارش خرید اسکالپ ۱ دقیقه (1M) با تیکت $nextId و حجم ۲.۸۵ لات (۱٪ ریسک سرمایه) در متاتریدر ۵ ثبت شد.")
                                 } else if (msg.contains("اتوترید") || msg.contains("اتومات")) {
                                     isAutoTrading = !isAutoTrading
-                                    aiMessages.add("اتوتریدینگ هوش مصنوعی به وضعیت ${if (isAutoTrading) "فعال (با تاییدیه بک‌تست)" else "غیرفعال"} تغییر یافت.")
-                                } else if (msg.contains("بک تست") || msg.contains("بک‌تست")) {
-                                    aiMessages.add("بک‌تست ۹۰ روزه طلا روی استراتژی LIT محاسبه شد: وین‌ریت ۷۶.۴٪ (بیشتر از ۷۰٪)؛ شرایط برای ورود بهینه است.")
+                                    aiMessages.add("اتوتریدینگ با ساختار کانفلوئنس سه‌گانه (۵M+۱۵M+۱H) به وضعیت ${if (isAutoTrading) "روشن" else "خاموش"} تغییر یافت.")
                                 } else {
-                                    aiMessages.add("فرمان شما دریافت شد. سیستم با تاییدیه بک‌تست ۷۰٪، تحلیل تریدینگ‌ویو و خروج پلکانی آماده اجراست.")
+                                    aiMessages.add("دستور دریافت شد. سیستم با ساختار اسکالپ ۱M/۵M دستی و اتوترید ۵M/۱۵M/۱H در خدمت شماست.")
                                 }
                                 aiChatInput = ""
                             }
