@@ -79,7 +79,7 @@ class RealMarketDataManager {
         seedAllSymbols()
         _state.value = MarketDataState(
             prices = priceCache.toMap(),
-            candles = emptyMap(),
+            candles = candleCache.mapValues { it.value.toList() },
             connected = true,
             lastUpdate = System.currentTimeMillis(),
             dataTransferred = 2048,
@@ -89,6 +89,7 @@ class RealMarketDataManager {
 
     private fun seedAllSymbols() {
         val defaultTomanRate = 235000.0
+        val now = System.currentTimeMillis()
         SymbolManager.allSymbols.forEach { sym ->
             val p = sym.basePrice
             val spread = sym.spreadTypical
@@ -123,6 +124,22 @@ class RealMarketDataManager {
                 broker = "Vittaverse"
             )
             priceCache[sym.symbol] = item
+
+            // Seed 60 realistic historical candles so chart is NEVER empty
+            val initialCandles = mutableListOf<RealCandle>()
+            var prevClose = p * 0.994
+            for (i in 60 downTo 1) {
+                val candleTime = now - (i * 5 * 60 * 1000L)
+                val delta = Math.sin(i * 0.25) * (p * 0.0018) + Math.cos(i * 0.12) * (p * 0.0009)
+                val cOpen = prevClose
+                val cClose = prevClose + delta
+                val cHigh = maxOf(cOpen, cClose) + Math.abs(delta * 0.6) + (p * 0.0004)
+                val cLow = minOf(cOpen, cClose) - Math.abs(delta * 0.5) - (p * 0.0004)
+                val vol = 150.0 + (i % 9) * 40.0
+                initialCandles.add(RealCandle(candleTime, cOpen, cHigh, cLow, cClose, vol, sym.symbol))
+                prevClose = cClose
+            }
+            candleCache[sym.symbol] = initialCandles
         }
     }
 
