@@ -45,7 +45,9 @@ SYMBOL_SPECS = {
         "trading_hours": "۲۴ ساعته (دوشنبه ۰۱:۰۰ الی جمعه ۲۳:۵۵ به وقت تهران)",
         "margin_currency": "USD",
         "base_reference_price": 2742.30,
+        "atr_4h": 26.00,
         "atr_1h": 14.50,
+        "atr_30m": 9.80,
         "atr_15m": 6.80,
         "atr_5m": 3.40,
         "atr_1m": 1.50
@@ -66,7 +68,9 @@ SYMBOL_SPECS = {
         "trading_hours": "۲۴ ساعته (دوشنبه ۰۰:۰۵ الی جمعه ۲۳:۵۵ به وقت تهران)",
         "margin_currency": "USD",
         "base_reference_price": 1.08450,
+        "atr_4h": 0.0085,
         "atr_1h": 0.0048,
+        "atr_30m": 0.0032,
         "atr_15m": 0.0022,
         "atr_5m": 0.0011,
         "atr_1m": 0.0005
@@ -2446,7 +2450,7 @@ class TradeSenseRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         elif url.path == '/api/candles':
             sym = params.get('symbol', ['XAUUSD'])[0]
-            tf = params.get('tf', ['15M'])[0]
+            tf = params.get('tf', params.get('timeframe', ['15M']))[0]
             candles = market_engine.get_candles(sym, tf, 120)
             self._send_json({
                 "symbol": sym,
