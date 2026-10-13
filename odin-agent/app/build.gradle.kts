@@ -17,8 +17,8 @@ android {
     applicationId = "com.odin.agent"
     minSdk = 26
     targetSdk = 36
-    versionCode = 33
-    versionName = "1.0.30-receiver-wallet"
+    versionCode = 34
+    versionName = "1.0.31-tv-backtest-quant"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
