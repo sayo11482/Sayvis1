@@ -160,20 +160,20 @@ jobs:
           cp odin-agent/app/build/outputs/apk/debug/app-debug.apk "$OUT"
           sha256sum "$OUT" > "$OUT.sha256"
           cat > release-notes.md <<EOF
-          ODIN.TRADE PRO v${VERSION} (build ${GITHUB_RUN_NUMBER}) - SEVINEX TECHNOLOGIES
-          زیرمجموعه تجاری و انحصاری شرکت سوینکس (غیر اوپن‌سورس)
+          TradeSense AI v${VERSION} (build ${GITHUB_RUN_NUMBER})
+          دستیار هوشمند پژوهش، تحلیل و آموزش بازار (Research-Only Assistant)
 
-          ویژگی‌های نسخه نهایی پرو:
-          - اصلاح کامل فونت‌ها و تایپوگرافی خوانا با دسته‌بندی شکیل
-          - چارت به روز زنده با نمایش خطوط دقیق ورود، حد سود TP، حد ضرر SL، سر‌به‌سر و تریلینگ استاپ
-          - نمایش جزئیات کامل استراتژی تست روی چارت
-          - ۱۸ ماژول پیشرفته کوانت لایو
-          - سیستم واریز دلاری USDT و برداشت توکن/دلار با ۵٪ کارمزد خروج برای سوینکس
-          - بازی معاملاتی و مسابقات تورنمنتی با ۲۰٪ سهم سود سوینکس
-          - ۴۵ آزمون سیستم ۱۰۰٪ پاس شده و بدون باگ
+          ویژگی‌های این نسخه:
+          - تحلیل ساختار چند تایم‌فریمه طلا (XAUUSD) و یورو/دلار (EURUSD)
+          - پایش بلادرنگ قیمت، اسپرد و داده‌های ECN بروکر ویتاورس (MT5)
+          - سناریوهای سه‌گانه اخبار کلان (فدرال رزرو، CPI، NFP، ECB) با شرایط ابطال
+          - ستاپ‌های توضیحی ۹ گانه همراه با استاپ لاس ساختاری و تارگت‌های فرضی
+          - ماژول بک‌تست تاریخی علمی با احتساب واقعی هزینه‌های اسپرد و اسلیپیج
+          - ژورنال پژوهشی تمرینی بدون دخالت در حساب واقعی
+          - سیستم هشدار صوتی هوشمند با قابلیت قطع صدا و تاریخچه اخطارها
           EOF
           gh release create "$TAG" "$OUT" "$OUT.sha256" \
             --target "$GITHUB_SHA" \
-            --title "ODIN.TRADE PRO ${VERSION} (build ${GITHUB_RUN_NUMBER}) - Sevinex Exclusive" \
+            --title "TradeSense AI ${VERSION} (build ${GITHUB_RUN_NUMBER}) - Research Release" \
             --notes-file release-notes.md \
             --prerelease

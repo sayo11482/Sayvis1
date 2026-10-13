@@ -186,19 +186,19 @@ fun SimpleTradingSuiteScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "ODIN.TRADE",
+                            text = "TradeSense AI",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Black,
                             color = OdinGoldLight
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
-                            color = OdinGreen.copy(alpha = 0.2f),
+                            color = OdinCyan.copy(alpha = 0.2f),
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Text(
-                                text = "ترید واقعی",
-                                color = OdinGreen,
+                                text = "حالت پژوهشی (Research-Only)",
+                                color = OdinCyan,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
@@ -784,7 +784,7 @@ fun SimpleTradingSuiteScreen(
                                     colors = ButtonDefaults.buttonColors(containerColor = OdinGreen),
                                     shape = RoundedCornerShape(10.dp)
                                 ) {
-                                    Text("🟢 خرید واقعی (BUY $lotSize Lot)", color = Color.Black, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                                    Text("🟢 ثبت پژوهشی خرید (Paper Buy)", color = Color.Black, fontWeight = FontWeight.Black, fontSize = 11.sp)
                                 }
 
                                 Button(
@@ -815,7 +815,7 @@ fun SimpleTradingSuiteScreen(
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252)),
                                     shape = RoundedCornerShape(10.dp)
                                 ) {
-                                    Text("🔴 فروش واقعی (SELL $lotSize Lot)", color = Color.White, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                                    Text("🔴 ثبت پژوهشی فروش (Paper Sell)", color = Color.White, fontWeight = FontWeight.Black, fontSize = 11.sp)
                                 }
                             }
                         }
