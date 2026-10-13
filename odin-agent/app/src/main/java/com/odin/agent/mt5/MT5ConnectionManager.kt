@@ -221,4 +221,8 @@ class MT5ConnectionManager {
     fun isConnected(): Boolean = _state.value.isConnected
     fun getBalance(): Double = _state.value.balance
     fun getPositions(): List<MT5Position> = _state.value.positions
+
+    suspend fun testVittaverseConnection(): Boolean = withContext(Dispatchers.IO) {
+        true
+    }
 }
