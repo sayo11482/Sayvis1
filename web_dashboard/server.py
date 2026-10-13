@@ -224,6 +224,9 @@ class MarketDataEngine:
         actual_spread = round(ask - bid, digits)
         actual_spread_pips = round(actual_spread / specs["pip_size"], 1)
 
+        high_24h = round(base + (specs["atr_1h"] * 0.75), digits)
+        low_24h = round(base - (specs["atr_1h"] * 0.85), digits)
+
         age_seconds = round(now - self.last_update_time, 1)
         is_stale = age_seconds > 30.0
 
@@ -235,6 +238,8 @@ class MarketDataEngine:
             "ask": ask,
             "spread_usd": actual_spread,
             "spread_pips": actual_spread_pips,
+            "high_24h": high_24h,
+            "low_24h": low_24h,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(now)),
             "age_seconds": age_seconds,
             "data_freshness": "منقضی (Stale)" if is_stale else "تازه (Fresh)",
@@ -250,7 +255,7 @@ class MarketDataEngine:
         atr = specs.get(f"atr_{timeframe.lower()}", specs["atr_15m"])
         digits = specs["digits"]
         now = int(time.time())
-        tf_seconds = {"1M": 60, "5M": 300, "15M": 900, "1H": 3600}.get(timeframe, 900)
+        tf_seconds = {"1M": 60, "5M": 300, "15M": 900, "30M": 1800, "1H": 3600, "4H": 14400}.get(timeframe, 900)
 
         candles = []
         price = base - (atr * 3.5)
@@ -1073,6 +1078,17 @@ HTML_CONTENT = """<!DOCTYPE html>
     }
 
     /* Price Ticker Cards */
+    @keyframes flashGreen {
+      0% { background: rgba(0, 230, 118, 0.35); border-color: var(--green); }
+      100% { background: var(--card-surface); border-color: var(--border); }
+    }
+    @keyframes flashRed {
+      0% { background: rgba(255, 82, 82, 0.35); border-color: var(--red); }
+      100% { background: var(--card-surface); border-color: var(--border); }
+    }
+    .flash-up { animation: flashGreen 0.7s ease-out; }
+    .flash-down { animation: flashRed 0.7s ease-out; }
+
     .ticker-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
     @media (max-width: 480px) { .ticker-grid { grid-template-columns: 1fr; } }
     .ticker-card {
@@ -1207,6 +1223,10 @@ HTML_CONTENT = """<!DOCTYPE html>
             <span>اسپرد: <b id="dashSpreadXAU">3.2</b> pips</span>
             <span>بید/اسک: <span id="dashBidAskXAU">2742.14 / 2742.46</span></span>
           </div>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:5px; display:flex; justify-content:space-between; border-top:1px dashed rgba(255,255,255,0.08); padding-top:4px">
+            <span>سقف ۲۴س: <b style="color:var(--green)" id="dashHighXAU">2753.18</b></span>
+            <span>کف ۲۴س: <b style="color:var(--red)" id="dashLowXAU">2729.98</b></span>
+          </div>
         </div>
 
         <div class="ticker-card" id="cardEUR" onclick="selectSymbol('EURUSD')">
@@ -1218,6 +1238,10 @@ HTML_CONTENT = """<!DOCTYPE html>
           <div class="ticker-details">
             <span>اسپرد: <b id="dashSpreadEUR">1.2</b> pips</span>
             <span>بید/اسک: <span id="dashBidAskEUR">1.08444 / 1.08456</span></span>
+          </div>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:5px; display:flex; justify-content:space-between; border-top:1px dashed rgba(255,255,255,0.08); padding-top:4px">
+            <span>سقف ۲۴س: <b style="color:var(--green)" id="dashHighEUR">1.08810</b></span>
+            <span>کف ۲۴س: <b style="color:var(--red)" id="dashLowEUR">1.08042</b></span>
           </div>
         </div>
       </div>
@@ -1233,8 +1257,14 @@ HTML_CONTENT = """<!DOCTYPE html>
             <div class="chip" onclick="changeTimeframe('1M')">1M</div>
             <div class="chip" onclick="changeTimeframe('5M')">5M</div>
             <div class="chip active" onclick="changeTimeframe('15M')">15M</div>
+            <div class="chip" onclick="changeTimeframe('30M')">30M</div>
             <div class="chip" onclick="changeTimeframe('1H')">1H</div>
+            <div class="chip" onclick="changeTimeframe('4H')">4H</div>
           </div>
+        </div>
+
+        <div id="chartHud" style="font-size:11px; font-family:monospace; margin-bottom:6px; color:var(--accent-cyan); display:flex; gap:10px; flex-wrap:wrap; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.05)">
+          <span>لمس انگشت روی کندل‌ها جهت مشاهده جزئیات قیمت (Crosshair Active)</span>
         </div>
 
         <div class="chart-box">
@@ -1570,6 +1600,9 @@ HTML_CONTENT = """<!DOCTYPE html>
     let currentLang = 'FA';
     let quotes = {};
     let candlesData = [];
+    let chartCrosshair = null;
+    let prevPriceXAU = 0;
+    let prevPriceEUR = 0;
 
     // Switch Tab
     function switchTab(tabId) {
@@ -1668,7 +1701,7 @@ HTML_CONTENT = """<!DOCTYPE html>
       fetchCandlesAndRender();
     }
 
-    // Fetch Market Data with connection error recovery
+    // Fetch Market Data with connection error recovery & live flash ticks
     async function fetchMarketQuotes() {
       try {
         const res = await fetch('/api/markets');
@@ -1677,15 +1710,37 @@ HTML_CONTENT = """<!DOCTYPE html>
         quotes = data;
 
         if (data.XAUUSD) {
+          const cardX = document.getElementById('cardXAU');
+          if (cardX && prevPriceXAU > 0 && data.XAUUSD.bid !== prevPriceXAU) {
+            cardX.classList.remove('flash-up', 'flash-down');
+            void cardX.offsetWidth;
+            cardX.classList.add(data.XAUUSD.bid > prevPriceXAU ? 'flash-up' : 'flash-down');
+          }
+          prevPriceXAU = data.XAUUSD.bid;
+
           document.getElementById('dashPriceXAU').textContent = `$${data.XAUUSD.bid.toFixed(2)}`;
           document.getElementById('dashSpreadXAU').textContent = `${data.XAUUSD.spread_pips}`;
           document.getElementById('dashBidAskXAU').textContent = `${data.XAUUSD.bid} / ${data.XAUUSD.ask}`;
+          if (data.XAUUSD.high_24h) document.getElementById('dashHighXAU').textContent = data.XAUUSD.high_24h;
+          if (data.XAUUSD.low_24h) document.getElementById('dashLowXAU').textContent = data.XAUUSD.low_24h;
         }
+
         if (data.EURUSD) {
+          const cardE = document.getElementById('cardEUR');
+          if (cardE && prevPriceEUR > 0 && data.EURUSD.bid !== prevPriceEUR) {
+            cardE.classList.remove('flash-up', 'flash-down');
+            void cardE.offsetWidth;
+            cardE.classList.add(data.EURUSD.bid > prevPriceEUR ? 'flash-up' : 'flash-down');
+          }
+          prevPriceEUR = data.EURUSD.bid;
+
           document.getElementById('dashPriceEUR').textContent = `$${data.EURUSD.bid.toFixed(5)}`;
           document.getElementById('dashSpreadEUR').textContent = `${data.EURUSD.spread_pips}`;
           document.getElementById('dashBidAskEUR').textContent = `${data.EURUSD.bid} / ${data.EURUSD.ask}`;
+          if (data.EURUSD.high_24h) document.getElementById('dashHighEUR').textContent = data.EURUSD.high_24h;
+          if (data.EURUSD.low_24h) document.getElementById('dashLowEUR').textContent = data.EURUSD.low_24h;
         }
+
         const st = document.getElementById('freshnessStatus');
         if (st && data.XAUUSD) {
           st.textContent = `● وضعیت فید: ${data.XAUUSD.data_freshness}`;
@@ -1802,6 +1857,95 @@ HTML_CONTENT = """<!DOCTYPE html>
       ctx.moveTo(0, slY);
       ctx.lineTo(w, slY);
       ctx.stroke();
+
+      // Crosshair & Tooltip Overlay
+      if (chartCrosshair) {
+        const touchIdx = Math.max(0, Math.min(candles.length - 1, Math.floor(chartCrosshair.x / cW)));
+        const sc = candles[touchIdx];
+        const cx = touchIdx * cW + (cW / 2);
+        const cy = Math.max(10, Math.min(h - 10, chartCrosshair.y));
+        const touchPrice = (minLow + ((h - cy) / h) * range).toFixed(currentSymbol === 'EURUSD' ? 5 : 2);
+
+        // Vertical crosshair line
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(cx, 0);
+        ctx.lineTo(cx, h);
+        ctx.stroke();
+
+        // Horizontal crosshair line
+        ctx.beginPath();
+        ctx.moveTo(0, cy);
+        ctx.lineTo(w, cy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Price badge pill on right
+        ctx.fillStyle = '#141c2e';
+        ctx.fillRect(w - 72, cy - 10, 72, 20);
+        ctx.strokeStyle = '#00b4d8';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(w - 72, cy - 10, 72, 20);
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px monospace';
+        ctx.fillText(touchPrice, w - 66, cy + 4);
+
+        // Time badge pill at bottom
+        ctx.fillStyle = '#141c2e';
+        ctx.fillRect(cx - 26, h - 18, 52, 18);
+        ctx.strokeStyle = '#00b4d8';
+        ctx.strokeRect(cx - 26, h - 18, 52, 18);
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillText(sc.time_str || '', cx - 14, h - 5);
+
+        // Update HUD
+        const hud = document.getElementById('chartHud');
+        if (hud) {
+          const isUp = sc.close >= sc.open;
+          const cCol = isUp ? 'var(--green)' : 'var(--red)';
+          hud.innerHTML = `
+            <span><b>${sc.time_str}</b></span>
+            <span>O: <b>${sc.open}</b></span>
+            <span>H: <b>${sc.high}</b></span>
+            <span>L: <b>${sc.low}</b></span>
+            <span style="color:${cCol}">C: <b>${sc.close}</b></span>
+            <span style="color:var(--text-muted)">لمس: $${touchPrice}</span>
+          `;
+        }
+      }
+
+      if (!canvas._eventsAttached) {
+        canvas._eventsAttached = true;
+        canvas.addEventListener('mousemove', e => {
+          const rect = canvas.getBoundingClientRect();
+          chartCrosshair = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+          renderChart();
+        });
+        canvas.addEventListener('mouseleave', () => {
+          chartCrosshair = null;
+          renderChart();
+        });
+        canvas.addEventListener('touchstart', e => {
+          if (e.touches.length > 0) {
+            const rect = canvas.getBoundingClientRect();
+            chartCrosshair = { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+            renderChart();
+          }
+        }, {passive: true});
+        canvas.addEventListener('touchmove', e => {
+          if (e.touches.length > 0) {
+            const rect = canvas.getBoundingClientRect();
+            chartCrosshair = { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+            renderChart();
+          }
+        }, {passive: true});
+        canvas.addEventListener('touchend', () => {
+          chartCrosshair = null;
+          renderChart();
+        });
+      }
     }
 
     // Load Analysis
@@ -2187,8 +2331,8 @@ HTML_CONTENT = """<!DOCTYPE html>
       });
     }
 
-    // Auto-update loop
-    setInterval(fetchMarketQuotes, 3000);
+    // Auto-update loop (Fast 1.5s live market tick engine)
+    setInterval(fetchMarketQuotes, 1500);
     window.addEventListener('resize', renderChart);
 
     // Initial Load
