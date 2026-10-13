@@ -883,8 +883,65 @@ class TradeJournalStore:
 journal_store = TradeJournalStore()
 
 # =====================================================================
-# 9. PWA MOBILE-FIRST RESPONSIVE FRONTEND (HTML / CSS / JS)
+# 9. PWA MANIFEST, SERVICE WORKER & MOBILE-FIRST FRONTEND
 # =====================================================================
+
+PWA_MANIFEST_DATA = {
+    "name": "TradeSense AI — Market Research Terminal",
+    "short_name": "TradeSense AI",
+    "description": "دستیار هوشمند پژوهش بازار و تحلیل تکنیکال XAUUSD و EURUSD (ویتاورس MT5)",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#080c15",
+    "theme_color": "#080c15",
+    "orientation": "portrait-primary",
+    "lang": "fa",
+    "dir": "rtl",
+    "icons": [
+        {
+            "src": "/icon.svg",
+            "sizes": "192x192 512x512",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}
+
+PWA_SW_JS = """// TradeSense AI Service Worker - Offline Shell Caching
+const CACHE_NAME = 'tradesense-cache-v1';
+const STATIC_ASSETS = ['/', '/manifest.json', '/icon.svg'];
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('fetch', event => {
+  if (event.request.method === 'GET' && !event.request.url.includes('/api/')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+  }
+});
+"""
+
+PWA_ICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="100" fill="#080c15"/>
+  <circle cx="256" cy="256" r="220" fill="#0f1523" stroke="#1d273d" stroke-width="8"/>
+  <path d="M160 340 L160 220 M160 270 L160 240" stroke="#00e676" stroke-width="12" stroke-linecap="round"/>
+  <rect x="144" y="240" width="32" height="60" rx="4" fill="#00e676"/>
+  <path d="M256 380 L256 160 M256 310 L256 200" stroke="#00b4d8" stroke-width="12" stroke-linecap="round"/>
+  <rect x="240" y="200" width="32" height="90" rx="4" fill="#00b4d8"/>
+  <path d="M352 300 L352 180 M352 260 L352 210" stroke="#f5b041" stroke-width="12" stroke-linecap="round"/>
+  <rect x="336" y="210" width="32" height="60" rx="4" fill="#f5b041"/>
+  <text x="256" y="440" font-family="sans-serif" font-size="44" font-weight="900" fill="#e2e8f0" text-anchor="middle" letter-spacing="4">TRADESENSE</text>
+</svg>"""
 
 HTML_CONTENT = """<!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -894,6 +951,9 @@ HTML_CONTENT = """<!DOCTYPE html>
   <title>TradeSense AI — دستیار هوشمند پژوهش، تحلیل و آموزش بازار</title>
   <meta name="theme-color" content="#080c15">
   <meta name="description" content="TradeSense AI - دستیار پیشرفته پژوهش بازار و تحلیل تکنیکال XAUUSD و EURUSD">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1431,6 +1491,7 @@ HTML_CONTENT = """<!DOCTYPE html>
             <input type="text" id="jrnPsychology" class="input" placeholder="وضعیت روانی تریدر" value="آرام و با رعایت کامل پلن">
           </div>
           <input type="text" id="jrnNotes" class="input" placeholder="استراتژی و دلایل ورود" value="تاییدیه هانت نقدینگی در تایم ۵ دقیقه + پر شدن گپ ارزش منصفانه" style="margin-bottom:8px">
+          <div id="jrnFeedback" style="display:none; font-size:11px; margin-bottom:8px; padding:6px 10px; border-radius:6px;"></div>
           <button class="btn" onclick="saveJournalEntry()">ذخیره در ژورنال پژوهشی</button>
         </div>
 
@@ -1474,6 +1535,13 @@ HTML_CONTENT = """<!DOCTYPE html>
             <div class="field-label">۴. ساختار ابزار و کمینه بودن هزینه‌ها:</div>
             <div class="field-val">
               تمام ماژول‌ها بر پایه فناوری‌های مدرن بومی وب طراحی شده و نیازی به خرید اشتراک ماهانه دیتابیس یا سرورهای گران‌قیمت خارجی ندارد.
+            </div>
+          </div>
+          <div class="field-row" style="background:rgba(58,134,255,0.05); border-color:rgba(58,134,255,0.3)">
+            <div class="field-label" style="color:var(--accent-blue)">۵. ممیزی اتصال فایروال و شبکه:</div>
+            <div class="field-val">
+              <button class="btn btn-secondary" onclick="checkLiveConnectivity()" style="margin-top:6px; font-size:11px">🔄 استعلام مجدد وضعیت شبکه و بروکر (Re-check Connectivity)</button>
+              <div id="connAuditResult" style="margin-top:8px; font-size:11px; display:none;"></div>
             </div>
           </div>
         </div>
@@ -1600,10 +1668,11 @@ HTML_CONTENT = """<!DOCTYPE html>
       fetchCandlesAndRender();
     }
 
-    // Fetch Market Data
+    // Fetch Market Data with connection error recovery
     async function fetchMarketQuotes() {
       try {
         const res = await fetch('/api/markets');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         quotes = data;
 
@@ -1617,9 +1686,18 @@ HTML_CONTENT = """<!DOCTYPE html>
           document.getElementById('dashSpreadEUR').textContent = `${data.EURUSD.spread_pips}`;
           document.getElementById('dashBidAskEUR').textContent = `${data.EURUSD.bid} / ${data.EURUSD.ask}`;
         }
-        document.getElementById('freshnessStatus').textContent = `● داده‌ها تازه (${data.XAUUSD.data_freshness})`;
+        const st = document.getElementById('freshnessStatus');
+        if (st && data.XAUUSD) {
+          st.textContent = `● وضعیت فید: ${data.XAUUSD.data_freshness}`;
+          st.style.color = data.XAUUSD.is_stale ? 'var(--gold)' : 'var(--green)';
+        }
       } catch (e) {
         console.error('Fetch quotes failed', e);
+        const st = document.getElementById('freshnessStatus');
+        if (st) {
+          st.textContent = '⚠️ عدم دسترسی به سرور / اتصال آفلاین (Connection Lost - Retrying...)';
+          st.style.color = 'var(--red)';
+        }
       }
     }
 
@@ -1997,24 +2075,92 @@ HTML_CONTENT = """<!DOCTYPE html>
     }
 
     async function saveJournalEntry() {
+      const entry = parseFloat(document.getElementById('jrnEntry').value);
+      const sl = parseFloat(document.getElementById('jrnSl').value);
+      const tp = parseFloat(document.getElementById('jrnTp').value);
+      const type = document.getElementById('jrnType').value;
+      const feedback = document.getElementById('jrnFeedback');
+
+      if (isNaN(entry) || isNaN(sl) || isNaN(tp) || entry <= 0 || sl <= 0 || tp <= 0) {
+        if (feedback) {
+          feedback.style.display = 'block';
+          feedback.textContent = '⚠️ لطفاً مقادیر عددی معتبر برای قیمت ورود، استاپ و تارگت وارد نمایید.';
+          feedback.style.color = 'var(--red)';
+        }
+        return;
+      }
+
+      // Logical check for direction
+      if (type.includes('خرید') && sl >= entry) {
+        if (feedback) {
+          feedback.style.display = 'block';
+          feedback.textContent = '⚠️ در پوزیشن خرید، حد ضرر (SL) باید پایین‌تر از نقطه ورود باشد.';
+          feedback.style.color = 'var(--gold)';
+        }
+        return;
+      }
+      if (type.includes('فروش') && sl <= entry) {
+        if (feedback) {
+          feedback.style.display = 'block';
+          feedback.textContent = '⚠️ در پوزیشن فروش، حد ضرر (SL) باید بالاتر از نقطه ورود باشد.';
+          feedback.style.color = 'var(--gold)';
+        }
+        return;
+      }
+
       const payload = {
         symbol: document.getElementById('jrnSymbol').value,
-        type: document.getElementById('jrnType').value,
-        planned_entry: parseFloat(document.getElementById('jrnEntry').value) || 2742.30,
-        planned_sl: parseFloat(document.getElementById('jrnSl').value) || 2738.50,
-        planned_tp: parseFloat(document.getElementById('jrnTp').value) || 2748.00,
+        type: type,
+        planned_entry: entry,
+        planned_sl: sl,
+        planned_tp: tp,
         hypothetical_lots: 0.50,
         strategy: "تحلیل پرایس‌اکشن و نقدینگی",
         psychology: document.getElementById('jrnPsychology').value,
         outcome: "در حال بررسی پژوهشی",
         notes: document.getElementById('jrnNotes').value
       };
-      await fetch('/api/journal/add', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-      });
-      loadJournal();
+
+      try {
+        const res = await fetch('/api/journal/add', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          if (feedback) {
+            feedback.style.display = 'block';
+            feedback.textContent = '✅ یادداشت معامله پژوهشی با موفقیت در ژورنال ذخیره شد.';
+            feedback.style.color = 'var(--green)';
+            setTimeout(() => { feedback.style.display = 'none'; }, 4000);
+          }
+          loadJournal();
+        }
+      } catch (e) {
+        console.error('Save journal failed', e);
+      }
+    }
+
+    // Live Connectivity Check for Settings Tab
+    async function checkLiveConnectivity() {
+      const box = document.getElementById('connAuditResult');
+      if (!box) return;
+      box.style.display = 'block';
+      box.innerHTML = '<span style="color:var(--accent-cyan)">در حال استعلام وضعیت فایروال و شبکه سندباکس...</span>';
+      try {
+        const res = await fetch('/api/connectivity');
+        const data = await res.json();
+        box.innerHTML = `
+          <div style="padding:8px; background:var(--card-surface); border:1px solid var(--border); border-radius:6px; line-height:1.6">
+            <div><b>سوکت لایو متاتریدر:</b> <span style="color:var(--red)">${data.live_broker_socket}</span></div>
+            <div><b>وضعیت فایروال:</b> <span style="color:var(--gold)">${data.sandbox_network_firewall}</span></div>
+            <div><b>آداپتور فعال قیمت:</b> <span style="color:var(--accent-cyan)">${data.active_data_adapter}</span></div>
+            <div style="font-size:10px; color:var(--text-muted); margin-top:4px">${data.truth_disclosure}</div>
+          </div>
+        `;
+      } catch(e) {
+        box.innerHTML = '<span style="color:var(--red)">خطا در استعلام مجدد وضعیت شبکه</span>';
+      }
     }
 
     function exportJournalCsv() {
@@ -2032,6 +2178,13 @@ HTML_CONTENT = """<!DOCTYPE html>
           a.download = `TradeSense_Journal_${new Date().toISOString().slice(0,10)}.csv`;
           a.click();
         });
+    }
+
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW reg fail:', err));
+      });
     }
 
     // Auto-update loop
@@ -2083,6 +2236,42 @@ class TradeSenseRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(HTML_CONTENT.encode('utf-8'))
+
+        elif url.path == '/manifest.json':
+            body = json.dumps(PWA_MANIFEST_DATA, ensure_ascii=False, indent=2).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/manifest+json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        elif url.path == '/sw.js':
+            body = PWA_SW_JS.encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/javascript; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        elif url.path == '/icon.svg':
+            body = PWA_ICON_SVG.encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'image/svg+xml')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        elif url.path == '/api/test/stale':
+            enable = params.get('enable', ['0'])[0] == '1'
+            market_engine.simulate_stale = enable
+            if enable:
+                market_engine.last_update_time = time.time() - 65.0
+            else:
+                market_engine.last_update_time = time.time()
+            self._send_json({"simulate_stale": market_engine.simulate_stale, "last_update_time": market_engine.last_update_time})
 
         elif url.path == '/api/status':
             self._send_json({
