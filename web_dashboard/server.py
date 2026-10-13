@@ -1313,6 +1313,11 @@ HTML_CONTENT = """<!DOCTYPE html>
           <span class="card-badge">با احتساب اسپرد و اسلیپیج</span>
         </div>
 
+        <div style="display:flex; gap:8px; margin-bottom:12px">
+          <button class="btn btn-primary active" id="btnBtXAU" onclick="loadBacktest('XAUUSD')">بک‌تست طلا (XAUUSD)</button>
+          <button class="btn btn-secondary" id="btnBtEUR" onclick="loadBacktest('EURUSD')">بک‌تست یورو (EURUSD)</button>
+        </div>
+
         <div class="metric-grid" id="btMetricsGrid">
           <div class="metric-card">
             <div class="metric-title">نرخ برد (Win Rate)</div>
@@ -1843,15 +1848,29 @@ HTML_CONTENT = """<!DOCTYPE html>
     }
 
     // Load Backtest
-    async function loadBacktest() {
+    async function loadBacktest(sym) {
+      if (!sym) sym = currentSymbol || 'XAUUSD';
+      const btnXAU = document.getElementById('btnBtXAU');
+      const btnEUR = document.getElementById('btnBtEUR');
+      if (btnXAU) btnXAU.className = (sym === 'XAUUSD') ? 'btn btn-primary active' : 'btn btn-secondary';
+      if (btnEUR) btnEUR.className = (sym === 'EURUSD') ? 'btn btn-primary active' : 'btn btn-secondary';
+
       try {
-        const res = await fetch('/api/backtest?symbol=XAUUSD');
+        const res = await fetch(`/api/backtest?symbol=${sym}`);
         const data = await res.json();
         const m = data.metrics;
 
-        document.getElementById('btWinRate').textContent = `${m.win_rate_pct}%`;
+        const elWinRate = document.getElementById('btWinRate');
+        elWinRate.textContent = `${m.win_rate_pct}%`;
+        elWinRate.style.color = m.win_rate_pct >= 50 ? 'var(--green)' : 'var(--gold)';
+
         document.getElementById('btPF').textContent = `${m.profit_factor}`;
-        document.getElementById('btExpectancy').textContent = `+$${m.expectancy_usd}`;
+
+        const elExp = document.getElementById('btExpectancy');
+        const expSign = m.expectancy_usd >= 0 ? '+$' : '-$';
+        elExp.textContent = `${expSign}${Math.abs(m.expectancy_usd).toFixed(1)}`;
+        elExp.style.color = m.expectancy_usd >= 0 ? 'var(--green)' : 'var(--red)';
+
         document.getElementById('btMaxDD').textContent = `${m.max_drawdown_pct}%`;
         document.getElementById('btConfidenceNote').textContent = data.statistical_confidence_note;
 
