@@ -17,8 +17,8 @@ android {
     applicationId = "com.odin.agent"
     minSdk = 26
     targetSdk = 36
-    versionCode = 37
-    versionName = "1.0.35-tradesense-ai"
+    versionCode = 38
+    versionName = "1.0.36-tradesense-ai"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
