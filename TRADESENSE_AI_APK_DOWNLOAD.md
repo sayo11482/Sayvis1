@@ -8,9 +8,8 @@
 | مشخصه | مقدار |
 | :--- | :--- |
 | **نام اپلیکیشن** | **TradeSense AI** (دستیار هوشمند پژوهش و تحلیل بازار) |
-| **نسخه آماده نصب** | `v1.0.35-tradesense-ai (Build 56)` |
-| **نسخه جدید در حال کامپایل** | `v1.0.36-tradesense-ai (Build 57)` |
-| **نام فایل نصبی** | `ODIN-AGENT-1.0.35-tradesense-ai-debug.apk` |
+| **نسخه آماده نصب** | `v1.0.36-tradesense-ai (Build 57 - Latest Release)` |
+| **نام فایل نصبی** | `ODIN-AGENT-1.0.36-tradesense-ai-debug.apk` |
 | **حجم فایل** | حدود **۳۶.۵ مگابایت** (38,263,796 bytes) |
 | **معماری پشتیبانی شده** | ARM64-v8a, ARMeabi-v7a, x86_64 (سازگار با کلیه گوشی‌های اندروید ۸.۰ به بالا) |
 | **حالت عملکردی** | **Research-Only** (کاملاً تحلیلی، پژوهشی، بدون خطر دخالت یا ترید خودکار در حساب) |
@@ -23,17 +22,17 @@
 ### 🔗 دانلود مستقیم فایل نصبی APK:
 روی لینک زیر کلیک کنید یا آن را در مرورگر کروم گوشی اندروید خود وارد نمایید:
 
-👉 **[دانلود فایل نصبی TradeSense AI APK (حجم: ۳۶.۵ مگابایت)](https://github.com/sayo11482/Sayvis1/releases/download/odin-v1.0.35-tradesense-ai-build.56/ODIN-AGENT-1.0.35-tradesense-ai-debug.apk)**
+👉 **[دانلود فایل نصبی TradeSense AI APK - نسخه جدید Build 57](https://github.com/sayo11482/Sayvis1/releases/download/odin-v1.0.36-tradesense-ai-build.57/ODIN-AGENT-1.0.36-tradesense-ai-debug.apk)**
 
 ```text
-https://github.com/sayo11482/Sayvis1/releases/download/odin-v1.0.35-tradesense-ai-build.56/ODIN-AGENT-1.0.35-tradesense-ai-debug.apk
+https://github.com/sayo11482/Sayvis1/releases/download/odin-v1.0.36-tradesense-ai-build.57/ODIN-AGENT-1.0.36-tradesense-ai-debug.apk
 ```
 
 ### 🔗 صفحه رسمی ریلیزها در گیت‌هاب:
-👉 **[مشاهده صفحه رسمی انتشار در GitHub Releases](https://github.com/sayo11482/Sayvis1/releases/tag/odin-v1.0.35-tradesense-ai-build.56)**
+👉 **[مشاهده صفحه رسمی انتشار در GitHub Releases](https://github.com/sayo11482/Sayvis1/releases/tag/odin-v1.0.36-tradesense-ai-build.57)**
 
 ```text
-https://github.com/sayo11482/Sayvis1/releases/tag/odin-v1.0.35-tradesense-ai-build.56
+https://github.com/sayo11482/Sayvis1/releases/tag/odin-v1.0.36-tradesense-ai-build.57
 ```
 
 ---
